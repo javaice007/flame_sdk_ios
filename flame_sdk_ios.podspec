@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   s.source           = {
-    :http => 'https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/0.1.0.zip'
+    :http => 'https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/0.1.1.zip'
   }
 
   # 商业sdk
