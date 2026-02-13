@@ -3,8 +3,8 @@ Pod::Spec.new do |s|
   s.version          = '0.1.0'
   s.summary          = 'Flame iOS Ad SDK'
   s.description      = 'Flame iOS advertising aggregation SDK'
-  s.homepage         = 'https://www.adsurge.cn/'
-  s.license          = { :type => 'MIT' }
+  s.homepage         = 'https://github.com/your_org/flame_sdk_ios'
+  s.license          = { :type => 'MIT', :file => 'LICENSE'}
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   s.source           = {
