@@ -1,24 +1,26 @@
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '0.1.0'
+  s.version          = '0.1.1'
   s.summary          = 'Flame iOS Ad SDK'
   s.description      = 'Flame iOS advertising aggregation SDK'
   s.homepage         = 'https://github.com/your_org/flame_sdk_ios'
-  s.license          = { :type => 'MIT', :file => 'LICENSE'}
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   s.source           = {
-    :git => 'https://github.com/javaice007/flame_sdk_ios.git',
-    :tag => s.version.to_s
+    :http => 'https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/0.1.0.zip'
+  }
+
+  # 商业sdk
+  s.license = {
+    :type => 'Commercial',
+    :text => 'Copyright Flame'
   }
 
   # 3. 平台要求
   s.ios.deployment_target = '12.0'
 
   # ✅ Binary SDK
-  s.vendored_frameworks = 'flame_sdk_ios.xcframework'
-  s.source_files = 'flame_sdk_ios.xcframework/*/flame_sdk_ios.framework/Headers/*.h'
-  s.public_header_files = 'flame_sdk_ios.xcframework/*/flame_sdk_ios.framework/Headers/*.h'
+  s.vendored_frameworks = '**/flame_sdk_ios.xcframework'
 
   # ========= AnyThink Core =========
   s.dependency 'AnyThinkiOS','6.5.42'
