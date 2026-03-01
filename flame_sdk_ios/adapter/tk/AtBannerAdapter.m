@@ -133,14 +133,16 @@
     // 1. 移除 UI
     [self remove];
 
-    // 2. 清理配置数据
+    // 2. 断开监听器引用（虽然是weak属性，但显式断开是最佳实践）
+    _listener = nil;
+
+    // 3. 清理配置数据
     [self.localExtra removeAllObjects];
     _localExtra = nil;
 
     _atPlacementId = nil;
 
-    // 注意：listener是weak属性，会自动释放，无需手动置nil
-    // TopOn SDK内部由AdManager管理View生命周期
+    // 注意：TopOn SDK内部由AdManager管理View生命周期
 }
 
 

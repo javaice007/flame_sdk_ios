@@ -77,13 +77,15 @@
 }
 
 - (void)destroy {
+    // 断开监听器引用（虽然是weak属性，但显式断开是最佳实践）
+    _listener = nil;
+    _viewController = nil;
+
     // 清理配置数据
     [_localExtra removeAllObjects];
     _localExtra = nil;
 
     _atPlacementId = nil;
-
-    // 注意：listener和viewController是weak属性，会自动释放，无需手动置nil
 }
 
 #pragma mark - ATRewardedVideoDelegate (TopOn 回调)
