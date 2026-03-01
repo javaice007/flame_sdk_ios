@@ -18,6 +18,7 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 
 @interface FlameConfigManager ()
 @property (nonatomic, strong) FlameAppEntity *appEntity;
+@property (nonatomic, strong) dispatch_queue_t syncQueue; // 同步队列，保护线程安全
 @end
 
 @implementation FlameConfigManager
@@ -26,25 +27,36 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
     static FlameConfigManager *instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        instance = [[FlameConfigManager alloc] init];
+        instance = [[super allocWithZone:NULL] init];
+        // 创建串行队列保护共享数据
+        instance.syncQueue = dispatch_queue_create("com.flame.config.sync", DISPATCH_QUEUE_SERIAL);
     });
     return instance;
 }
 
++ (instancetype)allocWithZone:(struct _NSZone *)zone {
+    return [self sharedInstance];
+}
+
+- (instancetype)copyWithZone:(NSZone *)zone {
+    return self;
+}
+
 - (void) clearCache{
-    // 1. 清内存态
-    self.appEntity = nil;
+    dispatch_sync(self.syncQueue, ^{
+        // 1. 清内存态
+        self.appEntity = nil;
+    });
 
     // 2. 清本地存储
-    FlameConfigLocalStorage *storage = [[FlameConfigLocalStorage alloc] init];
-    [storage clear];
+    [[FlameConfigLocalStorage sharedInstance] clear];
 
     [FlameLogger i:@"FlameConfigManager clearCache finished"];
 }
 
 
 - (void)updateAppWithAppId:(NSString *)appId appKey:(NSString *)appKey callback:(id<FlameCallback>)callback {
-    FlameConfigLocalStorage *storage = [[FlameConfigLocalStorage alloc] init];
+    FlameConfigLocalStorage *storage = [FlameConfigLocalStorage sharedInstance];
     NSString *aId = [storage getAId];
     NSString *aKey = [storage getAKey];
     id pMapObj = [storage getPMap];
@@ -56,11 +68,13 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 
     if (aId.length > 0 && aKey.length > 0 && pMap.count > 0) {
         [FlameLogger i:@"load ad from local cache......"];
-        
-        self.appEntity = [[FlameAppEntity alloc] init];
-        self.appEntity.aId = aId;
-        self.appEntity.aKey = aKey;
-        [self.appEntity.pIds addEntriesFromDictionary:pMap];
+
+        dispatch_sync(self.syncQueue, ^{
+            self.appEntity = [[FlameAppEntity alloc] init];
+            self.appEntity.aId = aId;
+            self.appEntity.aKey = aKey;
+            [self.appEntity.pIds addEntriesFromDictionary:pMap];
+        });
         if (callback) [callback success];
         return;
     }
@@ -105,12 +119,18 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
         // 5. AES 解密（保持不变）
         NSString *decryptJson = [FlameAesCryptoUtils decrypt:eData rawKey:appKey];
         [FlameLogger i:[NSString stringWithFormat:@"decrypt json = %@", decryptJson]];
-        self.appEntity = [FlameAppEntity fromJson:decryptJson];
-        if (self.appEntity) {
-            [storage putWithPt:self.appEntity.pt
-                           aId:self.appEntity.aId
-                          aKey:self.appEntity.aKey
-                          pMap:self.appEntity.pIds];
+
+        FlameAppEntity *entity = [FlameAppEntity fromJson:decryptJson];
+        if (entity) {
+            // 线程安全地更新appEntity
+            dispatch_sync(self.syncQueue, ^{
+                self.appEntity = entity;
+            });
+
+            [storage putWithPt:entity.pt
+                           aId:entity.aId
+                          aKey:entity.aKey
+                          pMap:entity.pIds];
             if (callback) {
                 [callback success];
             }
@@ -123,15 +143,27 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 }
 
 - (NSString *)getAId {
-    return self.appEntity ? self.appEntity.aId : @"";
+    __block NSString *result;
+    dispatch_sync(self.syncQueue, ^{
+        result = self.appEntity ? self.appEntity.aId : @"";
+    });
+    return result;
 }
 
 - (NSString *)getAKey {
-    return self.appEntity ? self.appEntity.aKey : @"";
+    __block NSString *result;
+    dispatch_sync(self.syncQueue, ^{
+        result = self.appEntity ? self.appEntity.aKey : @"";
+    });
+    return result;
 }
 
 - (NSString *)getPId:(NSString *)flamePlacementId {
-    return self.appEntity.pIds[flamePlacementId];
+    __block NSString *result;
+    dispatch_sync(self.syncQueue, ^{
+        result = self.appEntity.pIds[flamePlacementId];
+    });
+    return result;
 }
 
 - (NSString *)getSdkVersion {

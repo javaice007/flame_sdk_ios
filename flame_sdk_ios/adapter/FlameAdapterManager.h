@@ -17,7 +17,7 @@
 
 @interface FlameAdapterManager: NSObject
 
-@property (nonatomic, assign, readwrite) BOOL isInitialized;
+@property (atomic, assign, readwrite) BOOL isInitialized;
 
 /**
  * 获取单例实例

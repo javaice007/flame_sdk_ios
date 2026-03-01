@@ -6,7 +6,7 @@
 
 @interface FlameConfigLocalStorage : NSObject
 
-- (instancetype)init;
++ (instancetype)sharedInstance;
 
 - (NSString *)getPt;
 - (NSString *)getAId;

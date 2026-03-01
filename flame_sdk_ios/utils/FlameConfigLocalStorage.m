@@ -18,13 +18,27 @@ static NSString *const KEY_PLACEMENT_MAP = @"pMap";
 
 @implementation FlameConfigLocalStorage
 
-- (instancetype)init {
-    self = [super init];
-    if (self) {
++ (instancetype)sharedInstance {
+    static FlameConfigLocalStorage *instance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[super allocWithZone:NULL] init];
         // iOS中使用NSUserDefaults模拟SharedPreferences，通过suiteName实现隔离
-        _userDefaults = [[NSUserDefaults alloc] initWithSuiteName:SCOPE];
-    }
+        instance.userDefaults = [[NSUserDefaults alloc] initWithSuiteName:SCOPE];
+    });
+    return instance;
+}
+
++ (instancetype)allocWithZone:(struct _NSZone *)zone {
+    return [self sharedInstance];
+}
+
+- (instancetype)copyWithZone:(NSZone *)zone {
     return self;
+}
+
+- (instancetype)init {
+    return [FlameConfigLocalStorage sharedInstance];
 }
 
 - (NSString *)getPt {

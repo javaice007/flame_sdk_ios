@@ -40,10 +40,17 @@
     static FlameAdapterManager *_sharedInstance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        // 使用内部私有初始化
-        _sharedInstance = [[super alloc] init];
+        _sharedInstance = [[super allocWithZone:NULL] init];
     });
     return _sharedInstance;
+}
+
++ (instancetype)allocWithZone:(struct _NSZone *)zone {
+    return [self sharedInstance];
+}
+
+- (instancetype)copyWithZone:(NSZone *)zone {
+    return self;
 }
 
 + (void)initSDKWithAppId:(NSString *)appId

@@ -132,18 +132,15 @@
 - (void)destroy {
     // 1. 移除 UI
     [self remove];
-    
-    // 2. 断开所有引用
-    _listener = nil;
-    
-    if (self.localExtra) {
-        [self.localExtra removeAllObjects];
-        _localExtra = nil;
-    }
-    
-    // 3. 注意：TopOn 内部通常由 AdManager 管理，
-    // 如果有特定的 Release 接口可在此调用，通常置空引用即可。
+
+    // 2. 清理配置数据
+    [self.localExtra removeAllObjects];
+    _localExtra = nil;
+
     _atPlacementId = nil;
+
+    // 注意：listener是weak属性，会自动释放，无需手动置nil
+    // TopOn SDK内部由AdManager管理View生命周期
 }
 
 

@@ -77,18 +77,13 @@
 }
 
 - (void)destroy {
-    // 1. 断开监听器引用，防止回调到已销毁的逻辑层
-    _listener = nil;
-    
-    // 2. 清空 UI 引用
-    _viewController = nil;
-    
-    // 3. 清理配置数据
+    // 清理配置数据
     [_localExtra removeAllObjects];
     _localExtra = nil;
-    
-    // 显式将 ID 置空
+
     _atPlacementId = nil;
+
+    // 注意：listener和viewController是weak属性，会自动释放，无需手动置nil
 }
 
 #pragma mark - ATRewardedVideoDelegate (TopOn 回调)
