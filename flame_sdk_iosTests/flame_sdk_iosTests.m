@@ -2,7 +2,7 @@
 //  flame_sdk_iosTests.m
 //  flame_sdk_iosTests
 //
-//  Created by 周识儒 on 2026/1/12.
+//  Created by Flame on 2026/1/12.
 //
 
 #import <XCTest/XCTest.h>

@@ -1,0 +1,79 @@
+//
+//  FlameInterstitialAdImpl.m
+//  flame_sdk_ios
+//
+//  Created by Flame on 2026/1/19.
+//
+#import <Foundation/Foundation.h>
+#import "FlameInterstitialAdImpl.h"
+#import "FlameAdapterManager.h"
+#import "FlameLogger.h"
+
+@implementation FlameInterstitialAdImpl
+
+@synthesize viewController = _viewController;
+@synthesize placementId = _placementId;
+@synthesize listener = _listener;
+@synthesize adapter = _adapter; // 如果头文件里改了名，这里也需同步
+
+- (instancetype)initWithViewController:(UIViewController *)viewController
+                           placementId:(NSString *)placementId
+                              listener:(id<FlameInterstitialListener>)listener {
+    self = [super init];
+    if (self) {
+        _viewController = viewController;
+        _placementId = [placementId copy];
+        _listener = listener;
+        // 调用 AdapterManager 创建插屏适配器
+        _adapter = [FlameAdapterManager createInterstitialAdapter:viewController
+                                                           atPlacementId:placementId
+                                                                listener:listener];
+    }
+    return self;
+}
+
+- (void)load {
+    [self loadWithUserId:nil userCustomData:nil];
+}
+
+- (void)loadWithUserId:(NSString *)userId userCustomData:(NSString *)userCustomData {
+    [FlameAdapterManager checkInitialization];
+
+    if ([self.adapter isLoading]) {
+        [FlameLogger i:@"Ad is loading, please do not request again."];
+        return;
+    }
+    
+    NSString *logMsg = [NSString stringWithFormat:@"Start loading intersitial Ad for PlacementId: %@", self.placementId];
+    [FlameLogger i:logMsg];
+
+    [self.adapter loadWithUserId:userId userCustomData:userCustomData];
+}
+
+- (BOOL)isReady {
+    [FlameAdapterManager checkInitialization];
+    return [self.adapter isReady];
+}
+
+- (BOOL)isLoading {
+    [FlameAdapterManager checkInitialization];
+    return [self.adapter isLoading];
+}
+
+- (void)show {
+    if ([self isReady]) {
+        [FlameLogger i:[NSString stringWithFormat:@"Show Interstitial Ad for PlacementId: %@", self.placementId]];
+        [self.adapter show];
+    } else {
+        NSString *logMsg = [NSString stringWithFormat:@"Interstitial Ad is not ready to show for PlacementId: %@", self.placementId];
+        [FlameLogger i:logMsg];
+    }
+}
+
+- (void)destroy {
+    [FlameAdapterManager checkInitialization];
+    [self.adapter destroy];
+}
+
+
+@end

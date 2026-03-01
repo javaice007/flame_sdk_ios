@@ -1,0 +1,76 @@
+//
+//  FlameSplashAdImpl.m
+//  flame_sdk_ios
+//
+//  Created by Flame on 2026/1/20.
+//
+
+#import <Foundation/Foundation.h>
+#import "FlameSplashAdImpl.h"
+#import "FlameAdapterManager.h"
+#import "FlameLogger.h"
+
+
+@implementation FlameSplashAdImpl
+
+@synthesize viewController = _viewController;
+@synthesize placementId = _placementId;
+@synthesize listener = _listener;
+@synthesize adapter = _adapter;
+
+- (instancetype)initWithViewController:(UIViewController *)viewController
+                           placementId:(NSString *)placementId
+                              listener:(id<FlameSplashListener>)listener{
+    self = [super init];
+    if (self) {
+        _viewController = viewController;
+        _placementId = [placementId copy];
+        _listener = listener;
+        _adapter = [FlameAdapterManager createSplashAdAdapter:viewController atPlacementId:placementId listener:listener];
+    }
+    return self;
+}
+
+- (void)load {
+    [self loadWithUserId:nil userCustomData:nil];
+}
+
+- (void)loadWithUserId:(NSString *)userId userCustomData:(NSString *)userCustomData {
+    [FlameAdapterManager checkInitialization];
+
+    if ([self.adapter isLoading]) {
+        [FlameLogger i:@"Ad is loading, please do not request again."];
+        return;
+    }
+    
+    NSString *logMsg = [NSString stringWithFormat:@"Start loading Splash Ad for PlacementId: %@", self.placementId];
+    [FlameLogger i:logMsg];
+
+    [self.adapter loadWithUserId:userId userCustomData:userCustomData];
+}
+
+- (BOOL)isReady {
+    [FlameAdapterManager checkInitialization];
+    return [self.adapter isReady];
+}
+
+- (BOOL) isLoading{
+    [FlameAdapterManager checkInitialization];
+    return [self.adapter isLoading];
+}
+
+- (void) destroy{
+    [FlameAdapterManager checkInitialization];
+    [self.adapter destroy];
+}
+
+- (void)show:(UIWindow *)window {
+    if ([self isReady]) {
+        [self.adapter show:window];
+    } else {
+        NSString *logMsg = [NSString stringWithFormat:@"Splash Ad is not ready to show for PlacementId: %@", self.placementId];
+        [FlameLogger i:logMsg];
+    }
+}
+
+@end
