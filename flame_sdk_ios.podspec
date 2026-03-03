@@ -1,13 +1,13 @@
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '0.1.1'
+  s.version          = '0.1.2'
   s.summary          = 'Flame iOS Ad SDK'
   s.description      = 'Flame iOS advertising aggregation SDK'
   s.homepage         = 'https://github.com/your_org/flame_sdk_ios'
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   s.source           = {
-    :http => 'https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/0.1.1.zip'
+    :http => 'https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/0.1.2.zip'
   }
 
   # 商业sdk
@@ -26,6 +26,7 @@ Pod::Spec.new do |s|
   s.dependency 'AnyThinkiOS','6.5.42'
   s.dependency 'OpenSSL-Universal', '1.1.180'
   s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter','6.5.42.1'
+  s.dependency 'AnyThinkMediationGromoreAdapter','7.4.0.0.0'
   s.dependency 'AnyThinkMediationBaiduAdapter','10.032.0'
   s.dependency 'AnyThinkMediationMSAdapter','2.7.13.3.0'
   s.dependency 'AnyThinkMediationKuaiShouAdapter','4.12.20.1.0'
