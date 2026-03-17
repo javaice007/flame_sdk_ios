@@ -27,7 +27,28 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     FlameSDKInitStateFailed              // 初始化失败
 };
 
+// FlameSdk 私有接口
+@interface FlameSdk ()
+@property (nonatomic, assign, readwrite) BOOL isInitialized;
+@property (atomic, assign) FlameSDKInitState initState;  // 初始化状态
 
+// 内部方法：更新初始化状态
++ (void)updateInitState:(FlameSDKInitState)state;
+
+@end
+
+// ============= 初始化回调辅助类 =============
+
+// AdapterInitCallback 接口定义（需要在 UpdateAppCallback 实现之前）
+@interface AdapterInitCallback : NSObject<FlameCallback>
+
+@property (nonatomic, weak) id<FlameCallback> userCallback;
+
+- (instancetype)initWithCallback:(id<FlameCallback>)callback;
+
+@end
+
+// UpdateAppCallback 接口定义
 @interface UpdateAppCallback : NSObject<FlameCallback>
 
 @property (nonatomic, strong) id<FlameCallback> initCallback;
@@ -40,6 +61,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
 @end
 
+// UpdateAppCallback 实现
 @implementation UpdateAppCallback
 
 - (instancetype)initWithInitCallback:(id<FlameCallback>)callback {
@@ -73,7 +95,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     [FlameLogger e:[NSString stringWithFormat:@"Config fetch failed:[code= %@], [desc=%@]", code, desc]];
 
     // 更新状态为失败
-    [FlameSdk sharedInstance].initState = FlameSDKInitStateFailed;
+    [FlameSdk updateInitState:FlameSDKInitStateFailed];
 
     // 转发失败回调给 initCallback
     if ([self.initCallback respondsToSelector:@selector(fail:desc:)]) {
@@ -83,14 +105,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
 @end
 
-
-@interface AdapterInitCallback : NSObject<FlameCallback>
-
-@property (nonatomic, weak) id<FlameCallback> userCallback;
-
-- (instancetype)initWithCallback:(id<FlameCallback>)callback;
-
-@end
+// AdapterInitCallback 实现
 
 @implementation AdapterInitCallback
 
@@ -104,7 +119,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
 - (void)success {
     // 更新SDK状态为已初始化
-    [FlameSdk sharedInstance].initState = FlameSDKInitStateInitialized;
+    [FlameSdk updateInitState:FlameSDKInitStateInitialized];
 
     // 转发给用户回调
     if ([self.userCallback respondsToSelector:@selector(success)]) {
@@ -114,7 +129,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
 - (void)fail:(NSString *)code desc:(NSString *)desc {
     // 更新SDK状态为失败
-    [FlameSdk sharedInstance].initState = FlameSDKInitStateFailed;
+    [FlameSdk updateInitState:FlameSDKInitStateFailed];
 
     [FlameLogger e:[NSString stringWithFormat:@"AdapterManager init failed:[code= %@], [desc=%@]", code, desc]];
 
@@ -126,39 +141,35 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
 @end
 
-
-@interface FlameSdk ()
-@property (nonatomic, assign, readwrite) BOOL isInitialized;
-@property (atomic, assign) FlameSDKInitState initState;  // 初始化状态
-@property (nonatomic, strong) dispatch_semaphore_t initSemaphore;  // 初始化信号量
-@end
-
 @implementation FlameSdk
 
 + (instancetype)sharedInstance {
     static FlameSdk *_instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+        // 直接调用父类的 allocWithZone: 避免递归
         _instance = [[super allocWithZone:NULL] init];
     });
     return _instance;
 }
 
-+ (instancetype)allocWithZone:(struct _NSZone *)zone {
-    return [self sharedInstance];
-}
-
-- (instancetype)copyWithZone:(NSZone *)zone {
-    return self;
-}
+// 移除 allocWithZone: 和 copyWithZone: 重写，避免递归问题
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         _initState = FlameSDKInitStateUninitialized;
-        _initSemaphore = dispatch_semaphore_create(1);
     }
     return self;
+}
+
+#pragma mark - 内部方法
+
+/**
+ * 更新SDK初始化状态（内部方法）
+ */
++ (void)updateInitState:(FlameSDKInitState)state {
+    [self sharedInstance].initState = state;
 }
 
 /**
@@ -175,33 +186,30 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 + (void)initWithAppId:(NSString *)appId appKey:(NSString *)appKey callback:(id<FlameCallback>)callback {
     FlameSdk *instance = [self sharedInstance];
 
-    // 使用信号量防止并发初始化
-    dispatch_semaphore_wait(instance.initSemaphore, DISPATCH_TIME_FOREVER);
+    // 使用 @synchronized 防止并发初始化，比信号量更简单可靠
+    @synchronized (instance) {
+        // 检查当前状态
+        FlameSDKInitState currentState = instance.initState;
 
-    // 检查当前状态
-    FlameSDKInitState currentState = instance.initState;
-
-    if (currentState == FlameSDKInitStateInitialized) {
-        dispatch_semaphore_signal(instance.initSemaphore);
-        [FlameLogger w:@"FlameSdk is already initialized."];
-        if (callback) {
-            [callback success];
+        if (currentState == FlameSDKInitStateInitialized) {
+            [FlameLogger w:@"FlameSdk is already initialized."];
+            if (callback) {
+                [callback success];
+            }
+            return;
         }
-        return;
-    }
 
-    if (currentState == FlameSDKInitStateInitializing) {
-        dispatch_semaphore_signal(instance.initSemaphore);
-        [FlameLogger w:@"FlameSdk is initializing, please wait."];
-        if (callback) {
-            [callback fail:@"-1" desc:@"SDK is already initializing"];
+        if (currentState == FlameSDKInitStateInitializing) {
+            [FlameLogger w:@"FlameSdk is initializing, please wait."];
+            if (callback) {
+                [callback fail:@"-1" desc:@"SDK is already initializing"];
+            }
+            return;
         }
-        return;
-    }
 
-    // 设置为初始化中状态
-    instance.initState = FlameSDKInitStateInitializing;
-    dispatch_semaphore_signal(instance.initSemaphore);
+        // 设置为初始化中状态
+        instance.initState = FlameSDKInitStateInitializing;
+    }
 
     // 创建包装回调，在完成时更新状态
     UpdateAppCallback *cb = [[UpdateAppCallback alloc] initWithInitCallback:callback];

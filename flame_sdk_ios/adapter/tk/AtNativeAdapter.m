@@ -65,6 +65,8 @@
     
     // 4. 填充尺寸信息 (TopOn 要求使用 NSValue 包装 CGSize)
     CGSize adSize = CGSizeMake(width, height);
+    self.requestedAdSize = adSize;
+    [FlameLogger i:[NSString stringWithFormat:@"[AtNativeAdapter] load size -> width: %.2f, height: %.2f", width, height]];
     [self.localExtra setObject:[NSValue valueWithCGSize:adSize]
                         forKey:kATExtraInfoNativeAdSizeKey];
     
@@ -85,28 +87,64 @@
 
 - (void)showInContainer:(UIView *)container {
     if (!container) return;
-    
+
     // 1. 确保在主线程执行所有 UI 操作
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (![self isReady] || !self.cachedOffer) {
-            [FlameLogger e:@"[AtNativeAdapter] Ad not ready or offer missing"];
-             return;
+        if (![self isReady]) {
+            [FlameLogger e:@"[AtNativeAdapter] Ad not ready"];
+            return;
         }
 
         [self remove];
         [container layoutIfNeeded];
-        
-        // 2. 获取容器真实的尺寸
-        // 如果容器刚加载，bounds 可能是 0，尝试取屏幕宽度
-        CGFloat width = CGRectGetWidth(container.bounds);
+
+        // ✅ 修复问题2：在展示时才获取offer（消耗广告缓存）
+        // 官方文档说明："获取后消耗一条广告缓存"
+        ATNativeAdOffer *offer = [[ATAdManager sharedManager] getNativeAdOfferWithPlacementID:self.atPlacementId
+                                                                                        scene:@"default_scene"];
+
+        if (!offer) {
+            [FlameLogger e:@"[AtNativeAdapter] Failed to get native offer on show"];
+            if ([self.listener respondsToSelector:@selector(onAdError:desc:)]) {
+                [self.listener onAdError:@"NO_OFFER" desc:@"Failed to get offer when showing"];
+            }
+            return;
+        }
+
+        // 2. 卡片尺寸：优先使用 load 阶段传入尺寸；否则使用宽度-32和16:9
+        BOOL useRequestedSize = YES;
+        CGFloat width = self.requestedAdSize.width;
+        CGFloat height = self.requestedAdSize.height;
+
+        CGFloat containerWidth = CGRectGetWidth(container.bounds);
+        CGFloat containerHeight = CGRectGetHeight(container.bounds);
+        if (containerWidth <= 0) {
+            containerWidth = UIScreen.mainScreen.bounds.size.width;
+        }
+        if (containerHeight <= 0) {
+            containerHeight = UIScreen.mainScreen.bounds.size.height;
+        }
+
+        // 兜底：若未提供请求尺寸，则使用固定卡片比例
+        if (width <= 0 || height <= 0) {
+            useRequestedSize = NO;
+            width = containerWidth - 32.0;
+            if (width <= 0) {
+                width = containerWidth;
+            }
+            height = width * 9.0 / 16.0;
+        }
+
+        // 最后兜底，避免非预期尺寸导致渲染失败
         if (width <= 0) {
-            width = UIScreen.mainScreen.bounds.size.width;
+            width = UIScreen.mainScreen.bounds.size.width - 32.0;
         }
-        CGFloat height = CGRectGetHeight(container.bounds);
         if (height <= 0) {
-            height = UIScreen.mainScreen.bounds.size.height;
+            height = width * 9.0 / 16.0;
         }
-//        CGFloat height = 0;
+
+        NSString *sizeSource = useRequestedSize ? @"requested(load)" : @"fallback(container/screen)";
+        [FlameLogger i:[NSString stringWithFormat:@"[AtNativeAdapter] show size -> width: %.2f, height: %.2f, source: %@", width, height, sizeSource]];
 
         ATNativeADConfiguration *config = [[ATNativeADConfiguration alloc] init];
         config.ADFrame = CGRectMake(0, 0, width, height);
@@ -115,23 +153,26 @@
         config.sizeToFit = YES; // 允许自适应
         config.videoPlayType = ATNativeADConfigVideoPlayAlwaysAutoPlayType;
 
-        ATNativeAdOffer *offer = self.cachedOffer;
-        self.cachedOffer = nil; // 消耗掉
-
         // 3. 创建并渲染
         ATNativeADView *nativeADView = [[ATNativeADView alloc] initWithConfiguration:config
                                                                         currentOffer:offer
                                                                          placementID:self.atPlacementId];
         //禁用 autoresizing 转换约束，防止与内部约束冲突
         nativeADView.translatesAutoresizingMaskIntoConstraints = YES;
-        
+
         // 关键：对于模板广告，必须调用这个方法进行渲染
         [offer rendererWithConfiguration:config selfRenderView:nil nativeADView:nativeADView];
         self.currentAdView = nativeADView;
-        
+
         [container.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
         [container addSubview:nativeADView];
-        
+
+        // 3. 固定为大卡片布局：顶部留边 + 水平居中
+        CGFloat topInset = 16.0;
+        CGFloat originX = MAX((containerWidth - width) / 2.0, 0.0);
+        CGFloat originY = MIN(topInset, MAX(containerHeight - height, 0.0));
+        nativeADView.frame = CGRectMake(originX, originY, width, height);
+
         // ✅ 让 SDK 算出最终高度
         [nativeADView sizeToFit];
 
@@ -151,6 +192,8 @@
         [self.localExtra removeAllObjects];
         _localExtra = nil;
     }
+
+    _requestedAdSize = CGSizeZero;
     
     // 3. 注意：TopOn 内部通常由 AdManager 管理，
     // 如果有特定的 Release 接口可在此调用，通常置空引用即可。
@@ -173,14 +216,9 @@
 }
 
 - (void)didFinishLoadingADWithPlacementID:(NSString *)placementID {
-    self.cachedOffer = [[ATAdManager sharedManager] getNativeAdOfferWithPlacementID:self.atPlacementId
-                                                                              scene:@"default_scene"];
-    
-    if (!self.cachedOffer) {
-        [self.listener onAdError:@"NO_OFFER" desc:@"Native offer is nil"];
-        return;
-    }
-    
+    // ✅ 修复问题2：不在load回调中获取offer
+    // offer会在showInContainer时才获取，避免不展示时浪费广告缓存
+
     if ([self.listener respondsToSelector:@selector(onAdLoaded)]) {
         [self.listener onAdLoaded];
     }
@@ -193,7 +231,7 @@
 }
 
 - (void)didShowNativeAdInAdView:(nonnull ATNativeADView *)adView placementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra { 
-    if ([self.listener respondsToSelector:@selector(onAdShow:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdShow)]) {
         [self.listener onAdShow];
     }
 }
@@ -201,9 +239,27 @@
 - (void)didCloseDetailInAdView:(ATNativeADView *)adView
                    placementID:(NSString *)placementID
                          extra:(NSDictionary *)extra{
-    if ([self.listener respondsToSelector:@selector(onAdClosed:)]) {
+    // ℹ️ 这个回调表示"退出详情页面"，不是真正的广告关闭
+    // 广告关闭应该使用 didTapCloseButtonInAdView
+    [FlameLogger i:@"[AtNativeAdapter] Detail page closed"];
+}
+
+#pragma mark - ✅ 修复问题3：正确绑定关闭按钮回调
+
+/// 原生广告点击了关闭按钮（真正的广告关闭事件）
+/// 根据官方文档示例（塔库原生广告对接说明.md 第91-101行）
+- (void)didTapCloseButtonInAdView:(ATNativeADView *)adView
+                       placementID:(NSString *)placementID
+                             extra:(NSDictionary *)extra {
+    [FlameLogger i:@"[AtNativeAdapter] Close button tapped"];
+
+    // 触发关闭回调
+    if ([self.listener respondsToSelector:@selector(onAdClosed)]) {
         [self.listener onAdClosed];
     }
+
+    // 自动移除广告视图
+    [self remove];
 }
 
 @end

@@ -42,5 +42,30 @@ post_install do |installer|
       end
     end
   end
+
+  # ✅ 添加 OpenSSL 头文件搜索路径
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      # 为所有target添加OpenSSL头文件路径
+      config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_arm64e_armv7_armv7s/OpenSSL.framework/Headers'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_i386_x86_64-simulator/OpenSSL.framework/Headers'
+
+      # 确保OTHER_LDFLAGS包含-ObjC
+      config.build_settings['OTHER_LDFLAGS'] ||= '$(inherited)'
+      unless config.build_settings['OTHER_LDFLAGS'].include?('-ObjC')
+        config.build_settings['OTHER_LDFLAGS'] << ' -ObjC'
+      end
+    end
+  end
+
+  # ✅ 为主工程target也添加配置
+  installer.target_installation_results.pod_target_installation_results.each do |pod_name, target_installation_result|
+    target_installation_result.native_target.build_configurations.each do |config|
+      config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_arm64e_armv7_armv7s/OpenSSL.framework/Headers'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_i386_x86_64-simulator/OpenSSL.framework/Headers'
+    end
+  end
 end
 

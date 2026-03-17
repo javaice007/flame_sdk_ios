@@ -17,8 +17,7 @@
 static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 
 @interface FlameConfigManager ()
-@property (nonatomic, strong) FlameAppEntity *appEntity;
-@property (nonatomic, strong) dispatch_queue_t syncQueue; // 同步队列，保护线程安全
+@property (atomic, strong) FlameAppEntity *appEntity; // 使用 atomic 保证线程安全
 @end
 
 @implementation FlameConfigManager
@@ -27,26 +26,30 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
     static FlameConfigManager *instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+        // 直接调用父类的 allocWithZone: 避免递归
         instance = [[super allocWithZone:NULL] init];
-        // 创建串行队列保护共享数据
-        instance.syncQueue = dispatch_queue_create("com.flame.config.sync", DISPATCH_QUEUE_SERIAL);
     });
     return instance;
 }
 
-+ (instancetype)allocWithZone:(struct _NSZone *)zone {
-    return [self sharedInstance];
-}
+// 移除 allocWithZone: 重写，避免递归问题
+// 如果外部代码直接使用 [[FlameConfigManager alloc] init]，会创建新实例
+// 但这是可以接受的，因为我们在文档中明确要求使用 sharedInstance
 
-- (instancetype)copyWithZone:(NSZone *)zone {
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        // 初始化代码
+    }
     return self;
 }
 
 - (void) clearCache{
-    dispatch_sync(self.syncQueue, ^{
+    // 使用 @synchronized 保护临界区，简单可靠
+    @synchronized (self) {
         // 1. 清内存态
         self.appEntity = nil;
-    });
+    }
 
     // 2. 清本地存储
     [[FlameConfigLocalStorage sharedInstance] clear];
@@ -69,12 +72,12 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
     if (aId.length > 0 && aKey.length > 0 && pMap.count > 0) {
         [FlameLogger i:@"load ad from local cache......"];
 
-        dispatch_sync(self.syncQueue, ^{
+        @synchronized (self) {
             self.appEntity = [[FlameAppEntity alloc] init];
             self.appEntity.aId = aId;
             self.appEntity.aKey = aKey;
             [self.appEntity.pIds addEntriesFromDictionary:pMap];
-        });
+        }
         if (callback) [callback success];
         return;
     }
@@ -122,10 +125,10 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 
         FlameAppEntity *entity = [FlameAppEntity fromJson:decryptJson];
         if (entity) {
-            // 线程安全地更新appEntity
-            dispatch_sync(self.syncQueue, ^{
+            // 线程安全地更新appEntity，使用 @synchronized
+            @synchronized (self) {
                 self.appEntity = entity;
-            });
+            }
 
             [storage putWithPt:entity.pt
                            aId:entity.aId
@@ -143,27 +146,19 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 }
 
 - (NSString *)getAId {
-    __block NSString *result;
-    dispatch_sync(self.syncQueue, ^{
-        result = self.appEntity ? self.appEntity.aId : @"";
-    });
-    return result;
+    // atomic 属性本身已经是线程安全的，直接读取即可
+    return self.appEntity ? self.appEntity.aId : @"";
 }
 
 - (NSString *)getAKey {
-    __block NSString *result;
-    dispatch_sync(self.syncQueue, ^{
-        result = self.appEntity ? self.appEntity.aKey : @"";
-    });
-    return result;
+    // atomic 属性本身已经是线程安全的，直接读取即可
+    return self.appEntity ? self.appEntity.aKey : @"";
 }
 
 - (NSString *)getPId:(NSString *)flamePlacementId {
-    __block NSString *result;
-    dispatch_sync(self.syncQueue, ^{
-        result = self.appEntity.pIds[flamePlacementId];
-    });
-    return result;
+    // 使用局部变量避免多次访问 atomic 属性
+    FlameAppEntity *entity = self.appEntity;
+    return entity.pIds[flamePlacementId];
 }
 
 - (NSString *)getSdkVersion {

@@ -19,7 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak) id<FlameNativeListener> listener;
 // 强引用当前正在展示的广告视图，用于状态管理
 @property (nonatomic, strong) ATNativeADView *currentAdView;
-@property (nonatomic, strong, nullable) ATNativeAdOffer *cachedOffer;
+// 记录 load 阶段传入的尺寸，show 阶段复用，保证加载与展示一致
+@property (nonatomic, assign) CGSize requestedAdSize;
+// ✅ cachedOffer已移除：offer在showInContainer时才获取，避免浪费缓存
 
 - (instancetype)initWithViewController:(UIViewController *)viewController
                          atPlacementId:(NSString *)atPlacementId

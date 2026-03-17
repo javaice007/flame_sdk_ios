@@ -22,23 +22,21 @@ static NSString *const KEY_PLACEMENT_MAP = @"pMap";
     static FlameConfigLocalStorage *instance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+        // 直接调用父类的 allocWithZone: 避免递归
         instance = [[super allocWithZone:NULL] init];
-        // iOS中使用NSUserDefaults模拟SharedPreferences，通过suiteName实现隔离
-        instance.userDefaults = [[NSUserDefaults alloc] initWithSuiteName:SCOPE];
     });
     return instance;
 }
 
-+ (instancetype)allocWithZone:(struct _NSZone *)zone {
-    return [self sharedInstance];
-}
-
-- (instancetype)copyWithZone:(NSZone *)zone {
-    return self;
-}
+// 移除复杂的单例防护，简化实现
 
 - (instancetype)init {
-    return [FlameConfigLocalStorage sharedInstance];
+    self = [super init];
+    if (self) {
+        // iOS中使用NSUserDefaults模拟SharedPreferences，通过suiteName实现隔离
+        self.userDefaults = [[NSUserDefaults alloc] initWithSuiteName:SCOPE];
+    }
+    return self;
 }
 
 - (NSString *)getPt {

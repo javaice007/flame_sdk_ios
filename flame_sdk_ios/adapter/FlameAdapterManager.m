@@ -40,14 +40,13 @@
     static FlameAdapterManager *_sharedInstance = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+        // 直接调用父类的 allocWithZone: 避免递归
         _sharedInstance = [[super allocWithZone:NULL] init];
     });
     return _sharedInstance;
 }
 
-+ (instancetype)allocWithZone:(struct _NSZone *)zone {
-    return [self sharedInstance];
-}
+// 移除 allocWithZone: 重写，避免递归问题
 
 - (instancetype)copyWithZone:(NSZone *)zone {
     return self;
