@@ -327,7 +327,7 @@
 		</dict>
 		<key>Frameworks/AnyThinkSDK.framework/AnyThinkSDK</key>
 		<data>
-		DBzJv4eqZjSdCq9b1qvprxrbXCM=
+		1TkIKAxMEshkMfK1XhZ2VhIGGeU=
 		</data>
 		<key>Frameworks/AnyThinkSDK.framework/Info.plist</key>
 		<data>
@@ -359,7 +359,7 @@
 		</data>
 		<key>Headers/FlameNativeAd.h</key>
 		<data>
-		q42kVwrGQuafgV7Q7R/0voUsBBw=
+		kYcSLjfBNPKkqClJ2pMDp6C2Ack=
 		</data>
 		<key>Headers/FlameRewardAd.h</key>
 		<data>
@@ -387,7 +387,7 @@
 		</data>
 		<key>flame_sdk_ios.podspec</key>
 		<data>
-		dH3Z8vT1953WudqwTlkDYFSb830=
+		7U2zl6ZkkqUbBdqgqUe+2SD/MK4=
 		</data>
 		<key>xcFramework_build.sh</key>
 		<data>
@@ -955,7 +955,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			eDD7SQfDt0QQhZGqIsx/cY+6GI82LCA956tlw4y0RbE=
+			hIw00JfwIWHtkHDtP0w8DKhifZW0u3zYO0HmU7u+KAU=
 			</data>
 		</dict>
 		<key>Frameworks/AnyThinkSDK.framework/Info.plist</key>
@@ -1011,7 +1011,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			PjYmUyL92plrzCU8FjaxfTFz/zWjz+jPUuVqa8iB9OU=
+			YsoDkUVPOrSixhnvXx8IZeBnjI2hzodtqk0HZQvQekE=
 			</data>
 		</dict>
 		<key>Headers/FlameRewardAd.h</key>
@@ -1053,7 +1053,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			j7QYtengoEwSlELIJQr/DnArxhB+8HcbqQbLezoR3MI=
+			wRsWZGovRVBbQGmYqWDXpCzkR9+lxp2dZhcm+HrR10k=
 			</data>
 		</dict>
 		<key>xcFramework_build.sh</key>

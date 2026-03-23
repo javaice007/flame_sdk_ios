@@ -10,6 +10,11 @@
 
 #import <UIKit/UIKit.h>
 
+typedef NS_ENUM(NSInteger, FlameNativeRenderType) {
+        FlameNativeRenderTypeSelfRender = 1,
+        FlameNativeRenderTypeExpress = 2,
+};
+
 @protocol FlameNativeListener <NSObject>
 /**
  * 广告加载成功回调
@@ -76,6 +81,14 @@
  * @param container 承载广告的父视图 (对应 Android 的 FrameLayout)
  */
 - (void)showInContainer:(UIView *)container;
+
+/**
+ * 设置原生广告首选渲染方式
+ * 默认值为 FlameNativeRenderTypeSelfRender
+ * 注意: 如果后台实际返回的素材类型与设置不一致, SDK 会自动降级到素材支持的渲染方式
+ * @param renderType 原生广告首选渲染方式
+ */
+- (void)setRenderType:(FlameNativeRenderType)renderType;
 
 /**
  * 移除广告视图
