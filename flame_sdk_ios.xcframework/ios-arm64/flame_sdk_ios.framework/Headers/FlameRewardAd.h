@@ -35,7 +35,7 @@
  * 广告奖励发放回调
  * @param userId 用户 ID
  * @param userCustomData 用户自定义数据
- * @param trandId 业务ID
+ * @param transId 业务ID
  */
 - (void)onAdReward:(NSString *)userId
     userCustomData:(NSString *)userCustomData
