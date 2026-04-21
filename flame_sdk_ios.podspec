@@ -1,13 +1,13 @@
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '0.1.3'
+  s.version          = '0.1.4'
   s.summary          = 'Flame iOS Ad SDK'
   s.description      = 'Flame iOS advertising aggregation SDK'
   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   s.source           = {
-    :http => 'https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/0.1.3.zip'
+    :http => 'https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/0.1.4.zip'
   }
 
   # 商业sdk

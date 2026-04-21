@@ -4,7 +4,7 @@
 
 | 项目 | 内容 |
 |------|------|
-| SDK 版本 | flame_sdk_ios 0.1.3 |
+| SDK 版本 | flame_sdk_ios 0.1.4 |
 | 最低部署版本 | iOS 13.0 |
 | 语言 | Objective-C（Swift 通过 Bridging Header 调用） |
 | 集成方式 | CocoaPods |
@@ -26,7 +26,7 @@ source 'https://github.com/CocoaPods/Specs.git'
 
 target 'YourAppTarget' do
   use_frameworks!
-  pod 'flame_sdk_ios', '0.1.3'
+  pod 'flame_sdk_ios', '0.1.4'
 end
 
 # Xcode 16 兼容性修复
