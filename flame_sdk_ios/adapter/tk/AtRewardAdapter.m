@@ -106,21 +106,21 @@
 
 // 广告展示
 - (void)rewardedVideoDidStartPlayingForPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdShow:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdShow)]) {
         [self.listener onAdShow];
     }
 }
 
 // 广告点击
 - (void)rewardedVideoDidClickForPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdClicked:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClicked)]) {
         [self.listener onAdClicked];
     }
 }
 
 // 视频播放完成
 - (void)rewardedVideoDidEndPlayingForPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdPlayComplete:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdPlayComplete)]) {
         [self.listener onAdPlayComplete];
     }
 }
@@ -138,7 +138,7 @@
 
 // 广告关闭
 - (void)rewardedVideoDidCloseForPlacementID:(NSString *)placementID rewarded:(BOOL)rewarded extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdClosed:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClosed)]) {
         [self.listener onAdClosed];
     }
 }

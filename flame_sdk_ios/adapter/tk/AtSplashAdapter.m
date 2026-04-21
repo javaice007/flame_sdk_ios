@@ -132,7 +132,7 @@
 }
 
 - (void)splashDidClickForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra { 
-    if ([self.listener respondsToSelector:@selector(onAdClicked:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClicked)]) {
         [self.listener onAdClicked];
     }
 }
@@ -142,7 +142,7 @@
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息
 - (void)splashDidCloseForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdClosed:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClosed)]) {
         [self.listener onAdClosed];
     }
 }
@@ -152,7 +152,7 @@
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息
 - (void)splashDidShowForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdShowComplete:userId:userCustomData:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdShowComplete:userCustomData:)]) {
         NSString *userId = self.localExtra[kATAdLoadingExtraUserIDKey] ?: @"";
         NSString *customData = self.localExtra[kATAdLoadingExtraUserDataKeywordKey] ?: @"";
         [self.listener onAdShowComplete:userId userCustomData:customData];
@@ -164,7 +164,7 @@
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息字典
 - (void)didRevenueForPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdReward:userId:userCustomData:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdReward:userCustomData:)]) {
         // TopOn 成功回调的 extra 中通常包含之前传入的透传参数
         NSString *userId = self.localExtra[kATAdLoadingExtraUserIDKey] ?: @"";
         NSString *customData = self.localExtra[kATAdLoadingExtraUserDataKeywordKey] ?: @"";
@@ -175,7 +175,7 @@
 /// 开屏广告加载超时
 /// - Parameter placementID: 广告位ID
 - (void)didTimeoutLoadingSplashADWithPlacementID:(NSString *)placementID {
-    if ([self.listener respondsToSelector:@selector(onAdLoadTimeout:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdLoadTimeout)]) {
         [self.listener onAdLoadTimeout];
     }
 }

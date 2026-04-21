@@ -111,14 +111,14 @@
 
 // 点击
 - (void)interstitialDidClickForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdClicked:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClicked)]) {
         [self.listener onAdClicked];
     }
 }
 
 // 关闭
 - (void)interstitialDidCloseForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdClosed:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClosed)]) {
         [self.listener onAdClosed];
     }
 }
@@ -126,7 +126,7 @@
 // 播放完成
 #pragma mark - ATInterstitialDelegate
 - (void)interstitialDidShowForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdShow:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdShow)]) {
         [self.listener onAdShow];
     }
 }

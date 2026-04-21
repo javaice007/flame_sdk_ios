@@ -25,6 +25,8 @@
         _placementId = [placementId copy];
         _listener = listener;
         _adapter = [FlameAdapterManager createNativeAdapter:viewController atPlacementId:placementId listener:listener];
+        _renderType = FlameNativeRenderTypeSelfRender;
+        [_adapter setRenderType:_renderType];
     }
     return self;
 }
@@ -81,6 +83,14 @@
         NSString *logMsg = [NSString stringWithFormat:@"Native Ad is not ready to show for PlacementId: %@", self.placementId];
         [FlameLogger i:logMsg];
     }
+}
+
+- (void)setRenderType:(FlameNativeRenderType)renderType {
+    _renderType = renderType;
+    [self.adapter setRenderType:renderType];
+    [FlameLogger i:[NSString stringWithFormat:@"Set Native Ad render type for PlacementId %@: %@",
+                    self.placementId,
+                    renderType == FlameNativeRenderTypeExpress ? @"Express" : @"SelfRender"]];
 }
 
 - (void)destroy {

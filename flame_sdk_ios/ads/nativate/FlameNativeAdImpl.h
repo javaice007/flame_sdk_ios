@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *placementId;
 @property (nonatomic, weak) id<FlameNativeListener> listener;
 @property (nonatomic, strong) id<FlameNativeAd> adapter;
+@property (nonatomic, assign) FlameNativeRenderType renderType;
 
 
 - (instancetype)initWithViewController:(UIViewController *)viewController

@@ -29,7 +29,6 @@ Pod::Spec.new do |s|
     s.dependency 'OpenSSL-Universal', '1.1.180'
     
     s.dependency 'AnyThinkiOS','6.5.42'
-    s.dependency 'OpenSSL-Universal', '1.1.180'
     s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter','6.5.42.1'
     s.dependency 'AnyThinkMediationGromoreAdapter','7.4.0.0.0'
     s.dependency 'AnyThinkMediationBaiduAdapter','10.032.0'

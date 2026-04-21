@@ -165,7 +165,7 @@
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息字典
 - (void)bannerView:(ATBannerView *)bannerView didTapCloseButtonWithPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdClosed:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClosed)]) {
         [self.listener onAdClosed];
     }
 }
@@ -176,7 +176,7 @@
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息字典
 - (void)bannerView:(ATBannerView *)bannerView didClickWithPlacementID:(NSString *)placementID extra:(NSDictionary *)extra{
-    if ([self.listener respondsToSelector:@selector(onAdClicked:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdClicked)]) {
         [self.listener onAdClicked];
     }
 }
@@ -187,7 +187,7 @@
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息字典
 - (void)bannerView:(ATBannerView *)bannerView didShowAdWithPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdShow:)]) {
+    if ([self.listener respondsToSelector:@selector(onAdShow)]) {
         [self.listener onAdShow];
     }
 }
