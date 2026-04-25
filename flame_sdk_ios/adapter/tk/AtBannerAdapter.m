@@ -74,8 +74,8 @@
     }
 
     // 4. 填充尺寸信息 (TopOn 要求使用 NSValue 包装 CGSize)
-    CGSize adSize = CGSizeMake(width, height);
-    [self.localExtra setObject:[NSValue valueWithCGSize:adSize]
+    self.adSize = CGSizeMake(width, height);
+    [self.localExtra setObject:[NSValue valueWithCGSize:self.adSize]
                         forKey:kATAdLoadingExtraBannerAdSizeKey];
 
     // 5. 执行加载逻辑
@@ -111,12 +111,12 @@
         if ([bannerView respondsToSelector:@selector(setDelegate:)]) {
             [(id)bannerView setDelegate:self];
         }
-        
-        // 修正尺寸
-        NSValue *sizeValue = self.localExtra[kATAdLoadingExtraBannerAdSizeKey];
-        if (sizeValue) {
-            CGSize adSize = [sizeValue CGSizeValue];
-            bannerView.frame = CGRectMake(0, 0, adSize.width, adSize.height);
+
+        // 在添加到视图层级之前设置 frame，并触发内部重新布局
+        if (!CGSizeEqualToSize(self.adSize, CGSizeZero)) {
+            bannerView.frame = CGRectMake(0, 0, self.adSize.width, self.adSize.height);
+            [bannerView setNeedsLayout];
+            [bannerView layoutIfNeeded];
         }
     }
     return bannerView;
@@ -139,6 +139,7 @@
     // 3. 清理配置数据
     [self.localExtra removeAllObjects];
     _localExtra = nil;
+    _adSize = CGSizeZero;
 
     _atPlacementId = nil;
 

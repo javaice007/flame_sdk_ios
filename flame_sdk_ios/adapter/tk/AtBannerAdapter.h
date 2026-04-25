@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSMutableDictionary *localExtra;
 @property (nonatomic, copy) NSString *atPlacementId;
 @property (nonatomic, weak) id<FlameBannerListener> listener;
+@property (nonatomic, assign) CGSize adSize;
 
 - (instancetype)initWithPlacementId:(NSString *)atPlacementId
                            listener:(id<FlameBannerListener>)listener;
