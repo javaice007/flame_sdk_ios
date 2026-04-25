@@ -57,6 +57,9 @@
             initListener:(id<FlameCallback>) initListener{
     if ([self sharedInstance].isInitialized) {
         [FlameLogger w:@"FlameSdk is already initialized."];
+        if ([initListener respondsToSelector:@selector(success)]) {
+            [initListener success];
+        }
         return;
     }
     

@@ -42,7 +42,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 // AdapterInitCallback 接口定义（需要在 UpdateAppCallback 实现之前）
 @interface AdapterInitCallback : NSObject<FlameCallback>
 
-@property (nonatomic, weak) id<FlameCallback> userCallback;
+@property (nonatomic, strong) id<FlameCallback> userCallback;
 
 - (instancetype)initWithCallback:(id<FlameCallback>)callback;
 
