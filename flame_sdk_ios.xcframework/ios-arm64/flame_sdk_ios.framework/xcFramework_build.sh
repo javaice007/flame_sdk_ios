@@ -8,6 +8,7 @@ WORKSPACE_NAME="flame_sdk_ios.xcworkspace"
 SCHEME_NAME="flame_sdk_ios"
 FRAMEWORK_NAME="flame_sdk_ios"
 OUTPUT_DIR="./build"
+MIN_IOS_VERSION="13.0"
 
 IOS_ARCHIVE_PATH="${OUTPUT_DIR}/${FRAMEWORK_NAME}_ios"
 SIM_ARCHIVE_PATH="${OUTPUT_DIR}/${FRAMEWORK_NAME}_sim"
@@ -30,7 +31,8 @@ xcodebuild archive \
   -destination "generic/platform=iOS" \
   -archivePath "${IOS_ARCHIVE_PATH}" \
   SKIP_INSTALL=NO \
-  BUILD_LIBRARY_FOR_DISTRIBUTION=NO
+  IPHONEOS_DEPLOYMENT_TARGET="${MIN_IOS_VERSION}" \
+  BUILD_LIBRARY_FOR_DISTRIBUTION=YES
 
 # =========================
 # 模拟器 Archive
@@ -44,7 +46,8 @@ xcodebuild archive \
   -archivePath "${SIM_ARCHIVE_PATH}" \
   ARCHS="x86_64 arm64" \
   SKIP_INSTALL=NO \
-  BUILD_LIBRARIES_FOR_DISTRIBUTION=YES
+  IPHONEOS_DEPLOYMENT_TARGET="${MIN_IOS_VERSION}" \
+  BUILD_LIBRARY_FOR_DISTRIBUTION=YES
 
 # =========================
 # 合并 XCFramework
