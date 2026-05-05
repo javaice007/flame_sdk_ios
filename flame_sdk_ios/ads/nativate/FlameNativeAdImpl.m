@@ -59,8 +59,7 @@
         return;
     }
     
-    NSString *logMsg = [NSString stringWithFormat:@"Start loading native Ad for PlacementId: %@", self.placementId];
-    [FlameLogger i:logMsg];
+    [FlameLogger i:@"Start loading native Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData width:width height:height];
 }
@@ -77,19 +76,17 @@
 
 - (void)showInContainer:(id)container {
     if ([self isReady]) {
-        [FlameLogger i:[NSString stringWithFormat:@"Show Native Ad for PlacementId: %@", self.placementId]];
+        [FlameLogger i:@"Show Native Ad"];
         [self.adapter showInContainer:container];
     } else {
-        NSString *logMsg = [NSString stringWithFormat:@"Native Ad is not ready to show for PlacementId: %@", self.placementId];
-        [FlameLogger i:logMsg];
+        [FlameLogger i:@"Native Ad is not ready to show"];
     }
 }
 
 - (void)setRenderType:(FlameNativeRenderType)renderType {
     _renderType = renderType;
     [self.adapter setRenderType:renderType];
-    [FlameLogger i:[NSString stringWithFormat:@"Set Native Ad render type for PlacementId %@: %@",
-                    self.placementId,
+    [FlameLogger i:[NSString stringWithFormat:@"Set Native Ad render type: %@",
                     renderType == FlameNativeRenderTypeExpress ? @"Express" : @"SelfRender"]];
 }
 

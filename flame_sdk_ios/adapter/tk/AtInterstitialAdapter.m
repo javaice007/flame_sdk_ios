@@ -48,7 +48,11 @@
         self.localExtra[kATAdLoadingExtraUserDataKeywordKey] = userCustomData;
     }
 
-    // 3. 执行加载
+    // 3. 传入屏幕尺寸，避免各渠道使用默认尺寸导致渲染变形
+    CGSize screenSize = UIScreen.mainScreen.bounds.size;
+    self.localExtra[kATInterstitialExtraAdSizeKey] = [NSValue valueWithCGSize:screenSize];
+
+    // 4. 执行加载
     [[ATAdManager sharedManager] loadADWithPlacementID:self.atPlacementId
                                                  extra:self.localExtra
                                               delegate:self];
@@ -73,10 +77,13 @@
         return;
     }
     
-    // 展示广告，无需传入特定的 Scene 可传空字符串
+    // 展示广告，使用 ATShowConfig 确保与 TopOn 推荐用法一致
+    ATShowConfig *config = [[ATShowConfig alloc] initWithScene:@"" showCustomExt:@""];
     [[ATAdManager sharedManager] showInterstitialWithPlacementID:self.atPlacementId
+                                                      showConfig:config
                                                 inViewController:self.viewController
-                                                        delegate:self];
+                                                        delegate:self
+                                              nativeMixViewBlock:nil];
 }
 
 - (void)destroy {

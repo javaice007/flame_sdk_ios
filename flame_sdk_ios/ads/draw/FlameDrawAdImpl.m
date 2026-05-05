@@ -60,8 +60,7 @@
 //        return;
 //    }
     
-    NSString *logMsg = [NSString stringWithFormat:@"Start loading draw Ad for PlacementId: %@", self.placementId];
-    [FlameLogger i:logMsg];
+    [FlameLogger i:@"Start loading draw Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData width:width height:height];
 }
@@ -80,11 +79,10 @@
 - (void)showInContainer:(UIView *)container
         contentPlayhead:(id)playhead {
     if ([self isReady]) {
-        [FlameLogger i:[NSString stringWithFormat:@"Show Draw Ad for PlacementId: %@", self.placementId]];
+        [FlameLogger i:@"Show Draw Ad"];
         [self.adapter showInContainer:container contentPlayhead:playhead];
     } else {
-        NSString *logMsg = [NSString stringWithFormat:@"Draw Ad is not ready to show for PlacementId: %@", self.placementId];
-        [FlameLogger i:logMsg];
+        [FlameLogger i:@"Draw Ad is not ready to show"];
     }
 }
 

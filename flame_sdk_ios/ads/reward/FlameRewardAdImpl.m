@@ -42,8 +42,7 @@
         return;
     }
     
-    NSString *logMsg = [NSString stringWithFormat:@"Start loading Reward Ad for PlacementId: %@", self.placementId];
-    [FlameLogger i:logMsg];
+    [FlameLogger i:@"Start loading Reward Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData];
 }
@@ -67,8 +66,7 @@
     if ([self isReady]) {
         [self.adapter show];
     } else {
-        NSString *logMsg = [NSString stringWithFormat:@"Reward Ad is not ready to show for PlacementId: %@", self.placementId];
-        [FlameLogger i:logMsg];
+        [FlameLogger i:@"Reward Ad is not ready to show"];
     }
 }
 

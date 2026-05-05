@@ -43,8 +43,7 @@
         return;
     }
     
-    NSString *logMsg = [NSString stringWithFormat:@"Start loading Splash Ad for PlacementId: %@", self.placementId];
-    [FlameLogger i:logMsg];
+    [FlameLogger i:@"Start loading Splash Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData];
 }
@@ -68,8 +67,7 @@
     if ([self isReady]) {
         [self.adapter show:window];
     } else {
-        NSString *logMsg = [NSString stringWithFormat:@"Splash Ad is not ready to show for PlacementId: %@", self.placementId];
-        [FlameLogger i:logMsg];
+        [FlameLogger i:@"Splash Ad is not ready to show"];
     }
 }
 

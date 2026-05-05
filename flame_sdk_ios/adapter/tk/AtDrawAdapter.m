@@ -228,7 +228,7 @@
 }
 
 - (void)didFinishLoadingADWithPlacementID:(NSString *)placementID {
-    [FlameLogger i:[NSString stringWithFormat:@"Draw didFinishLoadingADWithPlacementID ==> %@", placementID]];
+    [FlameLogger i:@"Draw didFinishLoadingAD"];
     
     if (self.listener == nil) {
         [FlameLogger i:@"Listener is nil"];
@@ -251,43 +251,43 @@
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息字典
 - (void)didRevenueForPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    [FlameLogger i:[NSString stringWithFormat:@"didRevenueForPlacementID:%@ with extra: %@", placementID, extra]];
+    [FlameLogger i:@"didRevenueForPlacementID called"];
 }
 
 /// ad play starts
 - (void)mediaVideoDidStartPlayingForPlacementID:(NSString *)placementID
                                           extra:(NSDictionary *)extra {
-    [FlameLogger i:[NSString stringWithFormat:@"mediaVideoDidStartPlayingForPlacementID:%@ extra:%@", placementID, extra]];
+    [FlameLogger i:@"mediaVideoDidStartPlaying"];
 }
 
 /// ad play ends
 - (void)mediaVideoDidEndPlayingForPlacementID:(NSString *)placementID
                                         extra:(NSDictionary *)extra {
-    [FlameLogger i:[NSString stringWithFormat:@"mediaVideoDidEndPlayingForPlacementID:%@ extra:%@", placementID, extra]];
+    [FlameLogger i:@"mediaVideoDidEndPlaying"];
 }
 
 - (void)mediaVideoDidFailToPlayForPlacementID:(NSString *)placementID
                                         error:(NSError *)error
                                         extra:(NSDictionary *)extra {
-    [FlameLogger i:[NSString stringWithFormat:@"mediaVideoDidFailToPlayForPlacementID:%@ error:%@ extra:%@", placementID, error, extra]];
+    [FlameLogger i:[NSString stringWithFormat:@"mediaVideoDidFailToPlay: %@", error.localizedDescription]];
 }
 
 - (void)mediaVideoAdResumeForPlacementID:(NSString *)placementID
                                    extra:(NSDictionary *)extra {
-    [FlameLogger i:[NSString stringWithFormat:@"mediaVideoAdResumeForPlacementID:%@ extra:%@", placementID, extra]];
+    [FlameLogger i:@"mediaVideoAdResume"];
 }
 
 /// ad play fail
 - (void)rewardedVideoDidFailToPlayForPlacementID:(NSString *)placementID
                                            error:(NSError *)error
                                            extra:(NSDictionary *)extra {
-    [FlameLogger i:[NSString stringWithFormat:@"rewardedVideoDidFailToPlayForPlacementID:%@ error:%@ extra:%@", placementID, error, extra]];
+    [FlameLogger i:[NSString stringWithFormat:@"rewardedVideoDidFailToPlay: %@", error.localizedDescription]];
 }
 
 /// ad clicks
 - (void)mediaVideoDidClickForPlacementID:(NSString *)placementID
                                    extra:(NSDictionary *)extra {
-    [FlameLogger i:[NSString stringWithFormat:@"mediaVideoDidClickForPlacementID:%@ extra:%@", placementID, extra]];
+    [FlameLogger i:@"mediaVideoDidClick"];
 }
 
 @end

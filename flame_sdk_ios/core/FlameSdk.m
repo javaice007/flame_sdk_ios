@@ -246,7 +246,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     // 2. 对 pId 进行异常判定 (判断是否为空或无效)
     if (pId == nil || pId.length == 0) {
         // 错误日志记录
-        [FlameLogger e:[NSString stringWithFormat:@"Create RewardAd Failed: Invalid placementId original=%@, mapped=%@", placementId, pId]];
+        [FlameLogger e:[NSString stringWithFormat:@"Create RewardAd Failed: Invalid placementId=%@", placementId]];
 
         // 触发错误回调通知开发者
         if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
@@ -276,7 +276,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     // 2. 对 pId 进行异常判定 (判断是否为空或无效)
     if (pId == nil || pId.length == 0) {
         // 错误日志记录
-        [FlameLogger e:[NSString stringWithFormat:@"Create InterstitialAd Failed: Invalid placementId original=%@, mapped=%@", placementId, pId]];
+        [FlameLogger e:[NSString stringWithFormat:@"Create InterstitialAd Failed: Invalid placementId=%@", placementId]];
 
         // 触发错误回调通知开发者
         if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
@@ -300,7 +300,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     // 2. 对 pId 进行异常判定 (判断是否为空或无效)
     if (pId == nil || pId.length == 0) {
         // 错误日志记录
-        [FlameLogger e:[NSString stringWithFormat:@"Create SplashAd Failed: Invalid placementId original=%@, mapped=%@", placementId, pId]];
+        [FlameLogger e:[NSString stringWithFormat:@"Create SplashAd Failed: Invalid placementId=%@", placementId]];
 
         // 触发错误回调通知开发者
         if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
@@ -328,7 +328,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     // 2. 对 pId 进行异常判定 (判断是否为空或无效)
     if (pId == nil || pId.length == 0) {
         // 错误日志记录
-        [FlameLogger e:[NSString stringWithFormat:@"Create BannerAd Failed: Invalid placementId original=%@, mapped=%@", placementId, pId]];
+        [FlameLogger e:[NSString stringWithFormat:@"Create BannerAd Failed: Invalid placementId=%@", placementId]];
 
         // 触发错误回调通知开发者
         if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
@@ -357,7 +357,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     // 2. 对 pId 进行异常判定 (判断是否为空或无效)
     if (pId == nil || pId.length == 0) {
         // 错误日志记录
-        [FlameLogger e:[NSString stringWithFormat:@"Create NativeAd Failed: Invalid placementId original=%@, mapped=%@", placementId, pId]];
+        [FlameLogger e:[NSString stringWithFormat:@"Create NativeAd Failed: Invalid placementId=%@", placementId]];
 
         // 触发错误回调通知开发者
         if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
@@ -387,7 +387,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     // 2. 对 pId 进行异常判定 (判断是否为空或无效)
     if (pId == nil || pId.length == 0) {
         // 错误日志记录
-        [FlameLogger e:[NSString stringWithFormat:@"Create DrawAd Failed: Invalid placementId original=%@, mapped=%@", placementId, pId]];
+        [FlameLogger e:[NSString stringWithFormat:@"Create DrawAd Failed: Invalid placementId=%@", placementId]];
 
         // 触发错误回调通知开发者
         if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {

@@ -44,8 +44,7 @@
         return;
     }
     
-    NSString *logMsg = [NSString stringWithFormat:@"Start loading intersitial Ad for PlacementId: %@", self.placementId];
-    [FlameLogger i:logMsg];
+    [FlameLogger i:@"Start loading interstitial Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData];
 }
@@ -62,11 +61,10 @@
 
 - (void)show {
     if ([self isReady]) {
-        [FlameLogger i:[NSString stringWithFormat:@"Show Interstitial Ad for PlacementId: %@", self.placementId]];
+        [FlameLogger i:@"Show Interstitial Ad"];
         [self.adapter show];
     } else {
-        NSString *logMsg = [NSString stringWithFormat:@"Interstitial Ad is not ready to show for PlacementId: %@", self.placementId];
-        [FlameLogger i:logMsg];
+        [FlameLogger i:@"Interstitial Ad is not ready to show"];
     }
 }
 

@@ -101,7 +101,7 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
     [FlameNetworkUtils doPostJson:url
                          jsonBody:jsonParams
                        completion:^(NSDictionary *encryptedData, NSError *error) {
-        [FlameLogger i:[NSString stringWithFormat:@"server response = %@", encryptedData]];
+        [FlameLogger i:@"server response received"];
         if (error) {
             [FlameLogger e:[NSString stringWithFormat:@"remote server error=%@", error.localizedDescription]];
             if (callback) {
@@ -121,7 +121,7 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
         }
         // 5. AES 解密（保持不变）
         NSString *decryptJson = [FlameAesCryptoUtils decrypt:eData rawKey:appKey];
-        [FlameLogger i:[NSString stringWithFormat:@"decrypt json = %@", decryptJson]];
+        [FlameLogger i:@"config data decrypted successfully"];
 
         FlameAppEntity *entity = [FlameAppEntity fromJson:decryptJson];
         if (entity) {

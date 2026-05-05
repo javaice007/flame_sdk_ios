@@ -57,8 +57,7 @@
         return;
     }
     
-    NSString *logMsg = [NSString stringWithFormat:@"Start loading banner Ad for PlacementId: %@", self.placementId];
-    [FlameLogger i:logMsg];
+    [FlameLogger i:@"Start loading banner Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData width:width height:height];
 }
@@ -76,7 +75,7 @@
 - (UIView *)retrieveAdView {
     // 1. 检查是否准备好
     if ([self isReady]) {
-        [FlameLogger i:[NSString stringWithFormat:@"Show Banner Ad for PlacementId: %@", self.placementId]];
+        [FlameLogger i:@"Show Banner Ad"];
         // 2. 获取真正的广告 View
         // 注意：这里应该是调用 TopOn SDK 的方法，或者是调用底层具体的适配器实例
         UIView *adView = [self.adapter retrieveAdView];
