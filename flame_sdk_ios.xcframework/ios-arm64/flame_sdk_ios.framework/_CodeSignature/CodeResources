@@ -327,7 +327,7 @@
 		</dict>
 		<key>Frameworks/AnyThinkSDK.framework/AnyThinkSDK</key>
 		<data>
-		SudsfL+kYFvepNC506YB8MT/YiU=
+		nbWhg9iEQBQBEmqi94j2/WYANeg=
 		</data>
 		<key>Frameworks/AnyThinkSDK.framework/Info.plist</key>
 		<data>
@@ -349,10 +349,6 @@
 		<data>
 		o1bmxcR5ZDOwm+89nrV3yJAZaVA=
 		</data>
-		<key>Headers/FlameDrawAd.h</key>
-		<data>
-		CzCacUWu7DzOjKb6FL2ul43CVPw=
-		</data>
 		<key>Headers/FlameInterstitialAd.h</key>
 		<data>
 		KWf+dXVehPHD2+mb2KgE71SfOkE=
@@ -367,7 +363,7 @@
 		</data>
 		<key>Headers/FlameSdk.h</key>
 		<data>
-		K4uTRdB/4v36mDBZYMyltkk7wPk=
+		2RvAMdH2cjFkvpbKsyAWD7htoIo=
 		</data>
 		<key>Headers/FlameSplashAd.h</key>
 		<data>
@@ -955,7 +951,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			MtDhMOU9SWDfjNezx3Yt8OO+orjqdirIUeZFiza8JSM=
+			x9LvXKxhZyhVToI+SfdiudssPuyL8Rlr9MsK+gsJq2A=
 			</data>
 		</dict>
 		<key>Frameworks/AnyThinkSDK.framework/Info.plist</key>
@@ -993,13 +989,6 @@
 			DHQk/wnOHhGOcCtnVMF9XzLr+JN4XGxQweK7s32Kc5Q=
 			</data>
 		</dict>
-		<key>Headers/FlameDrawAd.h</key>
-		<dict>
-			<key>hash2</key>
-			<data>
-			Xw+2pIxYRacxxf+6imRxPrr3joLuUF6mLBqn/I8Rlu0=
-			</data>
-		</dict>
 		<key>Headers/FlameInterstitialAd.h</key>
 		<dict>
 			<key>hash2</key>
@@ -1025,7 +1014,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			4O1V2VSfi8ltkq4Ya4sz1lNh9bSbTJfZyR4MbdyOLMM=
+			vI/Z5Ks3fRixdLKxzSM9nxTjarTQEL68uvSbecsT4XQ=
 			</data>
 		</dict>
 		<key>Headers/FlameSplashAd.h</key>

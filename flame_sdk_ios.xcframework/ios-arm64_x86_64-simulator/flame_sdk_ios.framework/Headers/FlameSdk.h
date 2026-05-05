@@ -14,7 +14,6 @@
 #import "FlameSplashAd.h"
 #import "FlameBannerAd.h"
 #import "FlameNativeAd.h"
-#import "FlameDrawAd.h"
 
 /**
  * Flame SDK 核心管理类
@@ -114,13 +113,4 @@
 + (id<FlameNativeAd>)createNativeAdWithViewController:(UIViewController *)viewController
                                           placementId:(NSString *)placementId
                                              listener:(id<FlameNativeListener>)listener;
-/**
- * 创建视频流广告实例
- * @param viewController    视图控制器
- * @param placementId           广告位ID
- * @param listener                  回调函数
- */
-+ (id<FlameDrawAd>)createDrawAdWithViewController:(UIViewController *)viewController
-                                      placementId:(NSString *)placementId
-                                         listener:(id<FlameDrawListener>)listener;
 @end
