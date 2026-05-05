@@ -78,7 +78,7 @@
     }
     
     // 展示广告，使用 ATShowConfig 确保与 TopOn 推荐用法一致
-    ATShowConfig *config = [[ATShowConfig alloc] initWithScene:@"" showCustomExt:@""];
+    ATShowConfig *config = [[ATShowConfig alloc] initWithScene:@"default" showCustomExt:@""];
     [[ATAdManager sharedManager] showInterstitialWithPlacementID:self.atPlacementId
                                                       showConfig:config
                                                 inViewController:self.viewController

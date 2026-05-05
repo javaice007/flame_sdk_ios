@@ -60,7 +60,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			publicHeaders = (
 				ads/banner/FlameBannerAd.h,
-				ads/draw/FlameDrawAd.h,
 				ads/interstitial/FlameInterstitialAd.h,
 				ads/nativate/FlameNativeAd.h,
 				ads/reward/FlameRewardAd.h,

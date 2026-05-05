@@ -15,14 +15,12 @@
 #import "FlameInterstitialAd.h"
 #import "FlameSplashAd.h"
 #import "FlameNativeAd.h"
-#import "FlameDrawAd.h"
 
 #import "AtRewardAdapter.h"
 #import "AtInterstitialAdapter.h"
 #import "AtSplashAdapter.h"
 #import "AtBannerAdapter.h"
 #import "AtNativeAdapter.h"
-#import "AtDrawAdapter.h"
 
 
 @implementation FlameAdapterManager
@@ -223,26 +221,6 @@
     
     // 实例化当前类并传入监听器
     AtNativeAdapter *adapter = [[AtNativeAdapter alloc] initWithViewController:viewController atPlacementId:atPlacementId listener:listener];
-    return adapter;
-}
-
-+ (id<FlameDrawAd>)createDrawAdapter:(UIViewController *)viewController
-                           atPlacementId:(NSString *)atPlacementId
-                            listener:(id<FlameDrawListener>)listener {
-    // 1. 安全检查：如果 SDK 未初始化，打印警告或处理错误
-    if (![self sharedInstance].isInitialized) {
-        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initSDKWithAppId: first."];
-        // 根据业务需求，你可以选择返回 nil 或者允许创建但在加载时拦截
-    }
-
-    // 2. 参数合法性检查
-    if (atPlacementId.length == 0) {
-        [FlameLogger e:@"atPlacementId is empty, failed to create DrawAdapter."];
-        return nil;
-    }
-    
-    // 实例化当前类并传入监听器
-    AtDrawAdapter *adapter = [[AtDrawAdapter alloc] initWithViewController:viewController atPlacementId:atPlacementId listener:listener];
     return adapter;
 }
 

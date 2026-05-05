@@ -13,7 +13,6 @@
 #import "FlameSplashAd.h"
 #import "FlameBannerAd.h"
 #import "FlameNativeAd.h"
-#import "FlameDrawAd.h"
 
 @interface FlameAdapterManager: NSObject
 
@@ -96,15 +95,5 @@
 + (id<FlameNativeAd>)createNativeAdapter:(UIViewController *)viewController
                            atPlacementId:(NSString *)atPlacementId
                                 listener:(id<FlameNativeListener>)listener;
-
-/**
- * 创建视频流广告适配器
- * @param viewController view组件
- * @param atPlacementId   广告为ID
- * @param listener    监听器
- */
-+ (id<FlameDrawAd>)createDrawAdapter:(UIViewController *)viewController
-                           atPlacementId:(NSString *)atPlacementId
-                                listener:(id<FlameDrawListener>)listener;
 
 @end

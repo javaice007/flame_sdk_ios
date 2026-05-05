@@ -518,6 +518,13 @@
     }
 }
 
+- (void)didEndPlayingVideoInAdView:(ATNativeADView *)adView placementID:(NSString *)placementID extra:(NSDictionary *)extra {
+    if ([self.listener respondsToSelector:@selector(onAdClosed)]) {
+        [self.listener onAdClosed];
+    }
+    [self remove];
+}
+
 - (void)didCloseDetailInAdView:(ATNativeADView *)adView
                    placementID:(NSString *)placementID
                          extra:(NSDictionary *)extra{

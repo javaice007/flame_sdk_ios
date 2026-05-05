@@ -54,11 +54,6 @@
                 height:(CGFloat)height{
     [FlameAdapterManager checkInitialization];
 
-    if ([self.adapter isLoading]) {
-        [FlameLogger i:@"Ad is loading, please do not request again."];
-        return;
-    }
-    
     [FlameLogger i:@"Start loading native Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData width:width height:height];

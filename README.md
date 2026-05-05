@@ -25,7 +25,6 @@ flame_sdk_ios/
 │   ├── splash/             # 开屏广告
 │   ├── banner/             # 横幅广告
 │   ├── native/             # 原生广告
-│   └── draw/               # 视频流广告
 └── utils/                   # 工具类
     ├── FlameLogger         # 日志工具
     ├── FlameConfigLocalStorage  # 本地存储
@@ -261,7 +260,6 @@ Flame SDK 支持以下广告类型：
 - ✅ 开屏广告 (`FlameSplashAd`)
 - ✅ 横幅广告 (`FlameBannerAd`)
 - ✅ 原生广告 (`FlameNativeAd`)
-- ✅ 视频流广告 (`FlameDrawAd`)
 
 详细使用文档请参考各广告类型的接口说明。
 

@@ -17,7 +17,6 @@
 #import "FlameSplashAdImpl.h"
 #import "FlameBannerAdImpl.h"
 #import "FlameNativeAdImpl.h"
-#import "FlameDrawAdImpl.h"
 
 // SDK初始化状态枚举
 typedef NS_ENUM(NSInteger, FlameSDKInitState) {
@@ -370,36 +369,6 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     }
 
     return [[FlameNativeAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener];
-}
-
-/**
- * 创建视频流广告实例
- * @param viewController    视图控制器
- * @param placementId           广告位ID
- * @param listener                  回调函数
- */
-+ (id<FlameDrawAd>)createDrawAdWithViewController:(UIViewController *)viewController
-                                      placementId:(NSString *)placementId
-                                         listener:(id<FlameDrawListener>)listener {
-    // 1. 获取 pId
-    NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
-
-    // 2. 对 pId 进行异常判定 (判断是否为空或无效)
-    if (pId == nil || pId.length == 0) {
-        // 错误日志记录
-        [FlameLogger e:[NSString stringWithFormat:@"Create DrawAd Failed: Invalid placementId=%@", placementId]];
-
-        // 触发错误回调通知开发者
-        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
-            [listener onAdError:ERROR_CODE_INVALID_AD_PLACEMENT
-                           desc:[NSString stringWithFormat:@"Invalid placement ID: %@", placementId]];
-        }
-
-        // 3. 返回 nil，因为无法创建有效的广告对象
-        return nil;
-    }
-
-    return [[FlameDrawAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener];
 }
 
 @end
