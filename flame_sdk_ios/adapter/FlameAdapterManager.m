@@ -177,10 +177,12 @@
 /**
  * 创建横幅广告适配器
  * @param atPlacementId   广告为ID
+ * @param renderType    渲染模式
  * @param listener    监听器
  */
 + (id<FlameBannerAd>)createBannerAdapter:(NSString *)atPlacementId
-                                listener:(id<FlameBannerListener>)listener{
+                               renderType:(FlameBannerRenderType)renderType
+                                 listener:(id<FlameBannerListener>)listener{
     // 1. 安全检查：如果 SDK 未初始化，打印警告或处理错误
     if (![self sharedInstance].isInitialized) {
         [FlameLogger e:@"FlameSdk is NOT initialized! Please call initSDKWithAppId: first."];
@@ -192,9 +194,11 @@
         [FlameLogger e:@"atPlacementId is empty, failed to create BannerAdapter."];
         return nil;
     }
-    
+
     // 实例化当前类并传入监听器
-    AtBannerAdapter *adapter = [[AtBannerAdapter alloc] initWithPlacementId:atPlacementId listener:listener];
+    AtBannerAdapter *adapter = [[AtBannerAdapter alloc] initWithPlacementId:atPlacementId
+                                                                 renderType:renderType
+                                                                   listener:listener];
     return adapter;
 }
 

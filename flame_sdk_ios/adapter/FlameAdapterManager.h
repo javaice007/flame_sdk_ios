@@ -81,10 +81,12 @@
 /**
  * 创建横幅广告适配器
  * @param atPlacementId   广告为ID
+ * @param renderType    渲染模式
  * @param listener    监听器
  */
 + (id<FlameBannerAd>)createBannerAdapter:(NSString *)atPlacementId
-                                listener:(id<FlameBannerListener>)listener;
+                               renderType:(FlameBannerRenderType)renderType
+                                 listener:(id<FlameBannerListener>)listener;
 
 /**
  * 创建原生广告适配器

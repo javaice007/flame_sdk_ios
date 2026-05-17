@@ -15,10 +15,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *placementId;
 @property (nonatomic, weak) id<FlameBannerListener> listener;
 @property (nonatomic, strong) id<FlameBannerAd> adapter;
-
+@property (nonatomic, assign, readonly) FlameBannerRenderType renderType;
 
 - (instancetype)initWithPlacementId:(NSString *)placementId
-                        listener:(id<FlameBannerListener>)listener;
+                         renderType:(FlameBannerRenderType)renderType
+                           listener:(id<FlameBannerListener>)listener;
 
 @end
 

@@ -8,6 +8,19 @@
 
 #import <UIKit/UIKit.h>
 
+@class FlameBannerAdMaterial;
+@class FlameBannerAdRenderSlots;
+
+/**
+ * Banner 广告渲染模式
+ *   - Express: 模板渲染（SDK 返回预渲染视图）
+ *   - SelfRender: 自渲染（开发者消费素材并绑定合规插槽）
+ */
+typedef NS_ENUM(NSInteger, FlameBannerRenderType) {
+    FlameBannerRenderTypeExpress = 1,
+    FlameBannerRenderTypeSelfRender = 2,
+};
+
 /**
  * Flame 横幅广告回调协议
  */
@@ -15,80 +28,47 @@
 
 @optional
 
-/**
- * 广告加载成功回调
- */
 - (void)onAdLoaded;
 
-/**
- * 广告异常/错误回调
- * @param code 错误码
- * @param desc 错误描述
- */
 - (void)onAdError:(NSString *)code desc:(NSString *)desc;
 
-/**
- * 广告展示回调
- */
 - (void)onAdShow;
 
-/**
- * 广告点击回调
- */
 - (void)onAdClicked;
 
-/**
- * 广告关闭回调
- */
 - (void)onAdClosed;
+
+- (void)onAdMaterialReady:(NSArray<FlameBannerAdMaterial *> *)materials;
 
 @end
 
-
 @protocol FlameBannerAd <NSObject>
 
-/**
- * 加载广告
- * @param width 宽度
- * @param height 高度
- */
 - (void)loadWithWidth:(CGFloat)width
-      height:(CGFloat)height;
+               height:(CGFloat)height
+       viewController:(UIViewController *)viewController;
 
-/**
- * 加载广告（带用户信息）
- * @param userId 用户 ID
- * @param userCustomData 用户自定义数据
- * @param width 宽度
- * @param height 高度
- */
 - (void)loadWithUserId:(NSString *)userId
         userCustomData:(NSString *)userCustomData
                  width:(CGFloat)width
-                height:(CGFloat)height;
-/**
- * 广告是否准备就绪
- */
+                height:(CGFloat)height
+        viewController:(UIViewController *)viewController;
+
 - (BOOL)isReady;
 
-/**
- * 广告是否在加载中
- */
 - (BOOL)isLoading;
 
-/**
- * 展示广告
- */
-- (UIView *)retrieveAdView;
+- (nullable UIView *)retrieveAdView;
 
-/**
- * 移除
- */
+- (NSArray<FlameBannerAdMaterial *> *)retrieveMaterials;
+
+- (void)bindMaterialAtIndex:(NSInteger)index
+                      slots:(FlameBannerAdRenderSlots *)slots;
+
+- (void)unbindMaterial;
+
 - (void)remove;
 
-/**
- * 销毁广告
- */
 - (void)destroy;
 
 @end

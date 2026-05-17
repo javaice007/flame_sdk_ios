@@ -16,6 +16,9 @@ FOUNDATION_EXPORT const unsigned char flame_sdk_iosVersionString[];
 // In this header, you should import all the public headers of your framework using statements like #import <flame_sdk_ios/PublicHeader.h>
 #import <flame_sdk_ios/FlameCallback.h>
 #import <flame_sdk_ios/FlameSplashAd.h>
+#import <flame_sdk_ios/FlameBannerAd.h>
+#import <flame_sdk_ios/FlameBannerAdMaterial.h>
+#import <flame_sdk_ios/FlameBannerAdRenderSlots.h>
 #import <flame_sdk_ios/FlameRewardAd.h>
 #import <flame_sdk_ios/FlameInterstitialAd.h>
 #import <flame_sdk_ios/FlameSdk.h>

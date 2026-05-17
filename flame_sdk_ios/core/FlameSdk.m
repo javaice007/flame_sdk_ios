@@ -321,7 +321,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
  */
 + (id<FlameBannerAd>)createBannerAdWithPlacementId:(NSString *)placementId
                                           listener:(id<FlameBannerListener>)listener{
-    // 1. 获取 pId
+    // 1. 获取 Express 模式的下游 pId
     NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
 
     // 2. 对 pId 进行异常判定 (判断是否为空或无效)
@@ -339,7 +339,34 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         return nil;
     }
 
-    return [[FlameBannerAdImpl alloc] initWithPlacementId:pId listener:listener];
+    return [[FlameBannerAdImpl alloc] initWithPlacementId:pId
+                                               renderType:FlameBannerRenderTypeExpress
+                                                 listener:listener];
+}
+
+/**
+ * 创建自渲染横幅广告实例
+ * @param placementId           广告位ID
+ * @param listener                  回调函数
+ */
++ (id<FlameBannerAd>)createSelfRenderBannerAdWithPlacementId:(NSString *)placementId
+                                                    listener:(id<FlameBannerListener>)listener{
+    // 1. 获取下游 pId
+    NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
+
+    // 2. 对 pId 进行异常判定
+    if (pId == nil || pId.length == 0) {
+        [FlameLogger e:[NSString stringWithFormat:@"Create SelfRender BannerAd Failed: Invalid placementId=%@", placementId]];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_INVALID_AD_PLACEMENT
+                           desc:[NSString stringWithFormat:@"Invalid placement ID: %@", placementId]];
+        }
+        return nil;
+    }
+
+    return [[FlameBannerAdImpl alloc] initWithPlacementId:pId
+                                               renderType:FlameBannerRenderTypeSelfRender
+                                                 listener:listener];
 }
 
 /**
