@@ -2,11 +2,11 @@
 # platform :ios, '9.0'
 platform :ios, '13.0'
 
-#source 'https://cdn.cocoapods.org/'
-source 'https://github.com/CocoaPods/Specs.git'
+source 'https://cdn.cocoapods.org/'
+# source 'https://github.com/CocoaPods/Specs.git'
 
 def tk_pods
-  pod 'AnyThinkiOS','6.5.42'
+  pod 'AnyThinkiOS','6.5.71'
   pod 'OpenSSL-Universal', '1.1.180'
 end
 
