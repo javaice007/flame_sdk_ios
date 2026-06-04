@@ -97,12 +97,21 @@
                                                          listener:(id<FlameInterstitialListener>)listener;
 
 /**
- * 创建横幅广告实例
+ * 创建横幅广告实例（Express 模板渲染模式）
  * @param placementId           广告位ID
  * @param listener                  回调函数
  */
 + (id<FlameBannerAd>)createBannerAdWithPlacementId:(NSString *)placementId
                                           listener:(id<FlameBannerListener>)listener;
+
+/**
+ * 创建自渲染横幅广告实例（SelfRender 模式）
+ * 创建时即确定渲染模式，无需额外调用 setRenderType
+ * @param placementId           广告位ID（需映射到支持横幅尺寸的 TopOn Native 广告位）
+ * @param listener                  回调函数
+ */
++ (id<FlameBannerAd>)createSelfRenderBannerAdWithPlacementId:(NSString *)placementId
+                                                    listener:(id<FlameBannerListener>)listener;
 
 /**
  * 创建原生广告实例

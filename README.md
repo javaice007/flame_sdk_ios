@@ -4,7 +4,7 @@
 
 | 项目 | 内容 |
 |------|------|
-| SDK 版本 | flame_sdk_ios 0.1.7 |
+| SDK 版本 | flame_sdk_ios 0.1.8 |
 | 最低部署版本 | iOS 13.0 |
 | 语言 | Objective-C（Swift 通过 Bridging Header 调用） |
 | 集成方式 | CocoaPods |
@@ -26,7 +26,7 @@ source 'https://github.com/CocoaPods/Specs.git'
 
 target 'YourAppTarget' do
   use_frameworks!
-  pod 'flame_sdk_ios', '0.1.7'
+  pod 'flame_sdk_ios', '0.1.8'
 end
 
 # Xcode 16 兼容性修复
@@ -159,7 +159,26 @@ func topViewController() -> UIViewController? {
 
 **适用场景**：固定位置展示，嵌入页面布局中。
 
+Banner 支持两种渲染模式：
+
+| 模式 | 说明 | 适用场景 |
+|------|------|---------|
+| **Express（模板渲染）** | SDK 返回预渲染的 Banner View，直接嵌入页面即可（默认模式） | 快速集成，不需要自定义 UI |
+| **SelfRender（自渲染）** | SDK 提供广告素材（封面图 URL、标题、描述等），开发者使用自己的 UI 组件展示 | 需要自定义 UI 样式，或使用轮播图等特殊组件 |
+
+两种模式使用不同的创建方法，创建时即确定渲染模式：
+
+| 模式 | 创建方法 |
+|------|---------|
+| Express | `createBannerAd(withPlacementId:listener:)` |
+| SelfRender | `createSelfRenderBannerAdWithPlacementId(_:listener:)` |
+
+---
+
+#### Express 模式（默认）
+
 **创建 & 加载**：
+
 ```swift
 var bannerAd: (AnyObject & FlameBannerAd)?
 
@@ -173,12 +192,14 @@ func loadBanner() {
         withUserId: "user123",
         userCustomData: "custom_data",
         width: 320,
-        height: 50
+        height: 50,
+        viewController: self
     )
 }
 ```
 
 **展示广告 View**（在 `onAdLoaded` 回调后执行）：
+
 ```swift
 func onAdLoaded() {
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -189,17 +210,167 @@ func onAdLoaded() {
 }
 ```
 
-**回调协议 `FlameBannerListener`**：
+---
 
-| 回调方法 | 说明 |
-|---------|------|
-| `onAdLoaded()` | 广告加载成功 |
-| `onAdError(code:desc:)` | 加载失败 |
-| `onAdShow()` | 广告展示 |
-| `onAdClicked()` | 用户点击 |
-| `onAdClosed()` | 广告关闭 |
+#### SelfRender 模式（素材模式）
 
-**销毁**：
+开发者获取广告素材（封面图 URL、标题等），使用自己的 UI 组件展示；广告媒体视图、广告标识、关闭按钮等合规元素通过 `FlameBannerAdRenderSlots` 绑定到你自己的布局中。
+
+> **纯宿主自渲染说明**：SelfRender 模式下，SDK 不会把整张 Banner 模板视图插入你的容器。标题、描述、CTA、主图、图标、广告主、域名、风险提示、评分、赞助商等内容都应由宿主自行渲染；SDK 只负责把媒体视图、平台 logo、广告标识、关闭按钮等受 SDK 管理的视图挂载到你指定的 slot 上。
+
+**服务端配置要求**：需要在 Flame 后台为广告位额外配置一个支持 Banner 尺寸的 TopOn Native Banner 广告位，用于提供自渲染素材。如果在后台配置时未设置自渲染广告位，SDK 会返回错误提示。
+
+**代码示例**——配合自定义 Banner 容器使用：
+
+```swift
+var bannerAd: (AnyObject & FlameBannerAd)?
+let bannerContainer = UIView()
+let mediaView = UIView()
+let logoView = UIView()
+let adMarkView = UIView()
+let closeView = UIView()
+let titleLabel = UILabel()
+let descLabel = UILabel()
+let ctaButton = UIButton(type: .system)
+
+func loadBannerSelfRender() {
+    bannerAd?.destroy()
+    bannerAd = FlameSdk.createSelfRenderBannerAdWithPlacementId(
+        "YOUR_PLACEMENT_ID",
+        listener: self
+    )
+    bannerAd?.load(
+        withUserId: "user123",
+        userCustomData: "custom_data",
+        width: 375,
+        height: 180,
+        viewController: self
+    )
+}
+
+func onAdMaterialReady(_ materials: [FlameBannerAdMaterial]) {
+    guard let material = materials.first else { return }
+
+    titleLabel.text = material.title
+    descLabel.text = material.desc
+    ctaButton.setTitle(material.ctaText, for: .normal)
+
+    bannerContainer.frame = CGRect(x: 0, y: 0, width: 375, height: 180)
+    mediaView.frame = CGRect(x: 0, y: 0, width: 375, height: 180)
+    logoView.frame = CGRect(x: 12, y: 12, width: 24, height: 24)
+    adMarkView.frame = CGRect(x: 12, y: 150, width: 36, height: 18)
+    closeView.frame = CGRect(x: 339, y: 8, width: 28, height: 28)
+    titleLabel.frame = CGRect(x: 12, y: 120, width: 220, height: 22)
+    descLabel.frame = CGRect(x: 12, y: 144, width: 220, height: 20)
+    ctaButton.frame = CGRect(x: 260, y: 132, width: 96, height: 32)
+
+    if bannerContainer.superview == nil {
+        bannerContainer.addSubview(mediaView)
+        bannerContainer.addSubview(titleLabel)
+        bannerContainer.addSubview(descLabel)
+        bannerContainer.addSubview(ctaButton)
+        bannerContainer.addSubview(logoView)
+        bannerContainer.addSubview(adMarkView)
+        bannerContainer.addSubview(closeView)
+        view.addSubview(bannerContainer)
+    }
+
+    let slots = FlameBannerAdRenderSlots()
+    slots.containerView = bannerContainer
+    slots.mediaSlotView = mediaView
+    slots.logoSlotView = logoView
+    slots.adMarkSlotView = adMarkView
+    slots.closeSlotView = closeView
+    slots.clickableViews = [bannerContainer, ctaButton]
+
+    bannerAd?.bindMaterial(atIndex: 0, slots: slots)
+}
+
+func onAdShow() {
+    // 广告展示回调
+}
+
+func onAdClicked() {
+    // 广告点击回调
+}
+
+func onAdClosed() {
+    bannerAd?.unbindMaterial()
+    bannerContainer.removeFromSuperview()
+}
+
+func onAdError(_ code: String, desc: String) {
+    // 加载失败
+}
+```
+
+**自定义关闭行为**：
+
+```swift
+@objc func closeBanner() {
+    bannerAd?.remove()
+    bannerContainer.removeFromSuperview()
+}
+```
+
+#### 回调协议 `FlameBannerListener`
+
+| 回调方法 | 说明 | 触发时机 |
+|---------|------|---------|
+| `onAdLoaded()` | 广告加载成功 | Express 模式广告就绪，或 SelfRender 模式素材准备完成前的加载成功回调 |
+| `onAdMaterialReady(_ materials:)` | 素材就绪（SelfRender 模式） | 自渲染素材加载完成 |
+| `onAdError(code:desc:)` | 加载失败 | 加载异常 |
+| `onAdShow()` | 广告展示 | Express 视图展示或 SelfRender 绑定后展示 |
+| `onAdClicked()` | 用户点击 | 用户点击广告区域 |
+| `onAdClosed()` | 广告关闭 | 点击关闭按钮或广告关闭 |
+
+#### SelfRender 模式下 `FlameBannerAdMaterial` 素材字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `title` | String | 广告标题 |
+| `desc` | String | 广告描述 |
+| `ctaText` | String | CTA 按钮文案，如"立即下载"、"了解更多" |
+| `iconUrl` | String | 图标 URL |
+| `coverUrl` | String | 主图 URL |
+| `advertiser` | String | 广告主名称 |
+| `domain` | String | 落地页域名 |
+| `warning` | String | 风险提示文案 |
+| `rating` | NSNumber? | 评分信息 |
+| `sponsor` | String | 赞助商信息，优先取平台 sponsor 文案 |
+| `source` | String | 广告来源信息，可作为 sponsor 的兜底展示 |
+| `hasVideo` | Bool | 是否包含视频素材 |
+| `requiresAdvertiser` | Bool | 是否需要展示广告主信息 |
+| `requiresDomain` | Bool | 是否需要展示域名信息 |
+| `requiresWarning` | Bool | 是否需要展示风险提示 |
+
+> **注意**：`coverUrl`、`iconUrl` 等原始素材字段可能为空，具体以广告源返回为准；涉及广告标识、关闭按钮、媒体区域的合规展示，请优先通过 `FlameBannerAdRenderSlots` 绑定 SDK 提供的视图。
+
+#### SelfRender 模式下 `FlameBannerAdRenderSlots` 插槽说明
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `containerView` | 是 | 当前自渲染 Banner 的宿主容器，用于绑定上下文和默认点击区域兜底 |
+| `mediaSlotView` | 否 | 挂载媒体视图，视频广告建议提供 |
+| `logoSlotView` | 否 | 挂载广告平台 logo 视图，优先显示 `netWorkOptionView` |
+| `adMarkSlotView` | 否 | 挂载广告标识视图，用于兜底显示“广告”标记，不建议省略 |
+| `closeSlotView` | 否 | 挂载关闭按钮 |
+| `clickableViews` | 否 | 显式声明可点击区域，建议传入业务点击区，如容器、CTA 按钮等 |
+
+> **说明**：`logoSlotView` 与 `adMarkSlotView` 职责不同，前者承载平台 logo，后者承载广告标识兜底视图；即使存在 logo 视图，也建议保留 ad mark 位置。`clickableViews` 建议显式传入，未传时 SDK 会退化为使用 `containerView` 作为默认点击区域。
+
+#### 关键注意事项
+
+1. SelfRender 模式使用 `createSelfRenderBannerAdWithPlacementId(_:listener:)` 创建，渲染模式在创建时即确定，**不需要额外设置渲染类型**
+2. Banner 的 `viewController` 已合并到 `load(...)` 参数中，Express 和 SelfRender 模式都需要在加载时传入
+3. SelfRender 模式请在 `onAdMaterialReady(_:)` 后调用 `bindMaterial(atIndex:slots:)`，用于绑定媒体视图、广告标识、关闭按钮和点击区域
+4. `bindMaterial(atIndex:slots:)` 只会挂载 SDK 管理视图，不会自动渲染标题、描述、CTA、主图、图标、广告主、域名、风险提示、评分或赞助商内容，这些都需要宿主自行布局
+5. 如需解绑当前自渲染广告，可调用 `unbindMaterial()`；如需仅从页面移除当前绑定内容，可调用 `remove()`
+6. 自渲染模式不需要调用 `retrieveAdView()`，该方法在 SelfRender 模式下返回 nil
+7. 当前每次加载通常返回一条可绑定素材，`bindMaterial(atIndex:slots:)` 传入 `0` 即可
+
+#### 销毁
+
 ```swift
 bannerAd?.destroy()
 bannerAd = nil
@@ -458,10 +629,16 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
 }
 ```
 
-### Q4：开屏广告 `show()` 参数类型
+### Q4：Banner SelfRender 模式下 `retrieveAdView()` 返回 nil
+SelfRender 模式下请使用 `onAdMaterialReady(_:)` 回调获取素材，而非 `retrieveAdView()`。素材获取后通过 `FlameBannerAdRenderSlots` 组装你的布局，并调用 `bindMaterial(atIndex:slots:)` 绑定展示追踪、点击区域和合规视图。
+
+### Q7：Banner SelfRender 模式创建方法
+使用 `createSelfRenderBannerAdWithPlacementId(_:listener:)` 创建自渲染 Banner，**不需要额外调用 `setRenderType`**。渲染模式在创建时即确定，不可更改。
+
+### Q5：开屏广告 `show()` 参数类型
 开屏广告的 `show()` 传入 `UIWindow`，而非 `UIViewController`，这与其他广告格式不同，请注意区分。
 
-### Q5：Xcode 16 构建报错（Script Sandboxing）
+### Q6：Xcode 16 构建报错（Script Sandboxing）
 在 `Podfile` 的 `post_install` hook 中设置 `ENABLE_USER_SCRIPT_SANDBOXING = 'NO'`（参考第一节配置）。
 
 ---
@@ -477,7 +654,8 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
 
 | 广告格式 | Placement ID |
 |---------|--------------|
-| Banner | `q23035526072` |
+| Banner（Express） | `q23035526072` |
+| Banner（SelfRender） | `q65796594128` |
 | Interstitial | `q28769551483` |
 | Native | `q80657462905` |
 | Reward Video | `q86592937069` |
@@ -1038,4 +1216,3 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
   <string>tongyi</string>
 </array>
 ```
-
