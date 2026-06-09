@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '0.1.8.2'
+  s.version          = '0.1.8.4'
   s.summary          = 'Flame iOS Ad SDK'
   s.description      = 'Flame iOS advertising aggregation SDK'
   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
@@ -24,7 +24,7 @@ Pod::Spec.new do |s|
   s.vendored_frameworks = '**/flame_sdk_ios.xcframework'
 
   # ========= AD Core =========
-  s.dependency 'OpenSSL-Universal', '1.1.180'
+  s.dependency 'OpenSSL-Universal', '~> 3.6'
   
   s.dependency 'AnyThinkiOS','6.5.71'
   #Anythink Kuying Adx SDK(necessary)

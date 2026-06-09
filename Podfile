@@ -7,7 +7,7 @@ source 'https://cdn.cocoapods.org/'
 
 def tk_pods
   pod 'AnyThinkiOS','6.5.71'
-  pod 'OpenSSL-Universal', '1.1.180'
+  pod 'OpenSSL-Universal', '~> 3.6'
 end
 
 target 'flame_sdk_ios' do
@@ -48,8 +48,8 @@ post_install do |installer|
     target.build_configurations.each do |config|
       # 为所有target添加OpenSSL头文件路径
       config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
-      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_arm64e_armv7_armv7s/OpenSSL.framework/Headers'
-      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_i386_x86_64-simulator/OpenSSL.framework/Headers'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/OpenSSL.xcframework/ios-arm64/OpenSSL.framework/Headers'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/OpenSSL.xcframework/ios-arm64_x86_64-simulator/OpenSSL.framework/Headers'
 
       # 确保OTHER_LDFLAGS包含-ObjC
       config.build_settings['OTHER_LDFLAGS'] ||= '$(inherited)'
@@ -63,8 +63,8 @@ post_install do |installer|
   installer.target_installation_results.pod_target_installation_results.each do |pod_name, target_installation_result|
     target_installation_result.native_target.build_configurations.each do |config|
       config.build_settings['HEADER_SEARCH_PATHS'] ||= '$(inherited)'
-      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_arm64e_armv7_armv7s/OpenSSL.framework/Headers'
-      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_i386_x86_64-simulator/OpenSSL.framework/Headers'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/OpenSSL.xcframework/ios-arm64/OpenSSL.framework/Headers'
+      config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/OpenSSL.xcframework/ios-arm64_x86_64-simulator/OpenSSL.framework/Headers'
     end
   end
 end

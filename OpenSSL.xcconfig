@@ -1,6 +1,6 @@
 // OpenSSL头文件搜索路径配置
 // 用于在非CocoaPods环境（如父workspace）中编译时找到OpenSSL头文件
 
-HEADER_SEARCH_PATHS = $(inherited) $(SRCROOT)/Pods/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_arm64e_armv7_armv7s/OpenSSL.framework/Headers $(SRCROOT)/Pods/OpenSSL-Universal/Frameworks/OpenSSL.xcframework/ios-arm64_i386_x86_64-simulator/OpenSSL.framework/Headers
+HEADER_SEARCH_PATHS = $(inherited) $(SRCROOT)/Pods/OpenSSL-Universal/OpenSSL.xcframework/ios-arm64/OpenSSL.framework/Headers $(SRCROOT)/Pods/OpenSSL-Universal/OpenSSL.xcframework/ios-arm64_x86_64-simulator/OpenSSL.framework/Headers
 
 OTHER_LDFLAGS = $(inherited) -ObjC
