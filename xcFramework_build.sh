@@ -59,7 +59,18 @@ xcodebuild -create-xcframework \
   -output "${XCFRAMEWORK_OUTPUT}"
 
 # ====== 构建完成后清理 ======
-# 删除 .framework 内部不该存在的文件（.sh 会导致 codesign 失败，.podspec 是冗余文件）
+# 1. 删除 .framework 内部不该存在的文件（.sh 会导致 codesign 失败，.podspec 是冗余文件）
 find "${XCFRAMEWORK_OUTPUT}" -type f \( -name "*.sh" -o -name "*.podspec" \) -delete
+
+# 2. 剥离所有 framework 内嵌的 bitcode（Apple 已废弃 bitcode，App Store 不接受含 bitcode 的二进制）
+#    遍历 xcframework 中所有 .framework 的主二进制，使用 bitcode_strip 去除 __LLVM 段
+echo "🧹 剥离 bitcode..."
+while IFS= read -r -d '' binary; do
+  echo "  stripping bitcode: $(basename "$(dirname "$binary")")"
+  xcrun bitcode_strip "$binary" -r -o "$binary"
+done < <(find "${XCFRAMEWORK_OUTPUT}" -type f -perm +111 \
+  ! -name "*.dsym" ! -name "*.plist" ! -name "Info.plist" \
+  -path "*/Frameworks/*.framework/*" -print0 2>/dev/null)
+echo "✅ bitcode 剥离完成"
 
 echo "✅ XCFramework 构建完成：${XCFRAMEWORK_OUTPUT}"

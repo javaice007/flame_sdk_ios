@@ -10,9 +10,6 @@
 		031224462CB6B0E223956A83 /* Pods_flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 39CAE99F8BFFF2DD4389100E /* Pods_flame_sdk_ios.framework */; };
 		482FD5CFC7F1E3FC6581584B /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B9EC17AE146616AB29230528 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */; };
 		580DC3292F15295900145FF2 /* flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */; };
-		580DC3B22F15320500145FF2 /* flame_sdk_ios.podspec in Resources */ = {isa = PBXBuildFile; fileRef = 580DC3B12F15320500145FF2 /* flame_sdk_ios.podspec */; };
-		580DC44F2F153D1F00145FF2 /* AnyThinkSDK.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC44E2F153D1F00145FF2 /* AnyThinkSDK.xcframework */; };
-		580DC4502F153D1F00145FF2 /* AnyThinkSDK.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC44E2F153D1F00145FF2 /* AnyThinkSDK.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,27 +22,12 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		580DC4512F153D1F00145FF2 /* Embed Frameworks */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				580DC4502F153D1F00145FF2 /* AnyThinkSDK.xcframework in Embed Frameworks */,
-			);
-			name = "Embed Frameworks";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		39CAE99F8BFFF2DD4389100E /* Pods_flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4BEC98828D38ADB0CE6A743B /* Pods-flame_sdk_ios.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.debug.xcconfig"; sourceTree = "<group>"; };
 		580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		580DC3282F15295900145FF2 /* flame_sdk_iosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flame_sdk_iosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		580DC3B12F15320500145FF2 /* flame_sdk_ios.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = flame_sdk_ios.podspec; sourceTree = "<group>"; };
-		580DC44E2F153D1F00145FF2 /* AnyThinkSDK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = AnyThinkSDK.xcframework; path = Pods/AnyThinkiOS/core/AnyThinkSDK.xcframework; sourceTree = "<group>"; };
 		586551B12F5432B200A86CDA /* flame_sdk_demo_ios2.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = flame_sdk_demo_ios2.xcodeproj; path = ../flame_sdk_demo_ios2/flame_sdk_demo_ios2.xcodeproj; sourceTree = SOURCE_ROOT; };
 		6AB9264DCB8FEE10ED7D8BCD /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; sourceTree = "<group>"; };
 		766307AB23ADBD0535BCD5B5 /* Pods-flame_sdk_ios.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.release.xcconfig"; sourceTree = "<group>"; };
@@ -95,7 +77,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				580DC44F2F153D1F00145FF2 /* AnyThinkSDK.xcframework in Frameworks */,
 				031224462CB6B0E223956A83 /* Pods_flame_sdk_ios.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -127,7 +108,6 @@
 			isa = PBXGroup;
 			children = (
 				586551B12F5432B200A86CDA /* flame_sdk_demo_ios2.xcodeproj */,
-				580DC3B12F15320500145FF2 /* flame_sdk_ios.podspec */,
 				580DC31F2F15295800145FF2 /* flame_sdk_ios */,
 				580DC32C2F15295900145FF2 /* flame_sdk_iosTests */,
 				580DC31E2F15295800145FF2 /* Products */,
@@ -155,7 +135,6 @@
 		640162524E2DA2A00D7C4CA0 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				580DC44E2F153D1F00145FF2 /* AnyThinkSDK.xcframework */,
 				39CAE99F8BFFF2DD4389100E /* Pods_flame_sdk_ios.framework */,
 				B9EC17AE146616AB29230528 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */,
 			);
@@ -184,7 +163,6 @@
 				580DC3192F15295800145FF2 /* Sources */,
 				580DC31A2F15295800145FF2 /* Frameworks */,
 				580DC31B2F15295800145FF2 /* Resources */,
-				580DC4512F153D1F00145FF2 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -269,7 +247,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				580DC3B22F15320500145FF2 /* flame_sdk_ios.podspec in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
