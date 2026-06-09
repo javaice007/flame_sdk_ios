@@ -58,4 +58,8 @@ xcodebuild -create-xcframework \
   -framework "${SIM_ARCHIVE_PATH}.xcarchive/Products/Library/Frameworks/${FRAMEWORK_NAME}.framework" \
   -output "${XCFRAMEWORK_OUTPUT}"
 
+# ====== 构建完成后清理 ======
+# 删除 .framework 内部不该存在的文件（.sh 会导致 codesign 失败，.podspec 是冗余文件）
+find "${XCFRAMEWORK_OUTPUT}" -type f \( -name "*.sh" -o -name "*.podspec" \) -delete
+
 echo "✅ XCFramework 构建完成：${XCFRAMEWORK_OUTPUT}"
