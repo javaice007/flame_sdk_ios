@@ -99,21 +99,21 @@
     return [self sharedInstance].isInitialized;
 }
 
-+ (void)checkInitialization {
++ (BOOL)checkInitialization {
     if (![self sharedInstance].isInitialized) {
-        @throw [NSException exceptionWithName:NSInternalInconsistencyException
-                                       reason:@"FlameSdk must be initialized before requesting ads!"
-                                     userInfo:nil];
+        [FlameLogger e:@"FlameSdk must be initialized before requesting ads!"];
+        return NO;
     }
+    return YES;
 }
 
 + (id<FlameRewardAd>)createRewardAdapter:(UIViewController *)viewController
                            atPlacementId:(NSString *)atPlacementId
                               listener:(id<FlameRewardListener>)listener{
-    // 1. 安全检查：如果 SDK 未初始化，打印警告或处理错误
+    // 1. 安全检查：如果 SDK 未初始化，返回 nil
     if (![self sharedInstance].isInitialized) {
-        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initSDKWithAppId: first."];
-        // 根据业务需求，你可以选择返回 nil 或者允许创建但在加载时拦截
+        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initWithAppId:appKey: first."];
+        return nil;
     }
 
     // 2. 参数合法性检查
@@ -132,10 +132,10 @@
 + (id<FlameInterstitialAd>)createInterstitialAdapter:(UIViewController *)viewController
                                        atPlacementId:(NSString *)atPlacementId
                                             listener:(id<FlameInterstitialListener>)listener {
-    // 1. 安全检查：如果 SDK 未初始化，打印警告或处理错误
+    // 1. 安全检查：如果 SDK 未初始化，返回 nil
     if (![self sharedInstance].isInitialized) {
-        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initSDKWithAppId: first."];
-        // 根据业务需求，你可以选择返回 nil 或者允许创建但在加载时拦截
+        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initWithAppId:appKey: first."];
+        return nil;
     }
 
     // 2. 参数合法性检查
@@ -155,10 +155,10 @@
 + (id<FlameSplashAd>)createSplashAdAdapter:(UIViewController *)viewController
                              atPlacementId:(NSString *)atPlacementId
                                   listener:(id<FlameSplashListener>)listener {
-    // 1. 安全检查：如果 SDK 未初始化，打印警告或处理错误
+    // 1. 安全检查：如果 SDK 未初始化，返回 nil
     if (![self sharedInstance].isInitialized) {
-        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initSDKWithAppId: first."];
-        // 根据业务需求，你可以选择返回 nil 或者允许创建但在加载时拦截
+        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initWithAppId:appKey: first."];
+        return nil;
     }
 
     // 2. 参数合法性检查
@@ -183,10 +183,10 @@
 + (id<FlameBannerAd>)createBannerAdapter:(NSString *)atPlacementId
                                renderType:(FlameBannerRenderType)renderType
                                  listener:(id<FlameBannerListener>)listener{
-    // 1. 安全检查：如果 SDK 未初始化，打印警告或处理错误
+    // 1. 安全检查：如果 SDK 未初始化，返回 nil
     if (![self sharedInstance].isInitialized) {
-        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initSDKWithAppId: first."];
-        // 根据业务需求，你可以选择返回 nil 或者允许创建但在加载时拦截
+        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initWithAppId:appKey: first."];
+        return nil;
     }
 
     // 2. 参数合法性检查
@@ -211,10 +211,10 @@
 + (id<FlameNativeAd>)createNativeAdapter:(UIViewController *)viewController
                            atPlacementId:(NSString *)atPlacementId
                                 listener:(id<FlameNativeListener>)listener{
-    // 1. 安全检查：如果 SDK 未初始化，打印警告或处理错误
+    // 1. 安全检查：如果 SDK 未初始化，返回 nil
     if (![self sharedInstance].isInitialized) {
-        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initSDKWithAppId: first."];
-        // 根据业务需求，你可以选择返回 nil 或者允许创建但在加载时拦截
+        [FlameLogger e:@"FlameSdk is NOT initialized! Please call initWithAppId:appKey: first."];
+        return nil;
     }
 
     // 2. 参数合法性检查

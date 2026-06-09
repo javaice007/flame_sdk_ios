@@ -20,17 +20,33 @@
 + (instancetype)fromJson:(NSString *)jsonStr {
     if (!jsonStr) return nil;
     NSData *data = [jsonStr dataUsingEncoding:NSUTF8StringEncoding];
+    if (!data) return nil;
     NSError *error;
     NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
-    if (error || !json) return nil;
+    if (error || !json || ![json isKindOfClass:[NSDictionary class]]) return nil;
 
     FlameAppEntity *entity = [[FlameAppEntity alloc] init];
-    entity.pt = json[@"pt"];
-    entity.aId = json[@"aId"];
-    entity.aKey = json[@"aKey"];
+
+    // 类型校验 + NSNull 过滤
+    id ptObj = json[@"pt"];
+    entity.pt = ([ptObj isKindOfClass:[NSString class]] && ![ptObj isKindOfClass:[NSNull class]]) ? (NSString *)ptObj : nil;
+
+    id aIdObj = json[@"aId"];
+    entity.aId = ([aIdObj isKindOfClass:[NSString class]] && ![aIdObj isKindOfClass:[NSNull class]]) ? (NSString *)aIdObj : nil;
+
+    id aKeyObj = json[@"aKey"];
+    entity.aKey = ([aKeyObj isKindOfClass:[NSString class]] && ![aKeyObj isKindOfClass:[NSNull class]]) ? (NSString *)aKeyObj : nil;
+
     NSDictionary *pIdsDict = json[@"pIds"];
     if ([pIdsDict isKindOfClass:[NSDictionary class]]) {
-        [entity.pIds addEntriesFromDictionary:pIdsDict];
+        // 过滤 NSNull 值
+        NSMutableDictionary *safePIds = [NSMutableDictionary dictionary];
+        [pIdsDict enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+            if ([obj isKindOfClass:[NSString class]] && ![obj isKindOfClass:[NSNull class]]) {
+                safePIds[key] = obj;
+            }
+        }];
+        [entity.pIds addEntriesFromDictionary:safePIds];
     }
     return entity;
 }

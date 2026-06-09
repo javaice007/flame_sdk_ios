@@ -52,7 +52,7 @@
         userCustomData:(NSString *)userCustomData
                  width:(CGFloat)width
                 height:(CGFloat)height{
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return;
 
     [FlameLogger i:@"Start loading native Ad"];
 
@@ -60,12 +60,12 @@
 }
 
 - (BOOL)isLoading {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return NO;
     return [self.adapter isLoading];
 }
 
 - (BOOL)isReady {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return NO;
     return [self.adapter isReady];
 }
 
@@ -86,12 +86,12 @@
 }
 
 - (void)destroy {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return;
     [self.adapter destroy];
 }
 
-- (void)remove { 
-    [FlameAdapterManager checkInitialization];
+- (void)remove {
+    if (![FlameAdapterManager checkInitialization]) return;
     return [self.adapter remove];
 }
 

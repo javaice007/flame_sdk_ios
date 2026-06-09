@@ -18,6 +18,13 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 
 @interface FlameConfigManager ()
 @property (atomic, strong) FlameAppEntity *appEntity; // 使用 atomic 保证线程安全
+
+// 请求去重：保存当前进行中的网络任务
+@property (atomic, strong) NSURLSessionDataTask *currentTask;
+// 请求代际标记：completion 回调时校验是否为当前代
+@property (atomic, assign) uint64_t requestGeneration;
+// 强持有 callback 直到网络请求完成，防止 block 闭包捕获失效导致野指针
+@property (atomic, strong) id<FlameCallback> activeCallback;
 @end
 
 @implementation FlameConfigManager
@@ -45,16 +52,48 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 }
 
 - (void) clearCache{
-    // 使用 @synchronized 保护临界区，简单可靠
+    // 1. 取消进行中的网络请求
+    [self cancelCurrentRequest];
+
+    // 2. 清除 callback 强引用（网络请求已取消，不再需要回调）
     @synchronized (self) {
-        // 1. 清内存态
+        self.activeCallback = nil;
+    }
+
+    // 3. 清内存态
+    @synchronized (self) {
         self.appEntity = nil;
     }
 
-    // 2. 清本地存储
+    // 4. 清本地存储
     [[FlameConfigLocalStorage sharedInstance] clear];
 
     [FlameLogger i:@"FlameConfigManager clearCache finished"];
+}
+
+- (void)cancelCurrentRequest {
+    @synchronized (self) {
+        if (self.currentTask) {
+            [self.currentTask cancel];
+            self.currentTask = nil;
+            self.requestGeneration++;
+            // 取消请求的同时清除 callback 引用，因为 callback 不会再被调用
+            self.activeCallback = nil;
+            [FlameLogger i:@"Previous config request cancelled"];
+        }
+    }
+}
+
+- (void)cancelCurrentRequestAndCallback {
+    @synchronized (self) {
+        if (self.currentTask) {
+            [self.currentTask cancel];
+            self.currentTask = nil;
+            self.requestGeneration++;
+        }
+        self.activeCallback = nil;
+        [FlameLogger i:@"Current request and callback cancelled"];
+    }
 }
 
 
@@ -63,7 +102,7 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
     NSString *aId = [storage getAId];
     NSString *aKey = [storage getAKey];
     id pMapObj = [storage getPMap];
-    
+
     NSDictionary *pMap = nil;
     if ([pMapObj isKindOfClass:[NSDictionary class]]) {
         pMap = (NSDictionary *)pMapObj;
@@ -81,9 +120,19 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
         if (callback) [callback success];
         return;
     }
-    
+
     [FlameLogger i:@"load ad from remote server......"];
-    
+
+    // 先取消可能残留的旧请求（必须在 generation 递增之前，因为 cancel 内部也会递增 generation）
+    [self cancelCurrentRequest];
+
+    // 请求去重：递增 generation，旧请求的 completion 将被忽略
+    uint64_t currentGeneration;
+    @synchronized (self) {
+        self.requestGeneration++;
+        currentGeneration = self.requestGeneration;
+    }
+
     NSString *url = @"https://api.adsurge.cn/api/v1/sdk/init";
     // 1. 业务参数
     NSMutableDictionary *params = [NSMutableDictionary dictionary];
@@ -95,27 +144,111 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
     // 3. JSON 参数（新增 sign 字段）
     NSMutableDictionary *jsonParams = [params mutableCopy];
     jsonParams[@"sign"] = sign;
-//    [FlameLogger i:[NSString stringWithFormat:@"request json params = %@", jsonParams]];
-    
-    // 4. JSON POST 请求
-    [FlameNetworkUtils doPostJson:url
+
+    // 4. 强持有 callback，防止 block 闭包捕获失效导致野指针
+    @synchronized (self) {
+        self.activeCallback = callback;
+    }
+
+    // 5. JSON POST 请求（capture currentGeneration 用于过滤过期回调）
+    //    completion block 不直接捕获 callback 参数，而是通过 self.activeCallback 访问，
+    //    确保 UpdateAppCallback 的生命周期由 FlameConfigManager 属性管理，不依赖 block 捕获
+
+    NSURLSessionDataTask *task = [FlameNetworkUtils doPostJson:url
                          jsonBody:jsonParams
                        completion:^(NSDictionary *encryptedData, NSError *error) {
+
+        // 请求去重：如果 generation 不匹配，说明已有新请求发出，忽略本次回调
+        uint64_t latestGeneration;
+        @synchronized (self) {
+            latestGeneration = self.requestGeneration;
+        }
+        if (currentGeneration != latestGeneration) {
+            [FlameLogger i:@"Stale config response ignored (generation mismatch)"];
+            return;
+        }
+
+        // 响应到达，在锁内原子地提取 callback 并清除所有引用
+        // 确保 extract + nil 不会被 clear() 线程插入
+        // 直接 IVAR 访问：避免 atomic getter 的 objc_autoreleaseReturnValue
+        // 在 Debug 模式下产生延迟 autorelease，导致 pool drain 时 over-release
+        id<FlameCallback> cb;
+        @synchronized (self) {
+            cb = _activeCallback;
+            self.currentTask = nil;
+            self.activeCallback = nil;
+        }
+        if (!cb) {
+            [FlameLogger i:@"Callback was cleared before completion, skipping"];
+            return;
+        }
+
         [FlameLogger i:@"server response received"];
+        [FlameLogger i:[NSString stringWithFormat:@"[DIAG] ConfigManager extract done. cb=%p RC=%lu, gen=%llu", (void *)cb, (unsigned long)CFGetRetainCount((__bridge CFTypeRef)cb), currentGeneration]];
+
+        // 类型校验: 确保 response 是 NSDictionary
         if (error) {
             [FlameLogger e:[NSString stringWithFormat:@"remote server error=%@", error.localizedDescription]];
-            if (callback) {
-                [callback fail:[@(error.code) stringValue]
-                          desc:error.localizedDescription];
+            if (cb) {
+                [FlameLogger i:[NSString stringWithFormat:@"[DIAG] About to call callback.fail on %p", (void *)cb]];
+                [cb fail:[@(error.code) stringValue]
+                  desc:error.localizedDescription];
+                [FlameLogger i:[NSString stringWithFormat:@"[DIAG] callback.fail returned for %p", (void *)cb]];
             }
             return;
         }
-        NSDictionary *dataDict = encryptedData[@"data"];
-        NSString *eData = dataDict[@"edata"];
-        if (eData == nil || eData.length == 0) {
-            if (callback) {
-                [callback fail:@"-1"
-                          desc:@"edata is missing from server response"];
+
+        if (![encryptedData isKindOfClass:[NSDictionary class]]) {
+            [FlameLogger e:@"server response is not a valid JSON object"];
+            if (cb) {
+                [cb fail:@"-1" desc:@"Invalid server response format"];
+            }
+            return;
+        }
+
+        // 类型校验: 确保 data 字段存在且为 NSDictionary，过滤 NSNull
+        id dataObj = encryptedData[@"data"];
+        if (dataObj == nil || [dataObj isKindOfClass:[NSNull class]]) {
+            [FlameLogger e:@"data field is missing or null in server response"];
+            if (cb) {
+                [cb fail:@"-1" desc:@"data is missing from server response"];
+            }
+            return;
+        }
+
+        if (![dataObj isKindOfClass:[NSDictionary class]]) {
+            [FlameLogger e:@"data field is not a valid JSON object"];
+            if (cb) {
+                [cb fail:@"-1" desc:@"Invalid data format in server response"];
+            }
+            return;
+        }
+
+        NSDictionary *dataDict = (NSDictionary *)dataObj;
+
+        // 类型校验: 确保 edata 字段存在且为 NSString，过滤 NSNull
+        id eDataObj = dataDict[@"edata"];
+        if (eDataObj == nil || [eDataObj isKindOfClass:[NSNull class]]) {
+            if (cb) {
+                [cb fail:@"-1"
+                  desc:@"edata is missing from server response"];
+            }
+            return;
+        }
+
+        if (![eDataObj isKindOfClass:[NSString class]]) {
+            if (cb) {
+                [cb fail:@"-1"
+                  desc:@"edata is not a valid string in server response"];
+            }
+            return;
+        }
+
+        NSString *eData = (NSString *)eDataObj;
+        if (eData.length == 0) {
+            if (cb) {
+                [cb fail:@"-1"
+                  desc:@"edata is empty in server response"];
             }
             return;
         }
@@ -134,15 +267,20 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
                            aId:entity.aId
                           aKey:entity.aKey
                           pMap:entity.pIds];
-            if (callback) {
-                [callback success];
+            if (cb) {
+                [cb success];
             }
         } else {
-            if (callback) {
-                [callback fail:@"-1" desc:@"Decrypt or Parse failed"];
+            if (cb) {
+                [cb fail:@"-1" desc:@"Decrypt or Parse failed"];
             }
         }
     }];
+
+    // 存储任务引用，以便 clearCache/cancelCurrentRequest 时可以取消
+    @synchronized (self) {
+        self.currentTask = task;
+    }
 }
 
 - (NSString *)getAId {

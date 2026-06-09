@@ -11,7 +11,6 @@
 		482FD5CFC7F1E3FC6581584B /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B9EC17AE146616AB29230528 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */; };
 		580DC3292F15295900145FF2 /* flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */; };
 		580DC3B22F15320500145FF2 /* flame_sdk_ios.podspec in Resources */ = {isa = PBXBuildFile; fileRef = 580DC3B12F15320500145FF2 /* flame_sdk_ios.podspec */; };
-		580DC3B42F15332E00145FF2 /* xcFramework_build.sh in Resources */ = {isa = PBXBuildFile; fileRef = 580DC3B32F15332E00145FF2 /* xcFramework_build.sh */; };
 		580DC44F2F153D1F00145FF2 /* AnyThinkSDK.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC44E2F153D1F00145FF2 /* AnyThinkSDK.xcframework */; };
 		580DC4502F153D1F00145FF2 /* AnyThinkSDK.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC44E2F153D1F00145FF2 /* AnyThinkSDK.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -46,7 +45,6 @@
 		580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		580DC3282F15295900145FF2 /* flame_sdk_iosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flame_sdk_iosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		580DC3B12F15320500145FF2 /* flame_sdk_ios.podspec */ = {isa = PBXFileReference; lastKnownFileType = text; path = flame_sdk_ios.podspec; sourceTree = "<group>"; };
-		580DC3B32F15332E00145FF2 /* xcFramework_build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = xcFramework_build.sh; sourceTree = "<group>"; };
 		580DC44E2F153D1F00145FF2 /* AnyThinkSDK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = AnyThinkSDK.xcframework; path = Pods/AnyThinkiOS/core/AnyThinkSDK.xcframework; sourceTree = "<group>"; };
 		586551B12F5432B200A86CDA /* flame_sdk_demo_ios2.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = flame_sdk_demo_ios2.xcodeproj; path = ../flame_sdk_demo_ios2/flame_sdk_demo_ios2.xcodeproj; sourceTree = SOURCE_ROOT; };
 		6AB9264DCB8FEE10ED7D8BCD /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; sourceTree = "<group>"; };
@@ -129,7 +127,6 @@
 			isa = PBXGroup;
 			children = (
 				586551B12F5432B200A86CDA /* flame_sdk_demo_ios2.xcodeproj */,
-				580DC3B32F15332E00145FF2 /* xcFramework_build.sh */,
 				580DC3B12F15320500145FF2 /* flame_sdk_ios.podspec */,
 				580DC31F2F15295800145FF2 /* flame_sdk_ios */,
 				580DC32C2F15295900145FF2 /* flame_sdk_iosTests */,
@@ -273,7 +270,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				580DC3B22F15320500145FF2 /* flame_sdk_ios.podspec in Resources */,
-				580DC3B42F15332E00145FF2 /* xcFramework_build.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -381,6 +377,7 @@
 			baseConfigurationReference = 4BEC98828D38ADB0CE6A743B /* Pods-flame_sdk_ios.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+					CODE_SIGNING_ALLOWED = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = ULCWVQVQY2;
@@ -415,6 +412,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+					CODE_SIGNING_ALLOWED = NO;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = ULCWVQVQY2;
 				DYLIB_COMPATIBILITY_VERSION = 1;

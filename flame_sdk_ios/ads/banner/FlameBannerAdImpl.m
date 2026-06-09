@@ -53,7 +53,7 @@
                  width:(CGFloat)width
                 height:(CGFloat)height
         viewController:(UIViewController *)viewController {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return;
 
     if ([self.adapter isLoading]) {
         [FlameLogger i:@"Ad is loading, please do not request again."];
@@ -69,12 +69,12 @@
 }
 
 - (BOOL)isLoading {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return NO;
     return [self.adapter isLoading];
 }
 
 - (BOOL)isReady {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return NO;
     return [self.adapter isReady];
 }
 
@@ -106,12 +106,12 @@
 }
 
 - (void)remove {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return;
     [self.adapter remove];
 }
 
 - (void)destroy {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return;
     [self.adapter destroy];
 }
 

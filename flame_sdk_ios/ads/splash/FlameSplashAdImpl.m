@@ -36,7 +36,7 @@
 }
 
 - (void)loadWithUserId:(NSString *)userId userCustomData:(NSString *)userCustomData {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return;
 
     if ([self.adapter isLoading]) {
         [FlameLogger i:@"Ad is loading, please do not request again."];
@@ -49,17 +49,17 @@
 }
 
 - (BOOL)isReady {
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return NO;
     return [self.adapter isReady];
 }
 
 - (BOOL) isLoading{
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return NO;
     return [self.adapter isLoading];
 }
 
 - (void) destroy{
-    [FlameAdapterManager checkInitialization];
+    if (![FlameAdapterManager checkInitialization]) return;
     [self.adapter destroy];
 }
 

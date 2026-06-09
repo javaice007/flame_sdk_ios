@@ -38,9 +38,10 @@
 + (BOOL)isInitialized;
 
 /**
- * 检查初始化状态，若未初始化则抛出异常 (类方法)
+ * 检查初始化状态，若未初始化则打印错误日志并返回 NO (类方法)
+ * @return YES 已初始化，NO 未初始化
  */
-+ (void)checkInitialization;
++ (BOOL)checkInitialization;
 
 /**
  * 设置调试模式

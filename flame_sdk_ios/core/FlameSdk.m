@@ -31,6 +31,9 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 @property (nonatomic, assign, readwrite) BOOL isInitialized;
 @property (atomic, assign) FlameSDKInitState initState;  // 初始化状态
 
+// 等待中的初始化回调列表（Initializing 状态下多调用方共享等待）
+@property (atomic, strong) NSMutableArray<id<FlameCallback>> *pendingCallbacks;
+
 // 内部方法：更新初始化状态
 + (void)updateInitState:(FlameSDKInitState)state;
 
@@ -41,7 +44,8 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 // AdapterInitCallback 接口定义（需要在 UpdateAppCallback 实现之前）
 @interface AdapterInitCallback : NSObject<FlameCallback>
 
-@property (nonatomic, strong) id<FlameCallback> userCallback;
+@property (atomic, strong) id<FlameCallback> userCallback;
+@property (atomic, assign) BOOL hasCalled;  // 防止重复回调
 
 - (instancetype)initWithCallback:(id<FlameCallback>)callback;
 
@@ -50,7 +54,8 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 // UpdateAppCallback 接口定义
 @interface UpdateAppCallback : NSObject<FlameCallback>
 
-@property (nonatomic, strong) id<FlameCallback> initCallback;
+@property (atomic, strong) id<FlameCallback> initCallback;
+@property (atomic, assign) BOOL hasCalled;  // 防止 success/fail 重复调用
 
 /**
  * 自定义初始化方法
@@ -67,8 +72,13 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     self = [super init];
     if (self) {
         _initCallback = callback;
+        _hasCalled = NO;
     }
     return self;
+}
+
+- (void)dealloc {
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] UpdateAppCallback=%p dealloc. initCallback=%p", (void *)self, (void *)_initCallback]];
 }
 
 #pragma mark - FlameCallback 实现
@@ -76,11 +86,23 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
  * 成功回调 - 配置获取成功，继续初始化Adapter
  */
 - (void)success{
+    @synchronized (self) {
+        if (_hasCalled) return;
+        _hasCalled = YES;
+    }
+
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] UpdateAppCallback=%p success called. initCallback=%p", (void *)self, (void *)_initCallback]];
+
     NSString *aId = [[FlameConfigManager sharedInstance] getAId];
     NSString *aKey = [[FlameConfigManager sharedInstance] getAKey];
 
     // 创建Adapter初始化回调，会在成功/失败时更新SDK状态
-    AdapterInitCallback *adapterCallback = [[AdapterInitCallback alloc] initWithCallback:self.initCallback];
+    // 直接 IVAR 访问：避免 atomic getter 的 objc_autoreleaseReturnValue
+    // 在 Debug 模式下产生延迟 autorelease，导致 pool drain 时 over-release
+    id<FlameCallback> initCallbackRef = _initCallback;
+    _initCallback = nil;
+    AdapterInitCallback *adapterCallback = [[AdapterInitCallback alloc] initWithCallback:initCallbackRef];
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] Created AdapterInitCallback=%p with userCallback=%p", (void *)adapterCallback, (void *)initCallbackRef]];
     [FlameAdapterManager initSDKWithAppId:aId appKey:aKey initListener:adapterCallback];
 }
 
@@ -91,15 +113,33 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
  */
 - (void)fail:(NSString *)code
         desc:(NSString *)desc{
+    @synchronized (self) {
+        if (_hasCalled) return;
+        _hasCalled = YES;
+    }
+
+    [FlameLogger e:[NSString stringWithFormat:@"[DIAG] UpdateAppCallback=%p fail called. initCallback=%p RC=%lu", (void *)self, (void *)_initCallback, (unsigned long)CFGetRetainCount((__bridge CFTypeRef)self)]];
+
     [FlameLogger e:[NSString stringWithFormat:@"Config fetch failed:[code= %@], [desc=%@]", code, desc]];
 
     // 更新状态为失败
     [FlameSdk updateInitState:FlameSDKInitStateFailed];
 
     // 转发失败回调给 initCallback
-    if ([self.initCallback respondsToSelector:@selector(fail:desc:)]) {
-        [self.initCallback fail:code desc:desc];
+    // 直接 IVAR 访问：避免 atomic getter 的 objc_autoreleaseReturnValue
+    // 在 Debug 模式下产生延迟 autorelease，导致 pool drain 时 over-release
+    id<FlameCallback> callbackToForward = _initCallback;
+    _initCallback = nil;
+
+    [FlameLogger e:[NSString stringWithFormat:@"[DIAG] After extract: self RC=%lu, callbackToForward=%p RC=%lu", (unsigned long)CFGetRetainCount((__bridge CFTypeRef)self), (void *)callbackToForward, (unsigned long)CFGetRetainCount((__bridge CFTypeRef)callbackToForward)]];
+
+    if (callbackToForward && [callbackToForward respondsToSelector:@selector(fail:desc:)]) {
+        [FlameLogger e:[NSString stringWithFormat:@"[DIAG] About to call initCallback.fail on %p", (void *)callbackToForward]];
+        [callbackToForward fail:code desc:desc];
+        [FlameLogger e:[NSString stringWithFormat:@"[DIAG] initCallback.fail returned for %p", (void *)callbackToForward]];
     }
+
+    [FlameLogger e:[NSString stringWithFormat:@"[DIAG] UpdateAppCallback=%p fail method returning", (void *)self]];
 }
 
 @end
@@ -112,30 +152,96 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     self = [super init];
     if (self) {
         _userCallback = callback;
+        _hasCalled = NO;
     }
     return self;
 }
 
+- (void)dealloc {
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] AdapterInitCallback=%p dealloc. userCallback=%p", (void *)self, (void *)_userCallback]];
+}
+
 - (void)success {
+    @synchronized (self) {
+        if (_hasCalled) return;
+        _hasCalled = YES;
+    }
+
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] AdapterInitCallback=%p success. userCallback=%p", (void *)self, (void *)_userCallback]];
+
     // 更新SDK状态为已初始化
     [FlameSdk updateInitState:FlameSDKInitStateInitialized];
 
-    // 转发给用户回调
-    if ([self.userCallback respondsToSelector:@selector(success)]) {
-        [self.userCallback success];
+    // 转发给所有等待中的用户回调 + 当前回调
+    FlameSdk *instance = [FlameSdk sharedInstance];
+
+    // 先在锁内 copy 并清空，再在锁外回调，避免 callback 重入导致死锁
+    NSArray *callbacksToNotify = nil;
+    @synchronized (instance) {
+        callbacksToNotify = [instance.pendingCallbacks copy];
+        [instance.pendingCallbacks removeAllObjects];
     }
+
+    // 直接 IVAR 访问：避免 atomic getter 的 autorelease over-release
+    id<FlameCallback> userCb = _userCallback;
+    _userCallback = nil;
+
+    if (userCb && [userCb respondsToSelector:@selector(success)]) {
+        [FlameLogger i:[NSString stringWithFormat:@"[DIAG] Calling userCallback.success on %p", (void *)userCb]];
+        [userCb success];
+        [FlameLogger i:[NSString stringWithFormat:@"[DIAG] userCallback.success returned for %p", (void *)userCb]];
+    }
+
+    for (id<FlameCallback> cb in callbacksToNotify) {
+        [FlameLogger i:[NSString stringWithFormat:@"[DIAG] Notifying pendingCallback %p (success)", (void *)cb]];
+        if ([cb respondsToSelector:@selector(success)]) {
+            [cb success];
+        }
+    }
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] AdapterInitCallback=%p success done", (void *)self]];
 }
 
 - (void)fail:(NSString *)code desc:(NSString *)desc {
+    @synchronized (self) {
+        if (_hasCalled) return;
+        _hasCalled = YES;
+    }
+
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] AdapterInitCallback=%p fail. userCallback=%p", (void *)self, (void *)_userCallback]];
+
     // 更新SDK状态为失败
     [FlameSdk updateInitState:FlameSDKInitStateFailed];
 
     [FlameLogger e:[NSString stringWithFormat:@"AdapterManager init failed:[code= %@], [desc=%@]", code, desc]];
 
-    // 转发给用户回调
-    if ([self.userCallback respondsToSelector:@selector(fail:desc:)]) {
-        [self.userCallback fail:code desc:desc];
+    // 转发给所有等待中的用户回调 + 当前回调
+    FlameSdk *instance = [FlameSdk sharedInstance];
+
+    // 先在锁内 copy 并清空，再在锁外回调，避免 callback 重入导致死锁
+    NSArray *callbacksToNotify = nil;
+    @synchronized (instance) {
+        callbacksToNotify = [instance.pendingCallbacks copy];
+        [instance.pendingCallbacks removeAllObjects];
     }
+
+    // 直接 IVAR 访问：避免 atomic getter 的 autorelease over-release
+    id<FlameCallback> callbackToForward = _userCallback;
+    _userCallback = nil;
+
+    if (callbackToForward && [callbackToForward respondsToSelector:@selector(fail:desc:)]) {
+        [FlameLogger i:[NSString stringWithFormat:@"[DIAG] Calling userCallback.fail on %p", (void *)callbackToForward]];
+        [callbackToForward fail:code desc:desc];
+        [FlameLogger i:[NSString stringWithFormat:@"[DIAG] userCallback.fail returned for %p", (void *)callbackToForward]];
+    }
+
+    for (id<FlameCallback> cb in callbacksToNotify) {
+        [FlameLogger i:[NSString stringWithFormat:@"[DIAG] Notifying pendingCallback %p (fail code=%@)", (void *)cb, code]];
+        if ([cb respondsToSelector:@selector(fail:desc:)]) {
+            [cb fail:code desc:desc];
+        }
+    }
+
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] AdapterInitCallback=%p fail done", (void *)self]];
 }
 
 @end
@@ -158,6 +264,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     self = [super init];
     if (self) {
         _initState = FlameSDKInitStateUninitialized;
+        _pendingCallbacks = [NSMutableArray array];
     }
     return self;
 }
@@ -172,10 +279,17 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 }
 
 /**
- * 清空缓存
+ * 清空缓存，重置初始化状态，允许重新初始化
  */
 + (void)clear {
+    FlameSdk *instance = [self sharedInstance];
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] FlameSdk.clear called. currentState=%ld, pendingCallbacks.count=%lu", (long)instance.initState, (unsigned long)instance.pendingCallbacks.count]];
+    @synchronized (instance) {
+        instance.initState = FlameSDKInitStateUninitialized;
+        [instance.pendingCallbacks removeAllObjects];
+    }
     [[FlameConfigManager sharedInstance] clearCache];
+    [FlameLogger i:@"FlameSdk cleared, ready for re-init"];
 }
 
 + (void)initWithAppId:(NSString *)appId appKey:(NSString *)appKey {
@@ -183,11 +297,13 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 }
 
 + (void)initWithAppId:(NSString *)appId appKey:(NSString *)appKey callback:(id<FlameCallback>)callback {
-    FlameSdk *instance = [self sharedInstance];
+    [FlameLogger i:@"LOCAL SDK PATCH init-state-callback-lifecycle loaded"];
 
-    // 使用 @synchronized 防止并发初始化，比信号量更简单可靠
+    FlameSdk *instance = [self sharedInstance];
+    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] initWithAppId:callback: called. callback=%p, currentState=%ld", (void *)callback, (long)instance.initState]];
+
+    // 使用 @synchronized 防止并发初始化
     @synchronized (instance) {
-        // 检查当前状态
         FlameSDKInitState currentState = instance.initState;
 
         if (currentState == FlameSDKInitStateInitialized) {
@@ -199,14 +315,27 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         }
 
         if (currentState == FlameSDKInitStateInitializing) {
-            [FlameLogger w:@"FlameSdk is initializing, please wait."];
+            // 初始化进行中：将当前 callback 加入等待队列，不重复发请求
+            [FlameLogger i:@"FlameSdk is initializing, callback queued."];
             if (callback) {
-                [callback fail:@"-1" desc:@"SDK is already initializing"];
+                @synchronized (instance) {
+                    [instance.pendingCallbacks addObject:callback];
+                }
             }
             return;
         }
 
-        // 设置为初始化中状态
+        if (currentState == FlameSDKInitStateFailed) {
+            // 初始化失败：提示调用方需要 clear 后重试，不自动穿透重发
+            [FlameLogger e:@"FlameSdk init failed previously. Call FlameSdk.clear() before retry."];
+            if (callback) {
+                [callback fail:ERROR_CODE_NOT_INIT
+                          desc:@"SDK init failed previously. Call FlameSdk.clear() before retry initWithAppId:appKey:callback:"];
+            }
+            return;
+        }
+
+        // Uninitialized -> 设置为初始化中状态
         instance.initState = FlameSDKInitStateInitializing;
     }
 
@@ -220,15 +349,16 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 }
 
 + (BOOL)isInitialized {
-    return [FlameAdapterManager sharedInstance].isInitialized;
+    return [self sharedInstance].initState == FlameSDKInitStateInitialized;
 }
 
-+ (void)checkInitialization {
-    if (![FlameAdapterManager sharedInstance].isInitialized) {
-        @throw [NSException exceptionWithName:NSInternalInconsistencyException
-                                       reason:@"FlameSdk must be initialized before requesting ads!"
-                                     userInfo:nil];
++ (BOOL)checkInitialization {
+    FlameSDKInitState state = [self sharedInstance].initState;
+    if (state != FlameSDKInitStateInitialized) {
+        [FlameLogger e:@"FlameSdk must be initialized before requesting ads!"];
+        return NO;
     }
+    return YES;
 }
 
 - (NSString *)getVersion {
@@ -239,6 +369,15 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 + (id<FlameRewardAd>)createRewardAdWithViewController:(UIViewController *)viewController
                                         placementId:(NSString *)placementId
                                            listener:(id<FlameRewardListener>)listener{
+    // 0. 初始化状态检查
+    if (![self isInitialized]) {
+        [FlameLogger e:@"Create RewardAd Failed: SDK not initialized"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_NOT_INIT desc:@"SDK not initialized, please call initWithAppId:appKey: first"];
+        }
+        return nil;
+    }
+
     // 1. 获取 pId
     NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
 
@@ -269,6 +408,15 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 + (id<FlameInterstitialAd>)createInterstitialAdWithViewController:(UIViewController *)viewController
                                                       placementId:(NSString *)placementId
                                                          listener:(id<FlameInterstitialListener>)listener {
+    // 0. 初始化状态检查
+    if (![self isInitialized]) {
+        [FlameLogger e:@"Create InterstitialAd Failed: SDK not initialized"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_NOT_INIT desc:@"SDK not initialized, please call initWithAppId:appKey: first"];
+        }
+        return nil;
+    }
+
     // 1. 获取 pId
     NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
 
@@ -293,6 +441,15 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 + (id<FlameSplashAd>)createSplashAdWithViewController:(UIViewController *)viewController
                                           placementId:(NSString *)placementId
                                              listener:(id<FlameSplashListener>)listener {
+    // 0. 初始化状态检查
+    if (![self isInitialized]) {
+        [FlameLogger e:@"Create SplashAd Failed: SDK not initialized"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_NOT_INIT desc:@"SDK not initialized, please call initWithAppId:appKey: first"];
+        }
+        return nil;
+    }
+
     // 1. 获取 pId
     NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
 
@@ -321,6 +478,15 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
  */
 + (id<FlameBannerAd>)createBannerAdWithPlacementId:(NSString *)placementId
                                           listener:(id<FlameBannerListener>)listener{
+    // 0. 初始化状态检查
+    if (![self isInitialized]) {
+        [FlameLogger e:@"Create BannerAd Failed: SDK not initialized"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_NOT_INIT desc:@"SDK not initialized, please call initWithAppId:appKey: first"];
+        }
+        return nil;
+    }
+
     // 1. 获取 Express 模式的下游 pId
     NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
 
@@ -351,6 +517,15 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
  */
 + (id<FlameBannerAd>)createSelfRenderBannerAdWithPlacementId:(NSString *)placementId
                                                     listener:(id<FlameBannerListener>)listener{
+    // 0. 初始化状态检查
+    if (![self isInitialized]) {
+        [FlameLogger e:@"Create SelfRender BannerAd Failed: SDK not initialized"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_NOT_INIT desc:@"SDK not initialized, please call initWithAppId:appKey: first"];
+        }
+        return nil;
+    }
+
     // 1. 获取下游 pId
     NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
 
@@ -377,6 +552,15 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 + (id<FlameNativeAd>)createNativeAdWithViewController:(UIViewController *)viewController
                                           placementId:(NSString *)placementId
                                              listener:(id<FlameNativeListener>)listener{
+    // 0. 初始化状态检查
+    if (![self isInitialized]) {
+        [FlameLogger e:@"Create NativeAd Failed: SDK not initialized"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_NOT_INIT desc:@"SDK not initialized, please call initWithAppId:appKey: first"];
+        }
+        return nil;
+    }
+
     // 1. 获取 pId
     NSString *pId = [[FlameConfigManager sharedInstance] getPId:placementId];
 
