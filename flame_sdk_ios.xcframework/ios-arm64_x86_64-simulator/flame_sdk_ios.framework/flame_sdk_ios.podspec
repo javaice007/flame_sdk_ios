@@ -8,7 +8,6 @@ Pod::Spec.new do |s|
 
   s.source           = {
     :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
-    :sha256 => 'b1c8e5a9f0c3e7d2a1b2c3d4e5f67890abcdef1234567890abcdef12345678'
   }
 
   # 商业sdk

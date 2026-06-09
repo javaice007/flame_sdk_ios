@@ -58,9 +58,10 @@
 + (BOOL)isInitialized;
 
 /**
- * 内部校验方法
+ * 内部校验方法，检查 SDK 是否已初始化成功
+ * @return YES 已初始化，NO 未初始化
  */
-+ (void)checkInitialization;
++ (BOOL)checkInitialization;
 
 /**
  * 获取 SDK 版本号

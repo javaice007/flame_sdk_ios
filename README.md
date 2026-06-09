@@ -4,7 +4,7 @@
 
 | 项目 | 内容 |
 |------|------|
-| SDK 版本 | flame_sdk_ios 0.1.8 |
+| SDK 版本 | flame_sdk_ios 0.1.8.1 |
 | 最低部署版本 | iOS 13.0 |
 | 语言 | Objective-C（Swift 通过 Bridging Header 调用） |
 | 集成方式 | CocoaPods |
@@ -26,7 +26,7 @@ source 'https://github.com/CocoaPods/Specs.git'
 
 target 'YourAppTarget' do
   use_frameworks!
-  pod 'flame_sdk_ios', '0.1.8'
+  pod 'flame_sdk_ios', '0.1.8.1'
 end
 
 # Xcode 16 兼容性修复
@@ -73,9 +73,25 @@ pod install
 
 ## 二、SDK 初始化
 
-### 2.1 初始化方法
+### 2.1 初始化状态机
 
-SDK 初始化为同步调用，建议在后台线程执行，通过 Semaphore 控制超时：
+0.1.8.1 引入了完整的状态机管理，SDK 内部维护 4 种初始化状态：
+
+```
+Uninitialized → Initializing → Initialized
+                              ↘ Failed
+```
+
+| 状态 | 再次调用 init 的行为 |
+|------|---------------------|
+| `Uninitialized` | 正常发请求 |
+| `Initializing` | callback 加入等待队列，不重复发请求 |
+| `Initialized` | 直接回调 success |
+| `Failed` | 直接回调 fail，提示需要 `clear()` 后重试 |
+
+### 2.2 同步初始化（推荐）
+
+建议在后台线程执行，通过 Semaphore 控制超时：
 
 ```swift
 func initSdk() {
@@ -105,27 +121,46 @@ func initSdk() {
 }
 ```
 
-### 2.2 带回调的初始化（可选）
+### 2.3 异步初始化（带回调，推荐用于错误处理）
 
 ```swift
-FlameSdk.initWithAppId("YOUR_APP_ID", appKey: "YOUR_APP_KEY") { [weak self] in
-    // success
+FlameSdk.initWithAppId("YOUR_APP_ID", appKey: "YOUR_APP_KEY") {
+    // 初始化成功
+    DispatchQueue.main.async {
+        // 可以开始加载广告
+    }
 } fail: { code, desc in
-    // fail: code, desc
+    // 初始化失败：code 为错误码，desc 为错误描述
+    print("SDK init failed: \(code) - \(desc)")
 }
 ```
 
-### 2.3 核心 API
+> **注意**：回调在主线程执行，可以安全地在回调中更新 UI。
+
+### 2.4 初始化失败后的重试
+
+初始化失败后，**必须先调用 `FlameSdk.clear()` 再重试**，否则 SDK 会直接返回 fail：
+
+```swift
+FlameSdk.clear()
+FlameSdk.initWithAppId("YOUR_APP_ID", appKey: "YOUR_APP_KEY") {
+    // success
+} fail: { code, desc in
+    // fail
+}
+```
+
+### 2.5 核心 API
 
 | 方法 | 说明 |
 |------|------|
-| `FlameSdk.clear()` | 清除缓存数据，初始化前调用 |
+| `FlameSdk.clear()` | 清除缓存数据，重置初始化状态；初始化前或失败重试前调用 |
 | `FlameSdk.setDebug(true)` | 开启调试日志 |
 | `FlameSdk.initWithAppId(_:appKey:)` | 同步初始化 |
 | `FlameSdk.initWithAppId(_:appKey:callback:)` | 异步初始化（带回调） |
 | `FlameSdk.isInitialized()` | 检查是否已初始化 |
 
-> **注意**：必须在初始化成功后才能加载任何广告。
+> **注意**：必须在初始化成功后才能加载任何广告。未初始化时创建广告不会 Crash，但会通过 `onAdError` 回调通知错误。
 
 ---
 
@@ -319,7 +354,7 @@ func onAdError(_ code: String, desc: String) {
 |---------|------|---------|
 | `onAdLoaded()` | 广告加载成功 | Express 模式广告就绪，或 SelfRender 模式素材准备完成前的加载成功回调 |
 | `onAdMaterialReady(_ materials:)` | 素材就绪（SelfRender 模式） | 自渲染素材加载完成 |
-| `onAdError(code:desc:)` | 加载失败 | 加载异常 |
+| `onAdError(code:desc:)` | 加载失败 | 加载异常，或 SDK 未初始化 |
 | `onAdShow()` | 广告展示 | Express 视图展示或 SelfRender 绑定后展示 |
 | `onAdClicked()` | 用户点击 | 用户点击广告区域 |
 | `onAdClosed()` | 广告关闭 | 点击关闭按钮或广告关闭 |
@@ -353,7 +388,7 @@ func onAdError(_ code: String, desc: String) {
 | `containerView` | 是 | 当前自渲染 Banner 的宿主容器，用于绑定上下文和默认点击区域兜底 |
 | `mediaSlotView` | 否 | 挂载媒体视图，视频广告建议提供 |
 | `logoSlotView` | 否 | 挂载广告平台 logo 视图，优先显示 `netWorkOptionView` |
-| `adMarkSlotView` | 否 | 挂载广告标识视图，用于兜底显示“广告”标记，不建议省略 |
+| `adMarkSlotView` | 否 | 挂载广告标识视图，用于兜底显示"广告"标记，不建议省略 |
 | `closeSlotView` | 否 | 挂载关闭按钮 |
 | `clickableViews` | 否 | 显式声明可点击区域，建议传入业务点击区，如容器、CTA 按钮等 |
 
@@ -415,7 +450,7 @@ func showInterstitial() {
 | 回调方法 | 说明 |
 |---------|------|
 | `onAdLoaded()` | 广告就绪 |
-| `onAdError(code:desc:)` | 加载失败 |
+| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
 | `onAdShow()` | 开始展示 |
 | `onAdClicked()` | 用户点击 |
 | `onAdClosed()` | 广告关闭 |
@@ -460,7 +495,7 @@ func showRewardAd() {
 | 回调方法 | 说明 |
 |---------|------|
 | `onAdLoaded()` | 视频就绪 |
-| `onAdError(code:desc:)` | 加载失败 |
+| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
 | `onAdShow()` | 视频开始播放 |
 | `onAdClicked()` | 用户点击 |
 | `onAdReward(userId:userCustomData:transId:)` | **发放奖励（关键回调）** |
@@ -515,7 +550,7 @@ func showSplashAd() {
 | `onAdLoaded()` | 广告就绪 |
 | `onAdShow()` | 广告展示 |
 | `onAdClicked()` | 用户点击 |
-| `onAdError(code:desc:)` | 加载失败 |
+| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
 | `onAdClosed()` | 广告关闭 |
 | `onAdLoadTimeout()` | 加载超时（开屏专用） |
 | `onAdReward(userId:userCustomData:)` | 奖励回调 |
@@ -565,7 +600,7 @@ func showNativeAd(in containerView: UIView) {
 | 回调方法 | 说明 |
 |---------|------|
 | `onAdLoaded()` | 广告缓存就绪 |
-| `onAdError(code:desc:)` | 加载失败 |
+| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
 | `onAdShow()` | 渲染到容器 |
 | `onAdClicked()` | 用户点击 |
 | `onAdClosed()` | 广告关闭 |
@@ -587,7 +622,40 @@ func onAdError(_ code: String, desc: String) {
 
 ---
 
-## 五、广告生命周期管理
+## 五、错误处理
+
+### 5.1 错误码
+
+| 错误码常量 | 值 | 说明 |
+|-----------|-----|------|
+| `ERROR_CODE_NOT_INIT` | `14000` | SDK 未初始化 |
+| `ERROR_CODE_INVALID_APP_ID` | `14001` | 无效的 App ID 或 App Key |
+| `ERROR_CODE_INVALID_PARAM` | `14002` | 参数错误（如宽高、用户信息等非法） |
+| `ERROR_CODE_INVALID_AD_PLACEMENT` | `14004` | 广告位不存在 |
+| `ERROR_CODE_NETWORK_ERROR` | `15000` | 网络错误 |
+
+### 5.2 未初始化时的行为
+
+0.1.8.1 中，**在 SDK 未初始化时创建广告不会导致 Crash**。SDK 会：
+
+1. 通过 `onAdError(code: "14000", desc: "...")` 回调通知调用方
+2. 返回 `nil`，不创建无效广告对象
+
+建议在所有广告 Listener 中正确处理 `onAdError`：
+
+```swift
+func onAdError(_ code: String, desc: String) {
+    if code == "14000" {
+        // SDK 未初始化，应先初始化 SDK
+        return
+    }
+    // 其他错误处理
+}
+```
+
+---
+
+## 六、广告生命周期管理
 
 所有广告格式遵循统一的生命周期：
 
@@ -610,16 +678,27 @@ func onAdError(_ code: String, desc: String) {
 
 ---
 
-## 六、常见问题
+## 七、常见问题
 
 ### Q1：SDK 初始化超时（10秒）
 可能原因：网络不通或 AppId/AppKey 错误。建议：
 - 检查网络连接
 - 确认 `NSAllowsArbitraryLoads` 已在 Info.plist 中配置
 - 使用 `FlameSdk.setDebug(true)` 查看详细日志
+- 使用异步初始化回调获取具体的错误码和描述
 
-### Q2：Swift 无法捕获 SDK Objective-C 异常
-Swift 的 `do-catch` 无法捕获 `NSException`，若网络异常时 SDK 内部抛出 Objective-C 异常会导致 Crash。建议确保网络正常后再初始化，或使用异步回调版本的初始化接口。
+### Q2：初始化失败后再次调用 init 无效
+0.1.8.1 中，初始化失败后 SDK 进入 `Failed` 状态，此时再次调用 init 会直接返回 fail，**不会自动重试**。需要先调用 `FlameSdk.clear()` 重置状态后再重新初始化。
+
+```swift
+// 正确的重试流程
+FlameSdk.clear()
+FlameSdk.initWithAppId("YOUR_APP_ID", appKey: "YOUR_APP_KEY") {
+    // success
+} fail: { code, desc in
+    // 处理失败
+}
+```
 
 ### Q3：Banner 广告加载成功但 View 为空
 `retrieveAdView()` 需在 `onAdLoaded` 回调后延迟约 100ms 调用，SDK 内部需要时间完成 View 树构建：
@@ -632,18 +711,21 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
 ### Q4：Banner SelfRender 模式下 `retrieveAdView()` 返回 nil
 SelfRender 模式下请使用 `onAdMaterialReady(_:)` 回调获取素材，而非 `retrieveAdView()`。素材获取后通过 `FlameBannerAdRenderSlots` 组装你的布局，并调用 `bindMaterial(atIndex:slots:)` 绑定展示追踪、点击区域和合规视图。
 
-### Q7：Banner SelfRender 模式创建方法
-使用 `createSelfRenderBannerAdWithPlacementId(_:listener:)` 创建自渲染 Banner，**不需要额外调用 `setRenderType`**。渲染模式在创建时即确定，不可更改。
-
 ### Q5：开屏广告 `show()` 参数类型
 开屏广告的 `show()` 传入 `UIWindow`，而非 `UIViewController`，这与其他广告格式不同，请注意区分。
 
 ### Q6：Xcode 16 构建报错（Script Sandboxing）
 在 `Podfile` 的 `post_install` hook 中设置 `ENABLE_USER_SCRIPT_SANDBOXING = 'NO'`（参考第一节配置）。
 
+### Q7：Banner SelfRender 模式创建方法
+使用 `createSelfRenderBannerAdWithPlacementId(_:listener:)` 创建自渲染 Banner，**不需要额外调用 `setRenderType`**。渲染模式在创建时即确定，不可更改。
+
+### Q8：多个页面同时调用 init 会怎样
+0.1.8.1 中，`Initializing` 状态下再次调用 init，callback 会被加入等待队列。当初始化完成（成功或失败）时，所有等待中的 callback 都会收到对应的结果回调。**多个调用方可以安全地同时调用 `initWithAppId:appKey:callback:`**，无需自行做互斥处理。
+
 ---
 
-## 七、测试 AppId 与 AppKey
+## 八、测试 AppId 与 AppKey
 
 | 参数 | 值 |
 |------|------|
@@ -665,9 +747,9 @@ SelfRender 模式下请使用 `onAdMaterialReady(_:)` 回调获取素材，而�
 
 ---
 
-## 八、Info.plist 附加配置
+## 九、Info.plist 附加配置
 
-### 8.1 SKAdNetwork IDs
+### 9.1 SKAdNetwork IDs
 
 苹果 SKAdNetwork 归因框架要求在 Info.plist 中声明所有合作广告网络的 ID。**缺少某个 ID 将导致该网络广告转化无法归因，广告主出价降低，进而影响 eCPM 和填充率。**
 
@@ -1151,7 +1233,7 @@ SelfRender 模式下请使用 `onAdMaterialReady(_:)` 回调获取素材，而�
 
 ---
 
-### 8.2 LSApplicationQueriesSchemes
+### 9.2 LSApplicationQueriesSchemes
 
 为提高 Flame ADX 的广告收益效果，需声明可查询的第三方 App scheme，用于广告点击 DeepLink 跳转及用户人群定向，**有助于提升电商类高价广告的填充率和 eCPM**。
 
@@ -1216,3 +1298,33 @@ SelfRender 模式下请使用 `onAdMaterialReady(_:)` 回调获取素材，而�
   <string>tongyi</string>
 </array>
 ```
+
+---
+
+## 十、0.1.8 → 0.1.8.1 升级指南
+
+### 接入方式
+
+```ruby
+# Podfile 中将版本号改为 0.1.8.1 即可
+pod 'flame_sdk_ios', '0.1.8.1'
+```
+
+### API 变更
+
+**无破坏性变更**。所有 API 接口、回调协议、集成配置均与 0.1.8 完全一致，无需修改对接代码。
+
+### 行为变更
+
+| 变更项 | 0.1.8 | 0.1.8.1 |
+|--------|-------|---------|
+| 未初始化时创建广告 | `@throw` NSException（Swift 无法捕获，导致 Crash） | `onAdError("14000", ...)` 回调 + 返回 nil |
+| 初始化失败后再次 init | 自动重新发请求（无限制） | 直接返回 fail，需先 `clear()` |
+| Initializing 状态再次 init | 返回 fail（"SDK is already initializing"） | callback 加入等待队列 |
+| 同步初始化 `isInitialized` | 依赖 AdapterManager 状态 | SDK 内部状态机判断 |
+
+### 建议升级原因
+
+1. **消除 Crash 风险**：未初始化时不再 Crash，异常数据不再导致类型转换崩溃
+2. **初始化可靠性**：状态机防止重复请求、请求去重防止过期回调
+3. **错误可观测性**：通过 `onAdError` 回调和异步初始化回调获取具体错误信息
