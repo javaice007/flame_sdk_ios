@@ -2,11 +2,11 @@ PODS:
   - AnyThinkiOS (6.5.71):
     - AnyThinkiOS/AnyThinkSDK (= 6.5.71)
   - AnyThinkiOS/AnyThinkSDK (6.5.71)
-  - OpenSSL-Universal (1.1.180)
+  - OpenSSL-Universal (3.6.2000)
 
 DEPENDENCIES:
   - AnyThinkiOS (= 6.5.71)
-  - OpenSSL-Universal (= 1.1.180)
+  - OpenSSL-Universal (~> 3.6)
 
 SPEC REPOS:
   trunk:
@@ -15,8 +15,8 @@ SPEC REPOS:
 
 SPEC CHECKSUMS:
   AnyThinkiOS: f17f8f281448ae457fbb95cdba3fc9d404ac0546
-  OpenSSL-Universal: 1aa4f6a6ee7256b83db99ec1ccdaa80d10f9af9b
+  OpenSSL-Universal: ecee7b138fa75a74ecf00d7ffd248fb584739b9e
 
-PODFILE CHECKSUM: 9b205f04b35be370107f7c6519023e25ce5a25f9
+PODFILE CHECKSUM: 4d49ff22706dbe8022ba71b9d8ff58b3deb7daab
 
 COCOAPODS: 1.16.2
