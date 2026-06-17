@@ -16,18 +16,22 @@
 #import "FlameMediationRouter.h"
 
 // ============================================================
-// 构建宏隔离：TK / TB 互斥变体
-//   FLAME_BUILD_TK=1 → 只注册 FlameTKProvider（默认 TK 包）
-//   FLAME_BUILD_TB=1 → 只注册 FlameTBProvider（TB 包）
-//   两者都未定义时 → 按 TK 处理（源码开发兼容）
+// 构建宏隔离：TK / TB / CORE 三变体
+//   FLAME_BUILD_TK=1   → 只注册 FlameTKProvider（默认 TK 包）
+//   FLAME_BUILD_TB=1   → 只注册 FlameTBProvider（TB 包）
+//   FLAME_BUILD_CORE=1 → Thin Core 包：不注册任何内置 Provider，
+//                        平台源码插件由 podspec source_files 编译进接入方 App 后
+//                        自行注册（Step 2 实现）；create*Ad 仍走 Router.currentProvider。
+//   三个宏都未定义时 → 按 TK 处理（源码开发兼容）
 //   正式构建由 xcFramework_build.sh 显式注入宏，不依赖默认值
 // ============================================================
 #if defined(FLAME_BUILD_TK) && defined(FLAME_BUILD_TB)
 #error "FLAME_BUILD_TK and FLAME_BUILD_TB cannot both be defined"
 #endif
 
-// 默认 TK 条件：显式 TK，或两个宏都未定义（源码开发兼容）
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+// 默认 TK 条件：显式 TK，或三个宏都未定义（源码开发兼容）。
+// CORE 模式下显式排除，确保 Core binary 不直接 import FlameTKProvider。
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
 #import "FlameTKProvider.h"
 #endif
 
@@ -352,7 +356,13 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     dispatch_once(&onceToken, ^{
         // 构建变体决定注册哪些 Provider，不在 create*Ad 中做平台判断
         // Provider 选择仍通过 Registry → Router
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+        //
+        // CORE 变体（FLAME_BUILD_CORE=1）：此处不注册任何内置 Provider。
+        //   Core binary 不含 TK/TB 平台源码，Provider 由 Step 2 的平台源码插件
+        //   （podspec source_files）在接入方 App 编译时自动注册。
+        //   若 Core binary 单独运行（无插件），create*Ad 会走 Router.currentProvider=nil
+        //   分支，返回 "No active provider" 错误，符合预期。
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
         // TK 变体：注册 FlameTKProvider（TK / TopOn / AnyThink）
         FlameTKProvider *tkProvider = [[FlameTKProvider alloc] init];
         [[FlameMediationRegistry sharedRegistry] registerProvider:tkProvider];

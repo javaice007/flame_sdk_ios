@@ -16,11 +16,13 @@
 // ============================================================
 // 平台源码宏隔离
 //   isInitialized / checkInitialization / sharedInstance 等状态方法在
-//   TK / TB 两个变体中都必须存在（ads/*Impl.m 依赖 checkInitialization）。
-//   AnyThinkSDK 依赖、initSDK、setDebug 仅 TK 变体编译。
+//   TK / TB / CORE 三个变体中都必须存在（ads/*Impl.m 依赖 checkInitialization）。
+//   AnyThinkSDK 依赖、initSDKWithAppId、setDebug 的 TK 分支仅 TK 变体编译；
+//   CORE 变体下本类退化为纯中立骨架（checkInitialization 委托 FlameSdk，
+//   setDebug 仅打日志），不 import 也不调用 AnyThink。
 //   广告创建工厂方法已删除，统一走 Provider 链路。
 // ============================================================
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
 #import <AnyThinkSDK/AnyThinkSDK.h>
 #endif
 
@@ -52,7 +54,7 @@
     return self;
 }
 
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
 
 + (void)initSDKWithAppId:(NSString *)appId
                   appKey:(NSString *)appKey
@@ -112,7 +114,7 @@
 
 + (void)setDebug:(BOOL)isDebug {
     // 平台中立：debug 开关的实际行为由各变体自己处理
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
     // TK 变体：开启 AnyThinkSDK 日志
     [ATAPI setLogEnabled:YES];
 #else

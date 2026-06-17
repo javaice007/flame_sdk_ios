@@ -8,6 +8,11 @@
 # 构建 TB 变体：
 #   FLAME_SDK_VARIANT=tb pod install
 #
+# 构建 CORE 变体（Thin Core Binary，Phase 5A.10 Step 1）：
+#   FLAME_SDK_VARIANT=core pod install
+#   或 ./xcFramework_build.sh core
+#   仅含平台中立代码，不引入任何三方广告 SDK。
+#
 # 注意：
 #   这是 SDK 工程构建期依赖，不是 Demo 接入 Podfile。
 #   不要在这里 pod 'flame_sdk_ios' 或 pod 'flame_sdk_ios_tb'。
@@ -19,8 +24,8 @@
 
 variant = ENV.fetch('FLAME_SDK_VARIANT', 'tk').downcase
 
-unless ['tk', 'tb'].include?(variant)
-  raise "❌ Invalid FLAME_SDK_VARIANT=#{variant}. Use tk or tb."
+unless ['tk', 'tb', 'core'].include?(variant)
+  raise "❌ Invalid FLAME_SDK_VARIANT=#{variant}. Use tk, tb or core."
 end
 
 puts "🔥 Flame SDK build variant: #{variant}"
@@ -52,6 +57,16 @@ target 'flame_sdk_ios' do
     # flame_sdk_ios_tb.podspec 分发期不能再声明 ToBid-iOS-RC，
     # 因为 build/tb/flame_sdk_ios.xcframework 已经静态内置 WindMill。
     pod 'ToBid-iOS-RC', '5.5.6'
+  end
+
+  if variant == 'core'
+    # CORE / Thin Core Binary 构建期依赖（Phase 5A.10 Step 1）
+    # ⚠️ 绝对红线：Core binary 只含平台中立代码（core/ads/utils/mediation 根目录），
+    #    绝不能引入 AnyThink / ToBid / WindMill / Sigmob / 任何广告源 SDK。
+    #    TK/TB 平台源码（adapter/tk, adapter/tb, mediation/tk, mediation/tb）
+    #    通过 FLAME_BUILD_CORE 宏整体置空，不参与 Core 编译。
+    #    因此此处只有 OpenSSL（Flame core 加密需要）。
+    # 有意留空：不声明任何三方广告 SDK 依赖。
   end
 
   target 'flame_sdk_iosTests' do

@@ -2,24 +2,27 @@
 set -e
 
 # ============================================================
-# xcFramework_build.sh — 双包互斥构建脚本
+# xcFramework_build.sh — 多变体互斥构建脚本
 # ------------------------------------------------------------
 # 用法：
 #   ./xcFramework_build.sh        # 默认 = tk
 #   ./xcFramework_build.sh tk     # 构建 TK 默认包 → build/tk/flame_sdk_ios.xcframework
 #   ./xcFramework_build.sh tb     # 构建 TB 包     → build/tb/flame_sdk_ios.xcframework
+#   ./xcFramework_build.sh core   # 构建 Core 包  → build/core/flame_sdk_ios.xcframework
+#                                 #   （Phase 5A.10 Step 1：平台中立 Thin Core Binary，
+#                                 #    不含 AnyThink/ToBid/WindMill/任何广告源 SDK）
 #
-# 依赖入口是唯一的 Podfile，通过环境变量 FLAME_SDK_VARIANT=tk|tb 切换构建依赖。
-# 两产物 framework/module 名均为 flame_sdk_ios（同名，接入方 import 不变）
-# 两个 Pod 互斥，不能同时接入（同 module 名天然保证）
+# 依赖入口是唯一的 Podfile，通过环境变量 FLAME_SDK_VARIANT=tk|tb|core 切换构建依赖。
+# 各产物 framework/module 名均为 flame_sdk_ios（同名，接入方 import 不变）
+# 各变体互斥，不能同时接入（同 module 名天然保证）
 # ============================================================
 
 # =========================
 # 变体解析
 # =========================
 VARIANT="${1:-tk}"
-if [ "$VARIANT" != "tk" ] && [ "$VARIANT" != "tb" ]; then
-  echo "❌ 未知变体: $VARIANT（仅支持 tk / tb）"
+if [ "$VARIANT" != "tk" ] && [ "$VARIANT" != "tb" ] && [ "$VARIANT" != "core" ]; then
+  echo "❌ 未知变体: $VARIANT（仅支持 tk / tb / core）"
   exit 1
 fi
 
@@ -31,9 +34,13 @@ echo "=========================================="
 if [ "$VARIANT" = "tk" ]; then
   BUILD_MACRO="FLAME_BUILD_TK=1"
   VARIANT_OUTPUT_SUBDIR="tk"
-else
+elif [ "$VARIANT" = "tb" ]; then
   BUILD_MACRO="FLAME_BUILD_TB=1"
   VARIANT_OUTPUT_SUBDIR="tb"
+else
+  # core：注入 FLAME_BUILD_CORE=1，不注入 TK/TB
+  BUILD_MACRO="FLAME_BUILD_CORE=1"
+  VARIANT_OUTPUT_SUBDIR="core"
 fi
 
 # =========================
@@ -139,6 +146,7 @@ if [ -n "$TK_BINARY" ]; then
 
   # 统一污染检测模式：TK 变体不应包含任何三方广告源 SDK 符号
   # TB 变体不应包含 AnyThink / TK adapter 符号
+  # CORE 变体不应包含任何三方广告 SDK 符号（最严格：连 AT* / FlameTKProvider 都不能有）
   if [ "$VARIANT" = "tk" ]; then
     # TK 变体：Flame 源码只依赖 AnyThinkSDK，不应静态嵌入任何三方广告源 SDK
     # 构建期 Podfile 只含 OpenSSL + AnyThinkiOS，运行时广告源依赖在 podspec 分发期声明
@@ -168,7 +176,7 @@ if [ -n "$TK_BINARY" ]; then
     ANYTHINK_COUNT=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
     ANYTHINK_COUNT=${ANYTHINK_COUNT:-0}
     echo "   （参考）AnyThink AT* 符号数: ${ANYTHINK_COUNT}（Flame adapter 胶水层引用，正常）"
-  else
+  elif [ "$VARIANT" = "tb" ]; then
     # TB 变体应含 WindMill（已内置），不应含 TK adapter / FlameTKProvider
     WINDMILL_COUNT=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds")
     WINDMILL_COUNT=${WINDMILL_COUNT:-0}
@@ -187,6 +195,37 @@ if [ -n "$TK_BINARY" ]; then
     else
       echo "✅ OK: TB 二进制无 AnyThink AT* 符号"
     fi
+  else
+    # CORE 变体（Phase 5A.10 Step 1）：最严格校验
+    # Core binary 必须零三方广告 SDK 符号，包括：
+    #   - AnyThink (AT*)：TK 平台依赖，Core 不应含
+    #   - WindMill / Wind / WindFoundation：TB 平台依赖，Core 不应含
+    #   - 广告源 SDK：Baidu/GDT/KS/FSUnion/Sigmob/AdGain/BU/CSJ，Core 不应含
+    #   - TK/TB 平台 Provider 与 Adapter 类：FlameTKProvider/FlameTBProvider/At*Adapter/TbRewardAdapter
+    CORE_POLL_AT=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT|AnyThink")
+    CORE_POLL_WIND=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_WindMill|_OBJC_CLASS_\\\$_WindFoundation|_OBJC_CLASS_\\\$_WindSDK|WindMillSDK|WindMillAds")
+    CORE_POLL_ADS=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob|_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ")
+    CORE_POLL_PROVIDER=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTKProvider|_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_TbRewardAdapter")
+    CORE_POLL_AT=${CORE_POLL_AT:-0}
+    CORE_POLL_WIND=${CORE_POLL_WIND:-0}
+    CORE_POLL_ADS=${CORE_POLL_ADS:-0}
+    CORE_POLL_PROVIDER=${CORE_POLL_PROVIDER:-0}
+    CORE_TOTAL_POLLUTION=$((CORE_POLL_AT + CORE_POLL_WIND + CORE_POLL_ADS + CORE_POLL_PROVIDER))
+
+    echo "   CORE 污染符号统计：AnyThink=${CORE_POLL_AT} Wind=${CORE_POLL_WIND} 广告源=${CORE_POLL_ADS} 平台Provider/Adapter=${CORE_POLL_PROVIDER}"
+    if [ "${CORE_TOTAL_POLLUTION}" -gt 0 ]; then
+      echo "❌ 严重：CORE 二进制含三方符号（共 ${CORE_TOTAL_POLLUTION} 个），不再是 thin core"
+      echo "    请检查：1) FLAME_BUILD_CORE 是否正确注入（platform 文件应整体置空）"
+      echo "           2) adapter/tk, adapter/tb, mediation/tk, mediation/tb 守卫是否含 !defined(FLAME_BUILD_CORE)"
+      echo "           3) FlameAdapterManager.m 的 AnyThink import 是否被 CORE 守卫排除"
+      echo "           4) Podfile core 变体是否误引入 AnyThink/ToBid"
+    else
+      echo "✅ OK: CORE 二进制零三方广告 SDK 符号（AnyThink/WindMill/广告源/平台Provider/Adapter 均无）"
+    fi
+
+    # otool -L 动态依赖复查：Core 不应依赖 AnyThink/WindMill framework
+    echo "   （参考）otool -L 动态依赖复查："
+    otool -L "$TK_BINARY" 2>/dev/null | grep -iE "AnyThink|WindMill|WindSDK|WindFoundation|ToBid|Sigmob" && echo "   ⚠️  发现三方动态依赖" || echo "   ✅ 无 AnyThink/WindMill/ToBid 动态依赖"
   fi
 
   # 资源 bundle 污染检查（三方 SDK 资源不应出现在 framework 内部）
