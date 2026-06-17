@@ -11,6 +11,7 @@
 
 #import "FlameTBProvider.h"
 #import "FlameLogger.h"
+#import "FlameMediationRegistry.h"
 #import <WindMillSDK/WindMillSDK.h>
 #import "TbRewardAdapter.h"
 #import "FlameRewardAd.h"
@@ -23,6 +24,22 @@
 static NSString * const kFlamePlatformTB = @"tb";
 
 @implementation FlameTBProvider
+
+#pragma mark - 插件自动注册（仅 Thin Core 插件模式启用）
+
+// FLAME_PLUGIN_TB 仅由 research/podspecs/flame_sdk_ios.thin_core.tb.podspec 的
+// pod_target_xcconfig 注入。旧双二进制构建（xcFramework_build.sh tb）只定义
+// FLAME_BUILD_TB，不定义 FLAME_PLUGIN_TB，因此此处 +load 不会在旧 TB binary 中触发，
+// 避免 Core binary + 旧 TB binary 同时存在时重复注册。
+#if defined(FLAME_PLUGIN_TB)
++ (void)load {
+    @autoreleasepool {
+        FlameTBProvider *provider = [[FlameTBProvider alloc] init];
+        [[FlameMediationRegistry sharedRegistry] registerProvider:provider];
+        [FlameLogger i:[NSString stringWithFormat:@"FlameTBProvider: +load 自动注册完成 (plugin 模式, platformCode=%@)", [provider platformCode]]];
+    }
+}
+#endif // FLAME_PLUGIN_TB
 
 - (NSString *)platformCode {
     return kFlamePlatformTB;
