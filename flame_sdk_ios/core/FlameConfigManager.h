@@ -14,6 +14,7 @@
 
 - (void)updateAppWithAppId:(NSString *)appId appKey:(NSString *)appKey callback:(id<FlameCallback>)callback;
 
+- (NSString *)getPt;
 - (NSString *)getAId;
 - (NSString *)getAKey;
 - (NSString *)getPId:(NSString *)flamePlacementId;

@@ -99,28 +99,31 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
 
 - (void)updateAppWithAppId:(NSString *)appId appKey:(NSString *)appKey callback:(id<FlameCallback>)callback {
     FlameConfigLocalStorage *storage = [FlameConfigLocalStorage sharedInstance];
-    NSString *aId = [storage getAId];
-    NSString *aKey = [storage getAKey];
+
+    // 1. 先读取本地缓存，判断完整性，但不立即返回 success
+    //    缓存完整性必须包含 pt + aId + aKey + pMap
+    NSString *cachedPt = [storage getPt];
+    NSString *cachedAId = [storage getAId];
+    NSString *cachedAKey = [storage getAKey];
     id pMapObj = [storage getPMap];
 
-    NSDictionary *pMap = nil;
+    NSDictionary *cachedPMap = nil;
     if ([pMapObj isKindOfClass:[NSDictionary class]]) {
-        pMap = (NSDictionary *)pMapObj;
+        cachedPMap = (NSDictionary *)pMapObj;
     }
 
-    if (aId.length > 0 && aKey.length > 0 && pMap.count > 0) {
-        [FlameLogger i:@"load ad from local cache......"];
+    BOOL cacheComplete = (cachedPt.length > 0
+                          && cachedAId.length > 0
+                          && cachedAKey.length > 0
+                          && cachedPMap.count > 0);
 
-        @synchronized (self) {
-            self.appEntity = [[FlameAppEntity alloc] init];
-            self.appEntity.aId = aId;
-            self.appEntity.aKey = aKey;
-            [self.appEntity.pIds addEntriesFromDictionary:pMap];
-        }
-        if (callback) [callback success];
-        return;
+    if (cacheComplete) {
+        [FlameLogger i:[NSString stringWithFormat:@"Local cache exists (pt=%@), will request remote server first", cachedPt]];
+    } else {
+        [FlameLogger i:@"No complete local cache, will request remote server"];
     }
 
+    // 2. 发起后台 init 请求（每次冷启动优先请求网络）
     [FlameLogger i:@"load ad from remote server......"];
 
     // 先取消可能残留的旧请求（必须在 generation 递增之前，因为 cancel 内部也会递增 generation）
@@ -186,14 +189,43 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
         [FlameLogger i:@"server response received"];
         [FlameLogger i:[NSString stringWithFormat:@"[DIAG] ConfigManager extract done. cb=%p RC=%lu, gen=%llu", (void *)cb, (unsigned long)CFGetRetainCount((__bridge CFTypeRef)cb), currentGeneration]];
 
-        // 类型校验: 确保 response 是 NSDictionary
+        // 网络错误处理
         if (error) {
             [FlameLogger e:[NSString stringWithFormat:@"remote server error=%@", error.localizedDescription]];
-            if (cb) {
-                [FlameLogger i:[NSString stringWithFormat:@"[DIAG] About to call callback.fail on %p", (void *)cb]];
-                [cb fail:[@(error.code) stringValue]
-                  desc:error.localizedDescription];
-                [FlameLogger i:[NSString stringWithFormat:@"[DIAG] callback.fail returned for %p", (void *)cb]];
+
+            // 网络失败 → fallback 完整缓存
+            if (cacheComplete) {
+                [FlameLogger w:[NSString stringWithFormat:@"Config request failed, fallback to local cache, pt=%@", cachedPt]];
+
+                FlameAppEntity *cachedEntity = [[FlameAppEntity alloc] init];
+                cachedEntity.pt = cachedPt;
+                cachedEntity.aId = cachedAId;
+                cachedEntity.aKey = cachedAKey;
+                [cachedEntity.pIds addEntriesFromDictionary:cachedPMap];
+
+                // 读取可选的 cv 和 cachedAt
+                cachedEntity.cv = [storage getCV];
+                NSTimeInterval ts = [storage getCachedAt];
+                if (ts > 0) {
+                    cachedEntity.cachedAt = [NSDate dateWithTimeIntervalSince1970:ts];
+                }
+
+                @synchronized (self) {
+                    self.appEntity = cachedEntity;
+                }
+
+                if (cb) {
+                    [cb success];
+                }
+            } else {
+                // 网络失败 + 无完整缓存 → 初始化失败
+                [FlameLogger e:@"Config request failed and no complete local cache available"];
+                if (cb) {
+                    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] About to call callback.fail on %p", (void *)cb]];
+                    [cb fail:[@(error.code) stringValue]
+                      desc:error.localizedDescription];
+                    [FlameLogger i:[NSString stringWithFormat:@"[DIAG] callback.fail returned for %p", (void *)cb]];
+                }
             }
             return;
         }
@@ -263,10 +295,15 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
                 self.appEntity = entity;
             }
 
+            // 网络成功 → 使用最新配置，更新缓存（含 cv 和 cachedAt）
+            NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
             [storage putWithPt:entity.pt
                            aId:entity.aId
                           aKey:entity.aKey
-                          pMap:entity.pIds];
+                          pMap:entity.pIds
+                             cv:entity.cv
+                      cachedAt:now];
+            entity.cachedAt = [NSDate dateWithTimeIntervalSince1970:now];
             if (cb) {
                 [cb success];
             }
@@ -281,6 +318,10 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.0";
     @synchronized (self) {
         self.currentTask = task;
     }
+}
+
+- (NSString *)getPt {
+    return self.appEntity ? self.appEntity.pt : nil;
 }
 
 - (NSString *)getAId {

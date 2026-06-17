@@ -55,6 +55,10 @@ playground.xcworkspace
 # https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
 #
 Pods/
+
+# 根目录 Podfile.lock 是 pod install 临时产物（随 FLAME_SDK_VARIANT 变化，TK/TB 互斥），
+# 不作为最终交付文件，不提交。
+/Podfile.lock
 #
 # Add this line if you want to avoid checking in source code from the Xcode workspace
 *.xcworkspace
@@ -90,6 +94,9 @@ fastlane/test_output
 
 iOSInjectionProject/
 
+# Doc (local only, not committed)
+doc/tobid_doc/
+
 # macOS
 .DS_Store
 
@@ -98,3 +105,10 @@ iOSInjectionProject/
 *.swp
 *.bak
 *.orig
+
+# Runtime/debug logs
+log.log
+*.log
+
+# Binary archives (docs are tracked as markdown, not zips)
+*.zip

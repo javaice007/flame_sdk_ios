@@ -18,13 +18,14 @@
 
 - (instancetype)initWithViewController:(UIViewController *)viewController
                            placementId:(NSString *)placementId
-                              listener:(id<FlameNativeListener>)listener{
+                              listener:(id<FlameNativeListener>)listener
+                              adapter:(id<FlameNativeAdapterProtocol>)adapter{
     self = [super init];
     if (self) {
         _viewController = viewController;
         _placementId = [placementId copy];
         _listener = listener;
-        _adapter = [FlameAdapterManager createNativeAdapter:viewController atPlacementId:placementId listener:listener];
+        _adapter = adapter;
         _renderType = FlameNativeRenderTypeSelfRender;
         [_adapter setRenderType:_renderType];
     }

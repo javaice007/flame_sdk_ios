@@ -1,8 +1,8 @@
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '0.1.8.4'
-  s.summary          = 'Flame iOS Ad SDK'
-  s.description      = 'Flame iOS advertising aggregation SDK'
+  s.version          = '0.1.8.5'
+  s.summary          = 'Flame iOS Ad SDK - TK Edition'
+  s.description      = 'Flame iOS advertising aggregation SDK, TK / TopOn / AnyThink edition.'
   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
   s.author           = { 'flame' => 'flame@toowe.com' }
 
@@ -16,16 +16,15 @@ Pod::Spec.new do |s|
     :text => 'Copyright Flame'
   }
 
-  # 3. 平台要求
-  s.ios.deployment_target = '12.0'
+  # 平台要求
+  s.ios.deployment_target = '13.0'
   s.swift_version = '5.0'
 
-  # Binary SDK
-  s.vendored_frameworks = '**/flame_sdk_ios.xcframework'
+  # Binary SDK — TK 默认变体产物（仅含 TK 能力，不含 ToBid/WindMill）
+  s.vendored_frameworks = 'build/tk/flame_sdk_ios.xcframework'
 
   # ========= AD Core =========
   s.dependency 'OpenSSL-Universal', '~> 3.6'
-  
   s.dependency 'AnyThinkiOS','6.5.71'
   #Anythink Kuying Adx SDK(necessary)
   s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter','6.5.72.2.1'
@@ -37,6 +36,7 @@ Pod::Spec.new do |s|
   s.dependency 'AnyThinkMediationFunlinkAdapter','2.9.0.1.2.2.0'
   s.dependency 'AnyThinkMediationBeiZiAdapter','5.5.0.3.2.0'
   s.dependency 'AnyThinkMediationKuaiShouAdapter','5.4.10.1.2.0'
+  # Sigmob Adapter: TK 默认版使用标准版（含 SigmobAd-iOS）
   s.dependency 'AnyThinkMediationSigmobAdapter','4.20.12.2.0'
   s.dependency 'AnyThinkMediationTTAdapter_Mix','7.6.0.4.2.0'
   s.dependency 'AnyThinkMediationGDTAdapter','4.15.90.2.0'
@@ -48,7 +48,9 @@ Pod::Spec.new do |s|
   # 飞梭
   s.dependency 'FSUnionAdSDK', '1.0.8.0'
 
-  
+  # TK 默认包不依赖 ToBid-iOS-RC（ToBid 能力由 flame_sdk_ios_tb 提供）
+  # TK 默认包不使用 AnyThinkMediationSigmobAdapter-NoSDK
+
   # 注意：不要写 s.source_files，因为你不需要向用户分发源代码
   s.pod_target_xcconfig = {
     'OTHER_LDFLAGS' => '-ObjC',

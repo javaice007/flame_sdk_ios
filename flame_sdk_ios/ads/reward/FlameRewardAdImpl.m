@@ -19,13 +19,14 @@
 
 - (instancetype)initWithViewController:(UIViewController *)viewController
                            placementId:(NSString *)placementId
-                              listener:(id<FlameRewardListener>)listener{
+                              listener:(id<FlameRewardListener>)listener
+                              adapter:(id<FlameRewardAdapterProtocol>)adapter {
     self = [super init];
     if (self) {
         _viewController = viewController;
         _placementId = [placementId copy];
         _listener = listener;
-        _adapter = [FlameAdapterManager createRewardAdapter:viewController atPlacementId:placementId listener:listener];
+        _adapter = adapter;
     }
     return self;
 }
@@ -41,7 +42,7 @@
         [FlameLogger i:@"Ad is loading, please do not request again."];
         return;
     }
-    
+
     [FlameLogger i:@"Start loading Reward Ad"];
 
     [self.adapter loadWithUserId:userId userCustomData:userCustomData];

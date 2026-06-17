@@ -18,16 +18,14 @@
 
 - (instancetype)initWithViewController:(UIViewController *)viewController
                            placementId:(NSString *)placementId
-                              listener:(id<FlameInterstitialListener>)listener {
+                              listener:(id<FlameInterstitialListener>)listener
+                              adapter:(id<FlameInterstitialAdapterProtocol>)adapter {
     self = [super init];
     if (self) {
         _viewController = viewController;
         _placementId = [placementId copy];
         _listener = listener;
-        // 调用 AdapterManager 创建插屏适配器
-        _adapter = [FlameAdapterManager createInterstitialAdapter:viewController
-                                                           atPlacementId:placementId
-                                                                listener:listener];
+        _adapter = adapter;
     }
     return self;
 }

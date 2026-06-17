@@ -25,15 +25,14 @@
 
 - (instancetype)initWithPlacementId:(NSString *)placementId
                          renderType:(FlameBannerRenderType)renderType
-                           listener:(id<FlameBannerListener>)listener {
+                           listener:(id<FlameBannerListener>)listener
+                           adapter:(id<FlameBannerAdapterProtocol>)adapter {
     self = [super init];
     if (self) {
         _placementId = [placementId copy];
         _listener = listener;
         _renderType = renderType;
-        _adapter = [FlameAdapterManager createBannerAdapter:placementId
-                                                 renderType:renderType
-                                                   listener:listener];
+        _adapter = adapter;
     }
     return self;
 }

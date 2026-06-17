@@ -9,6 +9,8 @@ extern NSString *const ERROR_CODE_INVALID_PARAM;
 extern NSString *const ERROR_CODE_INVALID_APP_ID;
 // 广告位不存在
 extern NSString *const ERROR_CODE_INVALID_AD_PLACEMENT;
+// 不支持的聚合平台
+extern NSString *const ERROR_CODE_UNSUPPORTED_PLATFORM;
 
 // 网络错误
 extern NSString *const ERROR_CODE_NETWORK_ERROR;

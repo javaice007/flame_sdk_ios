@@ -12,6 +12,35 @@
 #import "FlameLogger.h"
 #import "FlameErrorCode.h"
 
+#import "FlameMediationRegistry.h"
+#import "FlameMediationRouter.h"
+
+// ============================================================
+// 构建宏隔离：TK / TB 互斥变体
+//   FLAME_BUILD_TK=1 → 只注册 FlameTKProvider（默认 TK 包）
+//   FLAME_BUILD_TB=1 → 只注册 FlameTBProvider（TB 包）
+//   两者都未定义时 → 按 TK 处理（源码开发兼容）
+//   正式构建由 xcFramework_build.sh 显式注入宏，不依赖默认值
+// ============================================================
+#if defined(FLAME_BUILD_TK) && defined(FLAME_BUILD_TB)
+#error "FLAME_BUILD_TK and FLAME_BUILD_TB cannot both be defined"
+#endif
+
+// 默认 TK 条件：显式 TK，或两个宏都未定义（源码开发兼容）
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+#import "FlameTKProvider.h"
+#endif
+
+#if defined(FLAME_BUILD_TB)
+#import "FlameTBProvider.h"
+#endif
+
+#import "FlameRewardAdapterProtocol.h"
+#import "FlameSplashAdapterProtocol.h"
+#import "FlameInterstitialAdapterProtocol.h"
+#import "FlameBannerAdapterProtocol.h"
+#import "FlameNativeAdapterProtocol.h"
+
 #import "FlameRewardAdImpl.h"
 #import "FlameInterstitialAdImpl.h"
 #import "FlameSplashAdImpl.h"
@@ -36,6 +65,9 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
 // 内部方法：更新初始化状态
 + (void)updateInitState:(FlameSDKInitState)state;
+
+// 内部方法：注册所有 Provider（仅执行一次）
++ (void)registerAllProvidersIfNeeded;
 
 @end
 
@@ -83,7 +115,7 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
 #pragma mark - FlameCallback 实现
 /**
- * 成功回调 - 配置获取成功，继续初始化Adapter
+ * 成功回调 - 配置获取成功，通过 Registry → Router → Provider 初始化聚合平台
  */
 - (void)success{
     @synchronized (self) {
@@ -93,17 +125,54 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 
     [FlameLogger i:[NSString stringWithFormat:@"[DIAG] UpdateAppCallback=%p success called. initCallback=%p", (void *)self, (void *)_initCallback]];
 
+    // 确保 Provider 已注册（仅执行一次）
+    [FlameSdk registerAllProvidersIfNeeded];
+
+    NSString *pt = [[FlameConfigManager sharedInstance] getPt];
+
+    // pt 为空时兼容旧缓存：默认 tk 并记录日志
+    if (!pt || pt.length == 0) {
+        pt = @"tk";
+        [FlameLogger w:@"FlameSdk: pt 为空，兼容默认使用 tk（可能来自旧缓存）"];
+    }
+
+    [FlameLogger i:[NSString stringWithFormat:@"FlameSdk: pt=%@, 开始通过 Registry 查找 Provider", pt]];
+
+    // 从 Registry 查找对应 Provider
+    id<FlameMediationProvider> provider = [[FlameMediationRegistry sharedRegistry] providerForPlatformCode:pt];
+
+    if (!provider) {
+        // 未找到 Provider：返回 14003 不支持的聚合平台
+        [FlameLogger e:[NSString stringWithFormat:@"FlameSdk: 不支持的聚合平台 pt=%@", pt]];
+
+        [FlameSdk updateInitState:FlameSDKInitStateFailed];
+
+        // 直接 IVAR 访问：避免 atomic getter 的 autorelease over-release
+        id<FlameCallback> callbackToForward = _initCallback;
+        _initCallback = nil;
+
+        if (callbackToForward && [callbackToForward respondsToSelector:@selector(fail:desc:)]) {
+            [callbackToForward fail:ERROR_CODE_UNSUPPORTED_PLATFORM
+                             desc:[NSString stringWithFormat:@"Unsupported mediation platform: %@", pt]];
+        }
+        return;
+    }
+
+    // 找到 Provider：通过 Router 激活
+    [[FlameMediationRouter sharedRouter] activateProvider:provider];
+    [FlameLogger i:[NSString stringWithFormat:@"FlameSdk: Router 已激活 Provider (pt=%@)", pt]];
+
     NSString *aId = [[FlameConfigManager sharedInstance] getAId];
     NSString *aKey = [[FlameConfigManager sharedInstance] getAKey];
 
-    // 创建Adapter初始化回调，会在成功/失败时更新SDK状态
-    // 直接 IVAR 访问：避免 atomic getter 的 objc_autoreleaseReturnValue
-    // 在 Debug 模式下产生延迟 autorelease，导致 pool drain 时 over-release
+    // 通过 Provider 初始化聚合平台 SDK
+    // 创建 AdapterInitCallback 包装用户回调，在 Provider 初始化完成时更新 SDK 状态
     id<FlameCallback> initCallbackRef = _initCallback;
     _initCallback = nil;
     AdapterInitCallback *adapterCallback = [[AdapterInitCallback alloc] initWithCallback:initCallbackRef];
     [FlameLogger i:[NSString stringWithFormat:@"[DIAG] Created AdapterInitCallback=%p with userCallback=%p", (void *)adapterCallback, (void *)initCallbackRef]];
-    [FlameAdapterManager initSDKWithAppId:aId appKey:aKey initListener:adapterCallback];
+
+    [provider initializeWithAppId:aId appKey:aKey callback:adapterCallback];
 }
 
 /**
@@ -278,6 +347,27 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
     [self sharedInstance].initState = state;
 }
 
++ (void)registerAllProvidersIfNeeded {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // 构建变体决定注册哪些 Provider，不在 create*Ad 中做平台判断
+        // Provider 选择仍通过 Registry → Router
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+        // TK 变体：注册 FlameTKProvider（TK / TopOn / AnyThink）
+        FlameTKProvider *tkProvider = [[FlameTKProvider alloc] init];
+        [[FlameMediationRegistry sharedRegistry] registerProvider:tkProvider];
+        [FlameLogger i:@"FlameSdk: FlameTKProvider 已注册到 Registry"];
+#endif
+
+#if defined(FLAME_BUILD_TB)
+        // TB 变体：注册 FlameTBProvider（TB / ToBid / WindMill）
+        FlameTBProvider *tbProvider = [[FlameTBProvider alloc] init];
+        [[FlameMediationRegistry sharedRegistry] registerProvider:tbProvider];
+        [FlameLogger i:@"FlameSdk: FlameTBProvider 已注册到 Registry"];
+#endif
+    });
+}
+
 /**
  * 清空缓存，重置初始化状态，允许重新初始化
  */
@@ -289,6 +379,8 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         [instance.pendingCallbacks removeAllObjects];
     }
     [[FlameConfigManager sharedInstance] clearCache];
+    // 同步重置 Router，清除当前激活的 Provider
+    [[FlameMediationRouter sharedRouter] clear];
     [FlameLogger i:@"FlameSdk cleared, ready for re-init"];
 }
 
@@ -396,7 +488,35 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         return nil;
     }
 
-    return [[FlameRewardAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener];
+    // 3. 通过 Router 获取当前 Provider，由 Provider 创建 Reward 适配器
+    id<FlameMediationProvider> currentProvider = [[FlameMediationRouter sharedRouter] currentProvider];
+
+    if (!currentProvider) {
+        [FlameLogger e:@"Create RewardAd Failed: No active provider (Router has no currentProvider)"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"No active mediation provider"];
+        }
+        return nil;
+    }
+
+    id<FlameRewardAdapterProtocol> rewardAdapter = [currentProvider createRewardAdapterWithViewController:viewController
+                                                                                             placementId:pId
+                                                                                                listener:listener];
+
+    if (!rewardAdapter) {
+        [FlameLogger e:@"Create RewardAd Failed: Provider failed to create Reward adapter"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"Provider failed to create Reward adapter"];
+        }
+        return nil;
+    }
+
+    return [[FlameRewardAdImpl alloc] initWithViewController:viewController
+                                                  placementId:pId
+                                                     listener:listener
+                                                     adapter:rewardAdapter];
 }
 
 /**
@@ -435,7 +555,32 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         return nil;
     }
 
-    return [[FlameInterstitialAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener];
+    // 3. 通过 Router 获取当前 Provider，由 Provider 创建 Interstitial 适配器
+    id<FlameMediationProvider> currentProvider = [[FlameMediationRouter sharedRouter] currentProvider];
+
+    if (!currentProvider) {
+        [FlameLogger e:@"Create InterstitialAd Failed: No active provider (Router has no currentProvider)"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"No active mediation provider"];
+        }
+        return nil;
+    }
+
+    id<FlameInterstitialAdapterProtocol> interstitialAdapter = [currentProvider createInterstitialAdapterWithViewController:viewController
+                                                                                                           placementId:pId
+                                                                                                                 listener:listener];
+
+    if (!interstitialAdapter) {
+        [FlameLogger e:@"Create InterstitialAd Failed: Provider failed to create Interstitial adapter"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"Provider failed to create Interstitial adapter"];
+        }
+        return nil;
+    }
+
+    return [[FlameInterstitialAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener adapter:interstitialAdapter];
 }
 
 + (id<FlameSplashAd>)createSplashAdWithViewController:(UIViewController *)viewController
@@ -468,7 +613,32 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         return nil;
     }
 
-    return [[FlameSplashAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener];
+    // 3. 通过 Router 获取当前 Provider，由 Provider 创建 Splash 适配器
+    id<FlameMediationProvider> currentProvider = [[FlameMediationRouter sharedRouter] currentProvider];
+
+    if (!currentProvider) {
+        [FlameLogger e:@"Create SplashAd Failed: No active provider (Router has no currentProvider)"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"No active mediation provider"];
+        }
+        return nil;
+    }
+
+    id<FlameSplashAdapterProtocol> splashAdapter = [currentProvider createSplashAdapterWithViewController:viewController
+                                                                                                   placementId:pId
+                                                                                                      listener:listener];
+
+    if (!splashAdapter) {
+        [FlameLogger e:@"Create SplashAd Failed: Provider failed to create Splash adapter"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"Provider failed to create Splash adapter"];
+        }
+        return nil;
+    }
+
+    return [[FlameSplashAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener adapter:splashAdapter];
 }
 
 /**
@@ -505,9 +675,35 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         return nil;
     }
 
+    // 3. 通过 Router 获取当前 Provider，由 Provider 创建 Banner 适配器
+    id<FlameMediationProvider> currentProvider = [[FlameMediationRouter sharedRouter] currentProvider];
+
+    if (!currentProvider) {
+        [FlameLogger e:@"Create BannerAd Failed: No active provider (Router has no currentProvider)"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"No active mediation provider"];
+        }
+        return nil;
+    }
+
+    id<FlameBannerAdapterProtocol> bannerAdapter = [currentProvider createBannerAdapterWithPlacementId:pId
+                                                                                             renderType:FlameBannerRenderTypeExpress
+                                                                                               listener:listener];
+
+    if (!bannerAdapter) {
+        [FlameLogger e:@"Create BannerAd Failed: Provider failed to create Banner adapter"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"Provider failed to create Banner adapter"];
+        }
+        return nil;
+    }
+
     return [[FlameBannerAdImpl alloc] initWithPlacementId:pId
                                                renderType:FlameBannerRenderTypeExpress
-                                                 listener:listener];
+                                                 listener:listener
+                                                 adapter:bannerAdapter];
 }
 
 /**
@@ -539,9 +735,35 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         return nil;
     }
 
+    // 3. 通过 Router 获取当前 Provider，由 Provider 创建 Banner 适配器
+    id<FlameMediationProvider> currentProvider = [[FlameMediationRouter sharedRouter] currentProvider];
+
+    if (!currentProvider) {
+        [FlameLogger e:@"Create SelfRender BannerAd Failed: No active provider (Router has no currentProvider)"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"No active mediation provider"];
+        }
+        return nil;
+    }
+
+    id<FlameBannerAdapterProtocol> bannerAdapter = [currentProvider createBannerAdapterWithPlacementId:pId
+                                                                                             renderType:FlameBannerRenderTypeSelfRender
+                                                                                               listener:listener];
+
+    if (!bannerAdapter) {
+        [FlameLogger e:@"Create SelfRender BannerAd Failed: Provider failed to create Banner adapter"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"Provider failed to create Banner adapter"];
+        }
+        return nil;
+    }
+
     return [[FlameBannerAdImpl alloc] initWithPlacementId:pId
                                                renderType:FlameBannerRenderTypeSelfRender
-                                                 listener:listener];
+                                                 listener:listener
+                                                 adapter:bannerAdapter];
 }
 
 /**
@@ -579,7 +801,32 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         return nil;
     }
 
-    return [[FlameNativeAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener];
+    // 3. 通过 Router 获取当前 Provider，由 Provider 创建 Native 适配器
+    id<FlameMediationProvider> currentProvider = [[FlameMediationRouter sharedRouter] currentProvider];
+
+    if (!currentProvider) {
+        [FlameLogger e:@"Create NativeAd Failed: No active provider (Router has no currentProvider)"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"No active mediation provider"];
+        }
+        return nil;
+    }
+
+    id<FlameNativeAdapterProtocol> nativeAdapter = [currentProvider createNativeAdapterWithViewController:viewController
+                                                                                             placementId:pId
+                                                                                               listener:listener];
+
+    if (!nativeAdapter) {
+        [FlameLogger e:@"Create NativeAd Failed: Provider failed to create Native adapter"];
+        if (listener && [listener respondsToSelector:@selector(onAdError:desc:)]) {
+            [listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                           desc:@"Provider failed to create Native adapter"];
+        }
+        return nil;
+    }
+
+    return [[FlameNativeAdImpl alloc] initWithViewController:viewController placementId:pId listener:listener adapter:nativeAdapter];
 }
 
 @end

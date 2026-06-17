@@ -7,6 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import "FlameNativeAd.h"
+#import "FlameNativeAdapterProtocol.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -15,13 +16,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak) UIViewController *viewController;
 @property (nonatomic, copy) NSString *placementId;
 @property (nonatomic, weak) id<FlameNativeListener> listener;
-@property (nonatomic, strong) id<FlameNativeAd> adapter;
+@property (nonatomic, strong) id<FlameNativeAdapterProtocol> adapter;
 @property (nonatomic, assign) FlameNativeRenderType renderType;
 
 
 - (instancetype)initWithViewController:(UIViewController *)viewController
                            placementId:(NSString *)placementId
-                              listener:(id<FlameNativeListener>)listener;
+                              listener:(id<FlameNativeListener>)listener
+                              adapter:(id<FlameNativeAdapterProtocol>)adapter;
 
 @end
 

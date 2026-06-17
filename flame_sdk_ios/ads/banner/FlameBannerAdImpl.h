@@ -7,6 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import "FlameBannerAd.h"
+#import "FlameBannerAdapterProtocol.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -14,12 +15,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, copy) NSString *placementId;
 @property (nonatomic, weak) id<FlameBannerListener> listener;
-@property (nonatomic, strong) id<FlameBannerAd> adapter;
+@property (nonatomic, strong) id<FlameBannerAdapterProtocol> adapter;
 @property (nonatomic, assign, readonly) FlameBannerRenderType renderType;
 
 - (instancetype)initWithPlacementId:(NSString *)placementId
                          renderType:(FlameBannerRenderType)renderType
-                           listener:(id<FlameBannerListener>)listener;
+                           listener:(id<FlameBannerListener>)listener
+                           adapter:(id<FlameBannerAdapterProtocol>)adapter;
 
 @end
 

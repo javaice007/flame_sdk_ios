@@ -5,6 +5,9 @@
 //  Created by Flame on 2026/1/20.
 //
 
+// TK 平台源码宏隔离：TB 构建变体下整个文件置空，避免编译期 import AnyThink/TopOn
+#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB))
+
 #import "AtSplashAdapter.h"
 #import "FlameErrorCode.h"
 
@@ -138,38 +141,59 @@
 }
 
 /// 开屏广告已关闭
+/// AnyThink 的 extra["dismiss_type"] 区分关闭原因：
+///   2 = ATAdCloseSkip（用户点跳过）  3 = ATAdCloseCountdown（倒计时自然结束）
+/// 只有"倒计时自然结束"才算"展示完成"，触发 onAdShowComplete；
+/// 点跳过只触发 onAdClosed，不触发 onAdShowComplete。
 /// - Parameters:
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息
 - (void)splashDidCloseForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
+    NSNumber *dismissType = extra[@"dismiss_type"];
+    if ([dismissType integerValue] == 3) {
+        // 倒计时自然结束 = 展示完成
+        if ([self.listener respondsToSelector:@selector(onAdShowComplete:userCustomData:)]) {
+            NSString *userId = self.localExtra[kATAdLoadingExtraUserIDKey] ?: @"";
+            NSString *customData = self.localExtra[kATAdLoadingExtraUserDataKeywordKey] ?: @"";
+            [self.listener onAdShowComplete:userId userCustomData:customData];
+        }
+    }
     if ([self.listener respondsToSelector:@selector(onAdClosed)]) {
         [self.listener onAdClosed];
     }
 }
 
 /// 开屏广告已展示
+/// AnyThink 语义：广告素材已成功展示在屏幕上（倒计时开始）。
+/// 映射到 Flame 的 onAdShow（广告展示回调，无参数）。
 /// - Parameters:
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息
 - (void)splashDidShowForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdShowComplete:userCustomData:)]) {
-        NSString *userId = self.localExtra[kATAdLoadingExtraUserIDKey] ?: @"";
-        NSString *customData = self.localExtra[kATAdLoadingExtraUserDataKeywordKey] ?: @"";
-        [self.listener onAdShowComplete:userId userCustomData:customData];
+    if ([self.listener respondsToSelector:@selector(onAdShow)]) {
+        [self.listener onAdShow];
     }
 }
 
+/// 开屏广告即将关闭
+/// 注意：AnyThink 在"倒计时结束"和"用户点跳过"两种场景都会回调此方法，
+///       且 extra["dismiss_type"] 均为 1（无区分意义），故不在此映射任何 Flame 回调。
+///       onAdShowComplete 的判定已下沉到 splashDidClose（dismiss_type==3 才触发）。
+/// - Parameters:
+///   - placementID: 广告位ID
+///   - extra: 额外信息
+- (void)splashWillCloseForPlacementID:(nonnull NSString *)placementID extra:(nonnull NSDictionary *)extra {
+    // 不触发任何 Flame listener；展示完成的判定在 splashDidClose 中按 dismiss_type 处理。
+}
+
 /// 获得展示收益
+/// AnyThink 语义：广告产生收益（展示即触发）。
+/// 开屏广告无"奖励"语义，原错误映射 onAdReward 会导致展示即回调奖励，已移除。
 /// - Parameters:
 ///   - placementID: 广告位ID
 ///   - extra: 额外信息字典
 - (void)didRevenueForPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
-    if ([self.listener respondsToSelector:@selector(onAdReward:userCustomData:)]) {
-        // TopOn 成功回调的 extra 中通常包含之前传入的透传参数
-        NSString *userId = self.localExtra[kATAdLoadingExtraUserIDKey] ?: @"";
-        NSString *customData = self.localExtra[kATAdLoadingExtraUserDataKeywordKey] ?: @"";
-        [self.listener onAdReward:userId userCustomData:customData];
-    }
+    // 开屏无奖励回调，此处不触发任何 Flame listener 方法。
 }
 
 /// 开屏广告加载超时
@@ -182,3 +206,5 @@
 
 
 @end
+
+#endif // FLAME_BUILD_TK / 默认 TK

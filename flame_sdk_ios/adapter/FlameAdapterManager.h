@@ -8,11 +8,6 @@
 
 #import <Foundation/Foundation.h>
 #import "FlameCallback.h"
-#import "FlameRewardAd.h"
-#import "FlameInterstitialAd.h"
-#import "FlameSplashAd.h"
-#import "FlameBannerAd.h"
-#import "FlameNativeAd.h"
 
 @interface FlameAdapterManager: NSObject
 
@@ -49,54 +44,12 @@
  */
 + (void)setDebug:(BOOL)isDebug;
 
-/**
- * 创建激励视频适配器
- * @param viewController view组件
- * @param atPlacementId   广告为ID
- * @param listener    监听器
- */
-+ (id<FlameRewardAd>)createRewardAdapter:(UIViewController *)viewController
-                           atPlacementId:(NSString *)atPlacementId
-                                listener:(id<FlameRewardListener>)listener;
-
-/**
- * 创建插屏广告适配器
- * @param viewController view组件
- * @param atPlacementId   广告为ID
- * @param listener    监听器
- */
-+ (id<FlameInterstitialAd>)createInterstitialAdapter:(UIViewController *)viewController
-                                       atPlacementId:(NSString *)atPlacementId
-                                            listener:(id<FlameInterstitialListener>)listener;
-
-/**
- * 创建开屏广告适配器
- * @param viewController view组件
- * @param atPlacementId   广告为ID
- * @param listener    监听器
- */
-+ (id<FlameSplashAd>)createSplashAdAdapter:(UIViewController *)viewController
-                           atPlacementId:(NSString *)atPlacementId
-                                listener:(id<FlameSplashListener>)listener;
-
-/**
- * 创建横幅广告适配器
- * @param atPlacementId   广告为ID
- * @param renderType    渲染模式
- * @param listener    监听器
- */
-+ (id<FlameBannerAd>)createBannerAdapter:(NSString *)atPlacementId
-                               renderType:(FlameBannerRenderType)renderType
-                                 listener:(id<FlameBannerListener>)listener;
-
-/**
- * 创建原生广告适配器
- * @param viewController view组件
- * @param atPlacementId   广告为ID
- * @param listener    监听器
- */
-+ (id<FlameNativeAd>)createNativeAdapter:(UIViewController *)viewController
-                           atPlacementId:(NSString *)atPlacementId
-                                listener:(id<FlameNativeListener>)listener;
+// 注：历史工厂方法 createRewardAdapter: / createInterstitialAdapter: /
+// createSplashAdAdapter: / createBannerAdapter: / createNativeAdapter: 已删除。
+// 当前广告创建链路为：
+//   FlameSdk.create*Ad
+//     → FlameMediationRouter.currentProvider
+//     → FlameTKProvider / FlameTBProvider
+//     → At*Adapter / TbRewardAdapter
 
 @end

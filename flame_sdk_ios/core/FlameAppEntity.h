@@ -14,6 +14,8 @@
 @property (nonatomic, copy) NSString *aId;
 @property (nonatomic, copy) NSString *aKey;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *pIds;
+@property (nonatomic, copy) NSString *cv;
+@property (nonatomic, strong) NSDate *cachedAt;
 
 + (instancetype)fromJson:(NSString *)jsonStr;
 

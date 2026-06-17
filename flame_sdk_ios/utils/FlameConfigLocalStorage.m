@@ -9,6 +9,8 @@ static NSString *const KEY_PT = @"pt";
 static NSString *const KEY_APP_ID = @"aId";
 static NSString *const KEY_APP_KEY = @"aKey";
 static NSString *const KEY_PLACEMENT_MAP = @"pMap";
+static NSString *const KEY_CV = @"cv";
+static NSString *const KEY_CACHED_AT = @"cachedAt";
 
 @interface FlameConfigLocalStorage ()
 
@@ -68,18 +70,39 @@ static NSString *const KEY_PLACEMENT_MAP = @"pMap";
     return [map copy];
 }
 
+- (NSString *)getCV {
+    return [self.userDefaults stringForKey:KEY_CV];
+}
+
+- (NSTimeInterval)getCachedAt {
+    return [self.userDefaults doubleForKey:KEY_CACHED_AT];
+}
+
 - (void)putWithPt:(NSString *)pt
               aId:(NSString *)aId
              aKey:(NSString *)aKey
              pMap:(NSDictionary<NSString *, NSString *> *)pMap {
-    
+
+    [self putWithPt:pt aId:aId aKey:aKey pMap:pMap cv:nil cachedAt:0];
+}
+
+- (void)putWithPt:(NSString *)pt
+              aId:(NSString *)aId
+             aKey:(NSString *)aKey
+             pMap:(NSDictionary<NSString *, NSString *> *)pMap
+                cv:(NSString *)cv
+         cachedAt:(NSTimeInterval)cachedAt {
+
     // 处理pMap序列化
-    NSMutableArray *pairs = [NSMutableArray array];
-    [pMap enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *obj, BOOL *stop) {
-        [pairs addObject:[NSString stringWithFormat:@"%@=%@", key, obj]];
-    }];
-    NSString *p = [pairs componentsJoinedByString:@"&"];
-    
+    NSString *p = nil;
+    if (pMap && pMap.count > 0) {
+        NSMutableArray *pairs = [NSMutableArray array];
+        [pMap enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *obj, BOOL *stop) {
+            [pairs addObject:[NSString stringWithFormat:@"%@=%@", key, obj]];
+        }];
+        p = [pairs componentsJoinedByString:@"&"];
+    }
+
     if (pt && pt.length > 0) {
         [self.userDefaults setObject:pt forKey:KEY_PT];
     }
@@ -92,7 +115,17 @@ static NSString *const KEY_PLACEMENT_MAP = @"pMap";
     if (p && p.length > 0) {
         [self.userDefaults setObject:p forKey:KEY_PLACEMENT_MAP];
     }
-    
+    if (cv && cv.length > 0) {
+        [self.userDefaults setObject:cv forKey:KEY_CV];
+    } else {
+        [self.userDefaults removeObjectForKey:KEY_CV];
+    }
+    if (cachedAt > 0) {
+        [self.userDefaults setDouble:cachedAt forKey:KEY_CACHED_AT];
+    } else {
+        [self.userDefaults removeObjectForKey:KEY_CACHED_AT];
+    }
+
     [self.userDefaults synchronize];
 }
 

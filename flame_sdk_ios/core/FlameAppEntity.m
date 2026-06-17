@@ -48,11 +48,19 @@
         }];
         [entity.pIds addEntriesFromDictionary:safePIds];
     }
+
+    // cv 为可选字段
+    id cvObj = json[@"cv"];
+    entity.cv = ([cvObj isKindOfClass:[NSString class]] && ![cvObj isKindOfClass:[NSNull class]]) ? (NSString *)cvObj : nil;
+
+    // cachedAt 不从网络 JSON 解析，仅在缓存构建时写入
+
     return entity;
 }
 
 - (NSString *)description {
-    return [NSString stringWithFormat:@"AppEntity{pt='%@', aId='%@', aKey='%@', pIds=%@}", self.pt, self.aId, self.aKey, self.pIds];
+    return [NSString stringWithFormat:@"AppEntity{pt='%@', aId='%@', aKey='%@', pIds=%@, cv='%@', cachedAt=%@}",
+            self.pt, self.aId, self.aKey, self.pIds, self.cv, self.cachedAt];
 }
 
 @end

@@ -9,6 +9,8 @@ NSString *const ERROR_CODE_INVALID_PARAM = @"14002";
 NSString *const ERROR_CODE_INVALID_APP_ID = @"14001";
 // 广告位不存在
 NSString *const ERROR_CODE_INVALID_AD_PLACEMENT = @"14004";
+// 不支持的聚合平台
+NSString *const ERROR_CODE_UNSUPPORTED_PLATFORM = @"14003";
 
 // 网络错误
 NSString *const ERROR_CODE_NETWORK_ERROR = @"15000";

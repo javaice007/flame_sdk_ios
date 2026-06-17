@@ -20,13 +20,14 @@
 
 - (instancetype)initWithViewController:(UIViewController *)viewController
                            placementId:(NSString *)placementId
-                              listener:(id<FlameSplashListener>)listener{
+                              listener:(id<FlameSplashListener>)listener
+                              adapter:(id<FlameSplashAdapterProtocol>)adapter{
     self = [super init];
     if (self) {
         _viewController = viewController;
         _placementId = [placementId copy];
         _listener = listener;
-        _adapter = [FlameAdapterManager createSplashAdAdapter:viewController atPlacementId:placementId listener:listener];
+        _adapter = adapter;
     }
     return self;
 }
