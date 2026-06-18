@@ -28,15 +28,18 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '1.0.0-alpha.1'
+  s.version          = '1.0.0-alpha.2'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TK Edition'
   s.description      = 'Flame iOS advertising aggregation SDK, TK / TopOn / AnyThink edition (Scheme D: single internal core binary + TK platform source).'
   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
   s.author           = { 'flame' => 'flame@toowe.com' }
 
+  # GitHub archive zip 默认不剥除顶层版本目录（cocoapods-downloader 仅对 tgz 默认 flatten），
+  # 必须显式 :flatten => true 才能让 podspec 的精确路径匹配到文件。
   s.source           = {
     :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
+    :flatten => true,
   }
 
   # 商业 sdk
