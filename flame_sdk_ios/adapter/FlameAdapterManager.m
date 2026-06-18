@@ -118,8 +118,9 @@
     // TK 变体：开启 AnyThinkSDK 日志
     [ATAPI setLogEnabled:YES];
 #else
-    // TB 变体：WindMill debug 在 FlameTBProvider.init 中已开启，此处无需操作
-    [FlameLogger i:[NSString stringWithFormat:@"FlameAdapterManager.setDebug:%@ (TB variant, WindMill debug set in provider init)", isDebug ? @"YES" : @"NO"]];
+    // Core 变体：debug 开关由各 Provider 自己处理（FlameTKProvider 走 AnyThink，FlameTBProvider 走 WindMill），
+    // 此处无需直接调用任何平台 SDK，仅记录开关状态。
+    [FlameLogger i:[NSString stringWithFormat:@"FlameAdapterManager.setDebug:%@ (Core variant, provider handles platform debug setting)", isDebug ? @"YES" : @"NO"]];
 #endif
 }
 
