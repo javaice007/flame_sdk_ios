@@ -13,7 +13,7 @@
 #   Swift: import flame_sdk_ios
 #
 # 内部架构：
-#   vendored_frameworks = build/core_named/flame_sdk_ios_core.xcframework
+#   vendored_frameworks = build/flame_sdk_ios_core.xcframework
 #     - framework/binary/module 名均为 flame_sdk_ios_core
 #     - 与 pod 名 flame_sdk_ios 不同 → 不遮蔽，单 pod 可共存
 #     - 仅含 Flame core（无 AnyThink/ToBid/WindMill/Sigmob/AdGain 等三方符号）
@@ -51,7 +51,8 @@ Pod::Spec.new do |s|
 
   # ========= 内部 Core Binary（module = flame_sdk_ios_core）=========
   # 零三方符号，仅 OpenSSL + 系统库依赖；TK/TB 平台源码在 pod 源模块中编译。
-  s.vendored_frameworks = 'build/core_named/flame_sdk_ios_core.xcframework'
+  # 正式产物路径：build/flame_sdk_ios_core.xcframework（build/ 顶层，无子目录）
+  s.vendored_frameworks = 'build/flame_sdk_ios_core.xcframework'
 
   # ========= 转发头（对外公共 API，转发到 core binary）=========
   # 接入方 #import <flame_sdk_ios/FlameSdk.h> 经此转发到 <flame_sdk_ios_core/FlameSdk.h>

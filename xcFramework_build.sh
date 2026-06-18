@@ -12,12 +12,13 @@ set -e
 #                                 #   （Phase 5A.10 Step 1：平台中立 Thin Core Binary，
 #                                 #    不含 AnyThink/ToBid/WindMill/任何广告源 SDK）
 #   ./xcFramework_build.sh core-named
-#                                 #   Phase 5A.10 Step 2B：构建改名 Core binary
-#                                 #   → build/core_named/flame_sdk_ios_core.xcframework
+#                                 #   Phase 5A.10 Step 4B：构建改名 Core binary（正式输出）
+#                                 #   → build/flame_sdk_ios_core.xcframework
 #                                 #   framework/module/install name 均为 flame_sdk_ios_core
 #                                 #   用于方案 D（双 podspec + 单内部 core binary + 单 pod 接入）：
 #                                 #   pod 名仍为 flame_sdk_ios/flame_sdk_ios_tb，
 #                                 #   但内部 vendored framework 改名避免同名 module 遮蔽
+#                                 #   中间 xcarchive 放 Archives/core_named/，构建后清理
 #
 # 依赖入口是唯一的 Podfile，通过环境变量 FLAME_SDK_VARIANT=tk|tb|core 切换构建依赖。
 # 各产物 framework/module 名均为 flame_sdk_ios（同名，接入方 import 不变）
@@ -46,8 +47,9 @@ elif [ "$VARIANT" = "tb" ]; then
   VARIANT_OUTPUT_SUBDIR="tb"
 elif [ "$VARIANT" = "core-named" ]; then
   # core-named：先用 FLAME_BUILD_CORE 构建（与 core 相同），构建后改名
+  # 正式输出直接放 build/ 顶层（无子目录），中间 xcarchive 放 Archives/core_named/
   BUILD_MACRO="FLAME_BUILD_CORE=1"
-  VARIANT_OUTPUT_SUBDIR="core_named"
+  VARIANT_OUTPUT_SUBDIR=""  # 正式产物直接到 build/
 else
   # core：注入 FLAME_BUILD_CORE=1，不注入 TK/TB
   BUILD_MACRO="FLAME_BUILD_CORE=1"
@@ -60,12 +62,24 @@ fi
 WORKSPACE_NAME="flame_sdk_ios.xcworkspace"
 SCHEME_NAME="flame_sdk_ios"
 FRAMEWORK_NAME="flame_sdk_ios"
-OUTPUT_DIR="./build/${VARIANT_OUTPUT_SUBDIR}"
 # 部署目标与 Podfile / podspec 保持一致（统一 13.0）
 MIN_IOS_VERSION="13.0"
 
-IOS_ARCHIVE_PATH="${OUTPUT_DIR}/${FRAMEWORK_NAME}_ios"
-SIM_ARCHIVE_PATH="${OUTPUT_DIR}/${FRAMEWORK_NAME}_sim"
+# core-named 的正式输出直接放在 build/ 顶层（无子目录），
+# 中间 xcarchive 放 Archives/core_named/（构建后清理）。
+# 其他变体（tk/tb/core）仍用 build/<variant>/ 子目录 + 同目录 xcarchive。
+if [ "$VARIANT" = "core-named" ]; then
+  OUTPUT_DIR="./build"
+  ARCHIVE_DIR="./Archives/core_named"
+  rm -rf "$ARCHIVE_DIR"
+  mkdir -p "$ARCHIVE_DIR"
+else
+  OUTPUT_DIR="./build/${VARIANT_OUTPUT_SUBDIR}"
+  ARCHIVE_DIR="$OUTPUT_DIR"
+fi
+
+IOS_ARCHIVE_PATH="${ARCHIVE_DIR}/${FRAMEWORK_NAME}_ios"
+SIM_ARCHIVE_PATH="${ARCHIVE_DIR}/${FRAMEWORK_NAME}_sim"
 XCFRAMEWORK_OUTPUT="${OUTPUT_DIR}/${FRAMEWORK_NAME}.xcframework"
 
 # =========================
@@ -244,6 +258,12 @@ fi
 # ====== 构建完成后清理 ======
 # 删除 .framework 内部不该存在的文件（.sh 会导致 codesign 失败，.podspec 是冗余文件）
 find "${XCFRAMEWORK_OUTPUT}" -type f \( -name "*.sh" -o -name "*.podspec" \) -delete
+
+# core-named 中间 xcarchive 清理：正式产物已在 build/ 顶层，xcarchive 仅为中间产物
+if [ "$VARIANT" = "core-named" ]; then
+  echo "🧹 清理 core-named 中间 xcarchive..."
+  rm -rf ./Archives
+fi
 
 # 剥离所有 framework 内嵌的 bitcode（Apple 已废弃 bitcode，App Store 不接受含 bitcode 的二进制）
 echo "🧹 剥离 bitcode..."

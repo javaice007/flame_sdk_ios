@@ -12,7 +12,7 @@
 #   pod 名决定客户 Podfile 写什么；module name 决定 import 写什么。
 #
 # 内部架构（与 TK podspec 对称）：
-#   vendored_frameworks = build/core_named/flame_sdk_ios_core.xcframework（同一份 core binary）
+#   vendored_frameworks = build/flame_sdk_ios_core.xcframework（同一份 core binary）
 #   source_files = 正式转发头 + TB 平台源码（FlameTBProvider + TbRewardAdapter）
 #     - 转发头将 #import <flame_sdk_ios/...> 转发到 <flame_sdk_ios_core/...>
 #     - TB 源码注入 FLAME_PLUGIN_TB 宏，编译出 +load 自动注册 FlameTBProvider
@@ -51,7 +51,8 @@ Pod::Spec.new do |s|
 
   # ========= 内部 Core Binary（与 TK podspec 共用同一份）=========
   # 零三方符号，仅 OpenSSL + 系统库依赖。
-  s.vendored_frameworks = 'build/core_named/flame_sdk_ios_core.xcframework'
+  # 正式产物路径：build/flame_sdk_ios_core.xcframework（build/ 顶层，无子目录）
+  s.vendored_frameworks = 'build/flame_sdk_ios_core.xcframework'
 
   # ========= 转发头（对外公共 API，转发到 core binary）=========
   # 接入方 #import <flame_sdk_ios/FlameSdk.h> 经此转发到 <flame_sdk_ios_core/FlameSdk.h>
