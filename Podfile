@@ -24,6 +24,9 @@
 
 variant = ENV.fetch('FLAME_SDK_VARIANT', 'tk').downcase
 
+# core-named 构建期复用 core 的依赖（只含 OpenSSL），构建后由脚本改名
+variant = 'core' if variant == 'core-named'
+
 unless ['tk', 'tb', 'core'].include?(variant)
   raise "❌ Invalid FLAME_SDK_VARIANT=#{variant}. Use tk, tb or core."
 end

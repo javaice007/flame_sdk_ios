@@ -11,6 +11,13 @@ set -e
 #   ./xcFramework_build.sh core   # 构建 Core 包  → build/core/flame_sdk_ios.xcframework
 #                                 #   （Phase 5A.10 Step 1：平台中立 Thin Core Binary，
 #                                 #    不含 AnyThink/ToBid/WindMill/任何广告源 SDK）
+#   ./xcFramework_build.sh core-named
+#                                 #   Phase 5A.10 Step 2B：构建改名 Core binary
+#                                 #   → build/core_named/flame_sdk_ios_core.xcframework
+#                                 #   framework/module/install name 均为 flame_sdk_ios_core
+#                                 #   用于方案 D（双 podspec + 单内部 core binary + 单 pod 接入）：
+#                                 #   pod 名仍为 flame_sdk_ios/flame_sdk_ios_tb，
+#                                 #   但内部 vendored framework 改名避免同名 module 遮蔽
 #
 # 依赖入口是唯一的 Podfile，通过环境变量 FLAME_SDK_VARIANT=tk|tb|core 切换构建依赖。
 # 各产物 framework/module 名均为 flame_sdk_ios（同名，接入方 import 不变）
@@ -21,8 +28,8 @@ set -e
 # 变体解析
 # =========================
 VARIANT="${1:-tk}"
-if [ "$VARIANT" != "tk" ] && [ "$VARIANT" != "tb" ] && [ "$VARIANT" != "core" ]; then
-  echo "❌ 未知变体: $VARIANT（仅支持 tk / tb / core）"
+if [ "$VARIANT" != "tk" ] && [ "$VARIANT" != "tb" ] && [ "$VARIANT" != "core" ] && [ "$VARIANT" != "core-named" ]; then
+  echo "❌ 未知变体: $VARIANT（仅支持 tk / tb / core / core-named）"
   exit 1
 fi
 
@@ -37,6 +44,10 @@ if [ "$VARIANT" = "tk" ]; then
 elif [ "$VARIANT" = "tb" ]; then
   BUILD_MACRO="FLAME_BUILD_TB=1"
   VARIANT_OUTPUT_SUBDIR="tb"
+elif [ "$VARIANT" = "core-named" ]; then
+  # core-named：先用 FLAME_BUILD_CORE 构建（与 core 相同），构建后改名
+  BUILD_MACRO="FLAME_BUILD_CORE=1"
+  VARIANT_OUTPUT_SUBDIR="core_named"
 else
   # core：注入 FLAME_BUILD_CORE=1，不注入 TK/TB
   BUILD_MACRO="FLAME_BUILD_CORE=1"
@@ -68,7 +79,6 @@ rm -rf Pods Podfile.lock
 
 echo "📦 pod install（FLAME_SDK_VARIANT=${VARIANT}）..."
 FLAME_SDK_VARIANT="$VARIANT" pod install
-
 # =========================
 # 深度清理缓存
 # =========================
@@ -119,6 +129,118 @@ xcodebuild -create-xcframework \
   -framework "${SIM_ARCHIVE_PATH}.xcarchive/Products/Library/Frameworks/${FRAMEWORK_NAME}.framework" \
   -output "${XCFRAMEWORK_OUTPUT}"
 
+# =========================
+# core-named 改名（Phase 5A.10 Step 2B）
+# Xcode 工程产物名固定为 flame_sdk_ios，这里在 xcframework 创建后改名：
+#   framework 目录、binary、Info.plist、modulemap、umbrella header、install name
+# 目的：让内部 core binary 的 module 名 = flame_sdk_ios_core，
+#      与外层 pod 名 flame_sdk_ios/flame_sdk_ios_tb 区分，避免同名 module 遮蔽。
+# =========================
+if [ "$VARIANT" = "core-named" ]; then
+  CORE_NEW_NAME="flame_sdk_ios_core"
+  echo "🏷️  core-named 改名：flame_sdk_ios → ${CORE_NEW_NAME}"
+
+  for FW_DIR in "${XCFRAMEWORK_OUTPUT}"/*/*.framework; do
+    [ -d "$FW_DIR" ] || continue
+    FW_PARENT=$(dirname "$FW_DIR")
+
+    # 1. binary 改名 + install name 改写
+    if [ -f "${FW_DIR}/${FRAMEWORK_NAME}" ]; then
+      mv "${FW_DIR}/${FRAMEWORK_NAME}" "${FW_DIR}/${CORE_NEW_NAME}"
+      # install_name_tool -id 改 LC_ID_DYLIB（@rpath/flame_sdk_ios.framework/flame_sdk_ios → ...core）
+      install_name_tool -id "@rpath/${CORE_NEW_NAME}.framework/${CORE_NEW_NAME}" "${FW_DIR}/${CORE_NEW_NAME}"
+    fi
+
+    # 2. umbrella header flame_sdk_ios.h → flame_sdk_ios_core.h（若存在）
+    if [ -f "${FW_DIR}/Headers/${FRAMEWORK_NAME}.h" ]; then
+      mv "${FW_DIR}/Headers/${FRAMEWORK_NAME}.h" "${FW_DIR}/Headers/${CORE_NEW_NAME}.h"
+    fi
+
+    # 2.1 umbrella header 内部 #import <flame_sdk_ios/...> → <flame_sdk_ios_core/...>
+    #     （umbrella 里用尖括号引用同 framework 公共头，改名后模块名变了，必须同步改）
+    UMBRELLA="${FW_DIR}/Headers/${CORE_NEW_NAME}.h"
+    if [ -f "$UMBRELLA" ]; then
+      sed -i '' "s|<${FRAMEWORK_NAME}/|<${CORE_NEW_NAME}/|g" "$UMBRELLA"
+    fi
+
+    # 3. modulemap 改 module 名 + umbrella header 名
+    MODULEMAP="${FW_DIR}/Modules/module.modulemap"
+    if [ -f "$MODULEMAP" ]; then
+      sed -i '' \
+        -e "s/framework module ${FRAMEWORK_NAME}/framework module ${CORE_NEW_NAME}/g" \
+        -e "s/umbrella header \"${FRAMEWORK_NAME}.h\"/umbrella header \"${CORE_NEW_NAME}.h\"/g" \
+        "$MODULEMAP"
+    fi
+
+    # 4. Info.plist 改 CFBundleExecutable / CFBundleName
+    PLIST="${FW_DIR}/Info.plist"
+    if [ -f "$PLIST" ]; then
+      /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable ${CORE_NEW_NAME}" "$PLIST" 2>/dev/null || true
+      /usr/libexec/PlistBuddy -c "Set :CFBundleName ${CORE_NEW_NAME}" "$PLIST" 2>/dev/null || true
+    fi
+
+    # 5. framework 目录改名
+    mv "$FW_DIR" "${FW_PARENT}/${CORE_NEW_NAME}.framework"
+  done
+
+  # 6. xcframework Info.plist 改 LibraryPath / BinaryPath
+  XCFW_PLIST="${XCFRAMEWORK_OUTPUT}/Info.plist"
+  if [ -f "$XCFW_PLIST" ]; then
+    # LibraryPath: flame_sdk_ios.framework → flame_sdk_ios_core.framework
+    # BinaryPath:  flame_sdk_ios.framework/flame_sdk_ios → flame_sdk_ios_core.framework/flame_sdk_ios_core
+    /usr/libexec/PlistBuddy -c "Print" "$XCFW_PLIST" >/dev/null 2>&1 && {
+      # 用 sed 批量替换（PlistBuddy 对数组元素路径不友好，sed 更稳）
+      sed -i '' \
+        -e "s|${FRAMEWORK_NAME}.framework/${FRAMEWORK_NAME}|${CORE_NEW_NAME}.framework/${CORE_NEW_NAME}|g" \
+        -e "s|${FRAMEWORK_NAME}.framework|${CORE_NEW_NAME}.framework|g" \
+        "$XCFW_PLIST"
+    }
+  fi
+
+  # 7. xcframework 外层目录改名：flame_sdk_ios.xcframework → flame_sdk_ios_core.xcframework
+  XCFW_PARENT=$(dirname "${XCFRAMEWORK_OUTPUT}")
+  if [ -d "${XCFW_PARENT}/${FRAMEWORK_NAME}.xcframework" ]; then
+    mv "${XCFW_PARENT}/${FRAMEWORK_NAME}.xcframework" "${XCFW_PARENT}/${CORE_NEW_NAME}.xcframework"
+    # 更新后续符号校验用的输出路径
+    XCFRAMEWORK_OUTPUT="${XCFW_PARENT}/${CORE_NEW_NAME}.xcframework"
+  fi
+
+  echo "✅ core-named 改名完成"
+
+  # =========================
+  # core-named 补暴露内部头（Phase 5A.10 Step 2B）
+  # Core binary Headers/ 默认只含 10 个公共 API。平台源码插件还需要 12 个内部头
+  # （mediation 协议 + AdapterManager/ConfigManager/ErrorCode/Logger）。
+  # 方案 D 要求「平台源码依赖 core binary 的 Headers，不依赖 core 源码树」，
+  # 因此把这 12 个内部头从源码树复制到 framework Headers/。
+  # 这 12 个头只用 #import "..."（同 framework 内相对解析），互相 + 公共 API 已自包含。
+  # modulemap 的 module * { export * } 会自动把它们作为子模块暴露。
+  # =========================
+  echo "📋 core-named 补暴露 12 个内部头到 Headers/..."
+  INTERNAL_HEADERS=(
+    "flame_sdk_ios/mediation/FlameMediationRegistry.h"
+    "flame_sdk_ios/mediation/FlameMediationProvider.h"
+    "flame_sdk_ios/mediation/FlameMediationRouter.h"
+    "flame_sdk_ios/mediation/FlameRewardAdapterProtocol.h"
+    "flame_sdk_ios/mediation/FlameSplashAdapterProtocol.h"
+    "flame_sdk_ios/mediation/FlameInterstitialAdapterProtocol.h"
+    "flame_sdk_ios/mediation/FlameBannerAdapterProtocol.h"
+    "flame_sdk_ios/mediation/FlameNativeAdapterProtocol.h"
+    "flame_sdk_ios/adapter/FlameAdapterManager.h"
+    "flame_sdk_ios/core/FlameConfigManager.h"
+    "flame_sdk_ios/core/FlameErrorCode.h"
+    "flame_sdk_ios/core/FlameLogger.h"
+  )
+  for FW_DIR in "${XCFRAMEWORK_OUTPUT}"/*/*.framework; do
+    [ -d "$FW_DIR" ] || continue
+    for SRC_H in "${INTERNAL_HEADERS[@]}"; do
+      H_NAME=$(basename "$SRC_H")
+      cp "./${SRC_H}" "${FW_DIR}/Headers/${H_NAME}"
+    done
+  done
+  echo "✅ 内部头补暴露完成"
+fi
+
 # ====== 构建完成后清理 ======
 # 删除 .framework 内部不该存在的文件（.sh 会导致 codesign 失败，.podspec 是冗余文件）
 find "${XCFRAMEWORK_OUTPUT}" -type f \( -name "*.sh" -o -name "*.podspec" \) -delete
@@ -136,7 +258,13 @@ echo "✅ bitcode 剥离完成"
 # =========================
 # 符号校验：确认变体纯净
 # =========================
-TK_BINARY=$(find "${XCFRAMEWORK_OUTPUT}" -path "*ios-arm64*/${FRAMEWORK_NAME}" -type f 2>/dev/null | head -1)
+# core-named 改名后 binary 名为 flame_sdk_ios_core，其余变体仍为 flame_sdk_ios
+if [ "$VARIANT" = "core-named" ]; then
+  BIN_NAME="flame_sdk_ios_core"
+else
+  BIN_NAME="${FRAMEWORK_NAME}"
+fi
+TK_BINARY=$(find "${XCFRAMEWORK_OUTPUT}" -path "*ios-arm64*/${BIN_NAME}" -type f 2>/dev/null | head -1)
 if [ -n "$TK_BINARY" ]; then
   echo ""
   echo "🔍 符号校验（${VARIANT} 变体）..."

@@ -116,3 +116,5 @@ log.log
 # Phase 5A.10 Step 2 实验临时目录（含二进制/源码副本，不提交）
 research/staging_tk/
 research/staging_tb/
+research/staging_d_tk/
+research/staging_d_tb/
