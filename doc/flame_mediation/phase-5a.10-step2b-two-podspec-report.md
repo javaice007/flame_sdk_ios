@@ -114,6 +114,16 @@ build/core_named/flame_sdk_ios_core.xcframework
 **现象**:TB 变体构建报 `'flame_sdk_ios/FlameSdk.h' file not found`(接入方 import 的是 `flame_sdk_ios`,但 pod 名是 `flame_sdk_ios_tb`)。
 **解法**:`s.module_name = 'flame_sdk_ios'`,让 TB pod 的模块名统一为 `flame_sdk_ios`,接入方代码 TK/TB 一致。
 
+### 坑 4:Core binary 动态依赖 OpenSSL 未 embed(TB 真机 crash)
+**现象**:TB 方案 D 真机启动 crash:
+```
+dyld: Library not loaded: @rpath/OpenSSL.framework/OpenSSL
+  Referenced from: flame_sdk_ios_core.framework/flame_sdk_ios_core
+```
+**根因**:`flame_sdk_ios_core` 是**动态 framework**(Mach-O dylib),`otool -L` 显示它动态依赖 `@rpath/OpenSSL.framework/OpenSSL`。但 TB podspec 只声明了 ToBid-iOS-RC,没声明 OpenSSL-Universal → CocoaPods 没拉入 OpenSSL.framework → App 运行时 dyld 找不到。
+**关键对比**:TK 靠 AnyThinkiOS 传递依赖 OpenSSL 能"侥幸通过";TB 只有 ToBid-iOS-RC(不依赖 OpenSSL),必须显式声明。
+**解法**:两个实验 podspec(TK/TB)都显式 `s.dependency 'OpenSSL-Universal', '~> 3.6'`。验证:重新构建后 OpenSSL.framework 已 embed 进 App Frameworks/,真机启动无 crash。
+
 ---
 
 ## 4. 验证结果
