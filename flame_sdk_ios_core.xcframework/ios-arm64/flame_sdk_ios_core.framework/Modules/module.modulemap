@@ -1,0 +1,6 @@
+framework module flame_sdk_ios_core {
+  umbrella header "flame_sdk_ios_core.h"
+  export *
+
+  module * { export * }
+}

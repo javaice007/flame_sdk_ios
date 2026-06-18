@@ -1,13 +1,29 @@
-# FlameSDK iOS 对接说明文档
+# FlameSDK iOS 对接说明
+
+> **版本**：`1.0.0-alpha.1`（Thin Core Alpha）
+> **架构**：方案 D — 两个对外 podspec + 一个内部 core binary
+> **最后更新**：2026-06-18
+
+---
 
 ## 概览
 
 | 项目 | 内容 |
 |------|------|
-| SDK 版本 | flame_sdk_ios 0.1.8.1 |
+| SDK 版本 | `1.0.0-alpha.1` |
 | 最低部署版本 | iOS 13.0 |
-| 语言 | Objective-C（Swift 通过 Bridging Header 调用） |
+| 语言 | Objective-C（Swift 通过 import 调用） |
 | 集成方式 | CocoaPods |
+| Pod 源 | `https://github.com/javaice007/flame-specs.git` |
+
+Flame SDK 提供两个互斥的 pod，**客户只接入一个**：
+
+| 客户类型 | Podfile 写法 | 适用场景 |
+|---------|-------------|---------|
+| TK 客户（TopOn / AnyThink 聚合） | `pod 'flame_sdk_ios', '1.0.0-alpha.1'` | 默认场景，含 AnyThink + 全 Mediation + AdGain + 飞梭 |
+| TB 客户（ToBid / WindMill） | `pod 'flame_sdk_ios_tb', '1.0.0-alpha.1'` | ToBid 接入，当前仅 Reward 可用，其他广告类型为后续 Phase 6 |
+
+> ⚠️ **不能同时接入** `flame_sdk_ios` 和 `flame_sdk_ios_tb`，两者模块名均为 `flame_sdk_ios`，同时接入会冲突。
 
 ---
 
@@ -15,18 +31,21 @@
 
 ### 1.1 CocoaPods 安装
 
-在 `Podfile` 中配置以下内容：
+在 `Podfile` 中配置以下内容（以 TK 客户为例，TB 客户把 pod 名换成 `flame_sdk_ios_tb`）：
 
 ```ruby
 platform :ios, '13.0'
 
 source 'https://github.com/javaice007/flame-specs.git'
 source 'https://cdn.cocoapods.org/'
-source 'https://github.com/CocoaPods/Specs.git'
 
-target 'YourAppTarget' do
-  use_frameworks!
-  pod 'flame_sdk_ios', '0.1.8.1'
+target 'YourApp' do
+  # ⚠️ 必须 static linkage：pod 内 source_files 依赖静态 vendored framework
+  # （AnyThinkMediation*Adapter / ToBid WindMill），plain use_frameworks! 会触发
+  # "transitive dependencies include statically linked binaries" 错误。
+  use_frameworks! :linkage => :static
+
+  pod 'flame_sdk_ios', '1.0.0-alpha.1'
 end
 
 # Xcode 16 兼容性修复
@@ -40,11 +59,30 @@ end
 ```
 
 执行安装：
+
 ```bash
 pod install
 ```
 
-### 1.2 Objective-C Bridging Header（Swift 项目）
+### 1.2 import 写法（TK / TB 完全一致）
+
+虽然两个 pod 名不同，但 module name 统一为 `flame_sdk_ios`，接入方代码无需因选 TB 而改 import：
+
+```objc
+// ObjC
+#import <flame_sdk_ios/flame_sdk_ios.h>
+#import <flame_sdk_ios/FlameSdk.h>
+#import <flame_sdk_ios/FlameRewardAd.h>
+```
+
+```swift
+// Swift
+import flame_sdk_ios
+```
+
+> 客户无需关心转发头细节（`flame_sdk_ios/wrappers/flame_sdk_ios/` 或 `flame_sdk_ios/wrappers/flame_sdk_ios_tb/`），按上面写法即可。
+
+### 1.3 Swift 项目 Bridging Header
 
 在 Xcode 中创建 Bridging Header 文件（如 `AppName-Bridging-Header.h`），并在 Build Settings 中配置 `SWIFT_OBJC_BRIDGING_HEADER`：
 
@@ -57,7 +95,7 @@ pod install
 #endif
 ```
 
-### 1.3 Info.plist 配置
+### 1.4 Info.plist 配置
 
 允许广告网络进行 HTTP 请求（ATS 豁免）：
 
@@ -69,1262 +107,106 @@ pod install
 </dict>
 ```
 
----
-
-## 二、SDK 初始化
-
-### 2.1 初始化状态机
-
-0.1.8.1 引入了完整的状态机管理，SDK 内部维护 4 种初始化状态：
-
-```
-Uninitialized → Initializing → Initialized
-                              ↘ Failed
-```
-
-| 状态 | 再次调用 init 的行为 |
-|------|---------------------|
-| `Uninitialized` | 正常发请求 |
-| `Initializing` | callback 加入等待队列，不重复发请求 |
-| `Initialized` | 直接回调 success |
-| `Failed` | 直接回调 fail，提示需要 `clear()` 后重试 |
-
-### 2.2 同步初始化（推荐）
-
-建议在后台线程执行，通过 Semaphore 控制超时：
-
-```swift
-func initSdk() {
-    let semaphore = DispatchSemaphore(value: 0)
-    var initSuccess = false
-
-    DispatchQueue.global(qos: .background).async {
-        defer { semaphore.signal() }
-        FlameSdk.clear()                          // 清除缓存
-        FlameSdk.setDebug(true)                   // 开启调试日志
-        FlameSdk.initWithAppId(
-            "YOUR_APP_ID",
-            appKey: "YOUR_APP_KEY"
-        )
-        initSuccess = true
-    }
-
-    let timeout = semaphore.wait(timeout: .now() + 10.0)
-
-    DispatchQueue.main.async {
-        if timeout == .timedOut || !initSuccess {
-            // 初始化失败处理
-        } else {
-            // 初始化成功，可以加载广告
-        }
-    }
-}
-```
-
-### 2.3 异步初始化（带回调，推荐用于错误处理）
-
-```swift
-FlameSdk.initWithAppId("YOUR_APP_ID", appKey: "YOUR_APP_KEY") {
-    // 初始化成功
-    DispatchQueue.main.async {
-        // 可以开始加载广告
-    }
-} fail: { code, desc in
-    // 初始化失败：code 为错误码，desc 为错误描述
-    print("SDK init failed: \(code) - \(desc)")
-}
-```
-
-> **注意**：回调在主线程执行，可以安全地在回调中更新 UI。
-
-### 2.4 初始化失败后的重试
-
-初始化失败后，**必须先调用 `FlameSdk.clear()` 再重试**，否则 SDK 会直接返回 fail：
-
-```swift
-FlameSdk.clear()
-FlameSdk.initWithAppId("YOUR_APP_ID", appKey: "YOUR_APP_KEY") {
-    // success
-} fail: { code, desc in
-    // fail
-}
-```
-
-### 2.5 核心 API
-
-| 方法 | 说明 |
-|------|------|
-| `FlameSdk.clear()` | 清除缓存数据，重置初始化状态；初始化前或失败重试前调用 |
-| `FlameSdk.setDebug(true)` | 开启调试日志 |
-| `FlameSdk.initWithAppId(_:appKey:)` | 同步初始化 |
-| `FlameSdk.initWithAppId(_:appKey:callback:)` | 异步初始化（带回调） |
-| `FlameSdk.isInitialized()` | 检查是否已初始化 |
-
-> **注意**：必须在初始化成功后才能加载任何广告。未初始化时创建广告不会 Crash，但会通过 `onAdError` 回调通知错误。
+SKAdNetwork IDs 与 LSApplicationQueriesSchemes 配置请参考 Flame ADX 后台获取最新列表（与历史版本一致，本次 alpha 不变更）。
 
 ---
 
-## 三、获取 UIViewController
+## 二、初始化与广告加载
 
-全屏类广告（插屏、激励视频、开屏、信息流、视频流）需要传入 `UIViewController`。SwiftUI 项目推荐使用如下工具方法：
+```objc
+// 1. 初始化（TK / TB 统一入口，SDK 自动识别平台）
+[FlameSdk initSDKWithAppId:@"your_app_id"
+                     appKey:@"your_app_key"
+                 completion:^(BOOL success, NSError *error) {
+    // ...
+}];
 
-```swift
-func topViewController() -> UIViewController? {
-    let scenes = UIApplication.shared.connectedScenes
-        .compactMap { $0 as? UIWindowScene }
-    let keyWindow = scenes
-        .flatMap { $0.windows }
-        .first { $0.isKeyWindow }
-    var root = keyWindow?.rootViewController
-    while let presented = root?.presentedViewController {
-        root = presented
-    }
-    if let nav = root as? UINavigationController {
-        return nav.visibleViewController
-    }
-    return root
-}
+// 2. 加载激励视频（TK / TB 均可用）
+FlameRewardAd *reward = [FlameSdk createRewardAdWithViewController:self
+                                                       placementId:@"your_placement_id"];
 ```
+
+> TB 变体当前仅 Reward 可用；Splash / Interstitial / Banner / Native 的 TB 实现为后续 Phase 6，
+> 当前调用会返回 nil 占位。
+
+各广告格式的 API 与回调协议与历史版本（0.1.8.x）保持一致：
+- Banner（Express / SelfRender）
+- Interstitial
+- Reward Video
+- Splash
+- Native
+
+详细 API 与 Placement ID 测试值请联系 Flame 业务侧获取。
 
 ---
 
-## 四、广告格式对接
+## 三、OpenSSL 依赖说明（客户无需手动处理）
 
-### 4.1 Banner 广告（横幅广告）
-
-**适用场景**：固定位置展示，嵌入页面布局中。
-
-Banner 支持两种渲染模式：
-
-| 模式 | 说明 | 适用场景 |
-|------|------|---------|
-| **Express（模板渲染）** | SDK 返回预渲染的 Banner View，直接嵌入页面即可（默认模式） | 快速集成，不需要自定义 UI |
-| **SelfRender（自渲染）** | SDK 提供广告素材（封面图 URL、标题、描述等），开发者使用自己的 UI 组件展示 | 需要自定义 UI 样式，或使用轮播图等特殊组件 |
-
-两种模式使用不同的创建方法，创建时即确定渲染模式：
-
-| 模式 | 创建方法 |
-|------|---------|
-| Express | `createBannerAd(withPlacementId:listener:)` |
-| SelfRender | `createSelfRenderBannerAdWithPlacementId(_:listener:)` |
-
----
-
-#### Express 模式（默认）
-
-**创建 & 加载**：
-
-```swift
-var bannerAd: (AnyObject & FlameBannerAd)?
-
-func loadBanner() {
-    bannerAd?.destroy()  // 先销毁旧实例
-    bannerAd = FlameSdk.createBannerAd(
-        withPlacementId: "YOUR_PLACEMENT_ID",
-        listener: self
-    )
-    bannerAd?.load(
-        withUserId: "user123",
-        userCustomData: "custom_data",
-        width: 320,
-        height: 50,
-        viewController: self
-    )
-}
-```
-
-**展示广告 View**（在 `onAdLoaded` 回调后执行）：
-
-```swift
-func onAdLoaded() {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        // 延迟 100ms 等待 SDK 内部 View 树构建完成
-        let adView = self.bannerAd?.retrieveAdView()
-        // 将 adView 添加到页面布局中
-    }
-}
-```
-
----
-
-#### SelfRender 模式（素材模式）
-
-开发者获取广告素材（封面图 URL、标题等），使用自己的 UI 组件展示；广告媒体视图、广告标识、关闭按钮等合规元素通过 `FlameBannerAdRenderSlots` 绑定到你自己的布局中。
-
-> **纯宿主自渲染说明**：SelfRender 模式下，SDK 不会把整张 Banner 模板视图插入你的容器。标题、描述、CTA、主图、图标、广告主、域名、风险提示、评分、赞助商等内容都应由宿主自行渲染；SDK 只负责把媒体视图、平台 logo、广告标识、关闭按钮等受 SDK 管理的视图挂载到你指定的 slot 上。
-
-**服务端配置要求**：需要在 Flame 后台为广告位额外配置一个支持 Banner 尺寸的 TopOn Native Banner 广告位，用于提供自渲染素材。如果在后台配置时未设置自渲染广告位，SDK 会返回错误提示。
-
-**代码示例**——配合自定义 Banner 容器使用：
-
-```swift
-var bannerAd: (AnyObject & FlameBannerAd)?
-let bannerContainer = UIView()
-let mediaView = UIView()
-let logoView = UIView()
-let adMarkView = UIView()
-let closeView = UIView()
-let titleLabel = UILabel()
-let descLabel = UILabel()
-let ctaButton = UIButton(type: .system)
-
-func loadBannerSelfRender() {
-    bannerAd?.destroy()
-    bannerAd = FlameSdk.createSelfRenderBannerAdWithPlacementId(
-        "YOUR_PLACEMENT_ID",
-        listener: self
-    )
-    bannerAd?.load(
-        withUserId: "user123",
-        userCustomData: "custom_data",
-        width: 375,
-        height: 180,
-        viewController: self
-    )
-}
-
-func onAdMaterialReady(_ materials: [FlameBannerAdMaterial]) {
-    guard let material = materials.first else { return }
-
-    titleLabel.text = material.title
-    descLabel.text = material.desc
-    ctaButton.setTitle(material.ctaText, for: .normal)
-
-    bannerContainer.frame = CGRect(x: 0, y: 0, width: 375, height: 180)
-    mediaView.frame = CGRect(x: 0, y: 0, width: 375, height: 180)
-    logoView.frame = CGRect(x: 12, y: 12, width: 24, height: 24)
-    adMarkView.frame = CGRect(x: 12, y: 150, width: 36, height: 18)
-    closeView.frame = CGRect(x: 339, y: 8, width: 28, height: 28)
-    titleLabel.frame = CGRect(x: 12, y: 120, width: 220, height: 22)
-    descLabel.frame = CGRect(x: 12, y: 144, width: 220, height: 20)
-    ctaButton.frame = CGRect(x: 260, y: 132, width: 96, height: 32)
-
-    if bannerContainer.superview == nil {
-        bannerContainer.addSubview(mediaView)
-        bannerContainer.addSubview(titleLabel)
-        bannerContainer.addSubview(descLabel)
-        bannerContainer.addSubview(ctaButton)
-        bannerContainer.addSubview(logoView)
-        bannerContainer.addSubview(adMarkView)
-        bannerContainer.addSubview(closeView)
-        view.addSubview(bannerContainer)
-    }
-
-    let slots = FlameBannerAdRenderSlots()
-    slots.containerView = bannerContainer
-    slots.mediaSlotView = mediaView
-    slots.logoSlotView = logoView
-    slots.adMarkSlotView = adMarkView
-    slots.closeSlotView = closeView
-    slots.clickableViews = [bannerContainer, ctaButton]
-
-    bannerAd?.bindMaterial(atIndex: 0, slots: slots)
-}
-
-func onAdShow() {
-    // 广告展示回调
-}
-
-func onAdClicked() {
-    // 广告点击回调
-}
-
-func onAdClosed() {
-    bannerAd?.unbindMaterial()
-    bannerContainer.removeFromSuperview()
-}
-
-func onAdError(_ code: String, desc: String) {
-    // 加载失败
-}
-```
-
-**自定义关闭行为**：
-
-```swift
-@objc func closeBanner() {
-    bannerAd?.remove()
-    bannerContainer.removeFromSuperview()
-}
-```
-
-#### 回调协议 `FlameBannerListener`
-
-| 回调方法 | 说明 | 触发时机 |
-|---------|------|---------|
-| `onAdLoaded()` | 广告加载成功 | Express 模式广告就绪，或 SelfRender 模式素材准备完成前的加载成功回调 |
-| `onAdMaterialReady(_ materials:)` | 素材就绪（SelfRender 模式） | 自渲染素材加载完成 |
-| `onAdError(code:desc:)` | 加载失败 | 加载异常，或 SDK 未初始化 |
-| `onAdShow()` | 广告展示 | Express 视图展示或 SelfRender 绑定后展示 |
-| `onAdClicked()` | 用户点击 | 用户点击广告区域 |
-| `onAdClosed()` | 广告关闭 | 点击关闭按钮或广告关闭 |
-
-#### SelfRender 模式下 `FlameBannerAdMaterial` 素材字段
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `title` | String | 广告标题 |
-| `desc` | String | 广告描述 |
-| `ctaText` | String | CTA 按钮文案，如"立即下载"、"了解更多" |
-| `iconUrl` | String | 图标 URL |
-| `coverUrl` | String | 主图 URL |
-| `advertiser` | String | 广告主名称 |
-| `domain` | String | 落地页域名 |
-| `warning` | String | 风险提示文案 |
-| `rating` | NSNumber? | 评分信息 |
-| `sponsor` | String | 赞助商信息，优先取平台 sponsor 文案 |
-| `source` | String | 广告来源信息，可作为 sponsor 的兜底展示 |
-| `hasVideo` | Bool | 是否包含视频素材 |
-| `requiresAdvertiser` | Bool | 是否需要展示广告主信息 |
-| `requiresDomain` | Bool | 是否需要展示域名信息 |
-| `requiresWarning` | Bool | 是否需要展示风险提示 |
-
-> **注意**：`coverUrl`、`iconUrl` 等原始素材字段可能为空，具体以广告源返回为准；涉及广告标识、关闭按钮、媒体区域的合规展示，请优先通过 `FlameBannerAdRenderSlots` 绑定 SDK 提供的视图。
-
-#### SelfRender 模式下 `FlameBannerAdRenderSlots` 插槽说明
-
-| 字段 | 必填 | 说明 |
-|------|------|------|
-| `containerView` | 是 | 当前自渲染 Banner 的宿主容器，用于绑定上下文和默认点击区域兜底 |
-| `mediaSlotView` | 否 | 挂载媒体视图，视频广告建议提供 |
-| `logoSlotView` | 否 | 挂载广告平台 logo 视图，优先显示 `netWorkOptionView` |
-| `adMarkSlotView` | 否 | 挂载广告标识视图，用于兜底显示"广告"标记，不建议省略 |
-| `closeSlotView` | 否 | 挂载关闭按钮 |
-| `clickableViews` | 否 | 显式声明可点击区域，建议传入业务点击区，如容器、CTA 按钮等 |
-
-> **说明**：`logoSlotView` 与 `adMarkSlotView` 职责不同，前者承载平台 logo，后者承载广告标识兜底视图；即使存在 logo 视图，也建议保留 ad mark 位置。`clickableViews` 建议显式传入，未传时 SDK 会退化为使用 `containerView` 作为默认点击区域。
-
-#### 关键注意事项
-
-1. SelfRender 模式使用 `createSelfRenderBannerAdWithPlacementId(_:listener:)` 创建，渲染模式在创建时即确定，**不需要额外设置渲染类型**
-2. Banner 的 `viewController` 已合并到 `load(...)` 参数中，Express 和 SelfRender 模式都需要在加载时传入
-3. SelfRender 模式请在 `onAdMaterialReady(_:)` 后调用 `bindMaterial(atIndex:slots:)`，用于绑定媒体视图、广告标识、关闭按钮和点击区域
-4. `bindMaterial(atIndex:slots:)` 只会挂载 SDK 管理视图，不会自动渲染标题、描述、CTA、主图、图标、广告主、域名、风险提示、评分或赞助商内容，这些都需要宿主自行布局
-5. 如需解绑当前自渲染广告，可调用 `unbindMaterial()`；如需仅从页面移除当前绑定内容，可调用 `remove()`
-6. 自渲染模式不需要调用 `retrieveAdView()`，该方法在 SelfRender 模式下返回 nil
-7. 当前每次加载通常返回一条可绑定素材，`bindMaterial(atIndex:slots:)` 传入 `0` 即可
-
-#### 销毁
-
-```swift
-bannerAd?.destroy()
-bannerAd = nil
-```
-
----
-
-### 4.2 插屏广告（Interstitial）
-
-**适用场景**：页面跳转、关卡结束等时机展示全屏广告。
-
-**创建 & 加载**：
-```swift
-var interstitialAd: (AnyObject & FlameInterstitialAd)?
-
-func loadInterstitial() {
-    guard let rootVC = topViewController() else { return }
-    interstitialAd?.destroy()
-    interstitialAd = FlameSdk.createInterstitialAd(
-        with: rootVC,
-        placementId: "YOUR_PLACEMENT_ID",
-        listener: self
-    )
-    interstitialAd?.load(
-        withUserId: "user123",
-        userCustomData: "custom_data"
-    )
-}
-```
-
-**展示**（在 `onAdLoaded` 后调用）：
-```swift
-func showInterstitial() {
-    if interstitialAd?.isReady() == true {
-        interstitialAd?.show()
-    }
-}
-```
-
-**回调协议 `FlameInterstitialListener`**：
-
-| 回调方法 | 说明 |
-|---------|------|
-| `onAdLoaded()` | 广告就绪 |
-| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
-| `onAdShow()` | 开始展示 |
-| `onAdClicked()` | 用户点击 |
-| `onAdClosed()` | 广告关闭 |
-| `onAdReward(userId:userCustomData:)` | 奖励回调（部分场景） |
-
----
-
-### 4.3 激励视频广告（Reward Video）
-
-**适用场景**：用户主动选择观看视频换取游戏奖励、虚拟货币等。
-
-**创建 & 加载**：
-```swift
-var rewardAd: (AnyObject & FlameRewardAd)?
-
-func loadRewardAd() {
-    guard let rootVC = topViewController() else { return }
-    rewardAd?.destroy()
-    rewardAd = FlameSdk.createRewardAd(
-        with: rootVC,
-        placementId: "YOUR_PLACEMENT_ID",
-        listener: self
-    )
-    rewardAd?.load(
-        withUserId: "user_123456",
-        userCustomData: "reward_type_gold_coin"
-    )
-}
-```
-
-**展示**：
-```swift
-func showRewardAd() {
-    if rewardAd?.isReady() == true {
-        rewardAd?.show()
-    }
-}
-```
-
-**回调协议 `FlameRewardListener`**：
-
-| 回调方法 | 说明 |
-|---------|------|
-| `onAdLoaded()` | 视频就绪 |
-| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
-| `onAdShow()` | 视频开始播放 |
-| `onAdClicked()` | 用户点击 |
-| `onAdReward(userId:userCustomData:transId:)` | **发放奖励（关键回调）** |
-| `onAdPlayComplete()` | 视频播放完成 |
-| `onAdClosed()` | 视频关闭 |
-
-> **重要**：`onAdReward` 中的 `transId` 可用于服务端验证奖励合法性。
-
----
-
-### 4.4 开屏广告（Splash Ad）
-
-**适用场景**：App 启动时展示全屏品牌/广告。
-
-**创建 & 加载**：
-```swift
-var splashAd: (AnyObject & FlameSplashAd)?
-
-func loadSplashAd() {
-    guard let rootVC = topViewController() else { return }
-    splashAd?.destroy()
-    splashAd = FlameSdk.createSplashAd(
-        with: rootVC,
-        placementId: "YOUR_PLACEMENT_ID",
-        listener: self
-    )
-    splashAd?.load(
-        withUserId: "user123",
-        userCustomData: "splash_data"
-    )
-}
-```
-
-**展示**（注意：开屏广告传入 `UIWindow` 而非 `UIViewController`）：
-```swift
-func showSplashAd() {
-    guard splashAd?.isReady() == true else { return }
-    let window = UIApplication.shared.connectedScenes
-        .compactMap { $0 as? UIWindowScene }
-        .flatMap { $0.windows }
-        .first { $0.isKeyWindow }
-    if let window = window {
-        splashAd?.show(window)  // 传 UIWindow！
-    }
-}
-```
-
-**回调协议 `FlameSplashListener`**：
-
-| 回调方法 | 说明 |
-|---------|------|
-| `onAdLoaded()` | 广告就绪 |
-| `onAdShow()` | 广告展示 |
-| `onAdClicked()` | 用户点击 |
-| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
-| `onAdClosed()` | 广告关闭 |
-| `onAdLoadTimeout()` | 加载超时（开屏专用） |
-| `onAdReward(userId:userCustomData:)` | 奖励回调 |
-| `onAdShowComplete(userId:userCustomData:)` | 展示完成 |
-
-> **与其他广告的关键区别**：`show()` 方法接收 `UIWindow` 参数，而不是 `UIViewController`。
-
----
-
-### 4.5 信息流广告（Native Ad）
-
-**适用场景**：嵌入内容流中的原生广告，支持全屏容器展示。
-
-**创建 & 加载**：
-```swift
-var nativeAd: (AnyObject & FlameNativeAd)?
-
-func loadNativeAd() {
-    guard let rootVC = topViewController() else { return }
-    nativeAd?.destroy()
-    nativeAd = FlameSdk.createNativeAd(
-        with: rootVC,
-        placementId: "YOUR_PLACEMENT_ID",
-        listener: self
-    )
-    let screenSize = UIScreen.main.bounds.size
-    nativeAd?.load(
-        withUserId: "user123",
-        userCustomData: "native_data",
-        width: screenSize.width,
-        height: screenSize.height
-    )
-}
-```
-
-**展示（在 UIView 容器中渲染）**：
-```swift
-func showNativeAd(in containerView: UIView) {
-    if nativeAd?.isReady() == true {
-        nativeAd?.show(inContainer: containerView)
-    }
-}
-```
-
-**回调协议 `FlameNativeListener`**：
-
-| 回调方法 | 说明 |
-|---------|------|
-| `onAdLoaded()` | 广告缓存就绪 |
-| `onAdError(code:desc:)` | 加载失败（包括 SDK 未初始化） |
-| `onAdShow()` | 渲染到容器 |
-| `onAdClicked()` | 用户点击 |
-| `onAdClosed()` | 广告关闭 |
-
-**推荐：加载失败自动重试（指数退避）**：
-```swift
-private var retryAttempt = 0
-private let maxRetry = 3
-
-func onAdError(_ code: String, desc: String) {
-    guard retryAttempt < maxRetry else { return }
-    retryAttempt += 1
-    let delay = pow(2.0, Double(min(3, retryAttempt)))  // 2s, 4s, 8s
-    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-        self.loadNativeAd()
-    }
-}
-```
-
----
-
-## 五、错误处理
-
-### 5.1 错误码
-
-| 错误码常量 | 值 | 说明 |
-|-----------|-----|------|
-| `ERROR_CODE_NOT_INIT` | `14000` | SDK 未初始化 |
-| `ERROR_CODE_INVALID_APP_ID` | `14001` | 无效的 App ID 或 App Key |
-| `ERROR_CODE_INVALID_PARAM` | `14002` | 参数错误（如宽高、用户信息等非法） |
-| `ERROR_CODE_INVALID_AD_PLACEMENT` | `14004` | 广告位不存在 |
-| `ERROR_CODE_NETWORK_ERROR` | `15000` | 网络错误 |
-
-### 5.2 未初始化时的行为
-
-0.1.8.1 中，**在 SDK 未初始化时创建广告不会导致 Crash**。SDK 会：
-
-1. 通过 `onAdError(code: "14000", desc: "...")` 回调通知调用方
-2. 返回 `nil`，不创建无效广告对象
-
-建议在所有广告 Listener 中正确处理 `onAdError`：
-
-```swift
-func onAdError(_ code: String, desc: String) {
-    if code == "14000" {
-        // SDK 未初始化，应先初始化 SDK
-        return
-    }
-    // 其他错误处理
-}
-```
-
----
-
-## 六、广告生命周期管理
-
-所有广告格式遵循统一的生命周期：
+Flame core binary（`flame_sdk_ios_core.framework`）是动态 framework，依赖：
 
 ```
-创建(create) → 加载(load) → 就绪(isReady) → 展示(show) → 关闭(onAdClosed) → 销毁(destroy)
+@rpath/OpenSSL.framework/OpenSSL
 ```
 
-**最佳实践**：
-- 每次 `load` 前先调用 `destroy()` 清理旧实例
-- 在页面 `onDisappear` 时调用 `destroy()` 防止内存泄漏
-- 所有 UI 更新必须在主线程执行
-
-```swift
-// 页面销毁时释放广告资源
-.onDisappear {
-    bannerAd?.destroy()
-    bannerAd = nil
-}
-```
-
----
-
-## 七、常见问题
-
-### Q1：SDK 初始化超时（10秒）
-可能原因：网络不通或 AppId/AppKey 错误。建议：
-- 检查网络连接
-- 确认 `NSAllowsArbitraryLoads` 已在 Info.plist 中配置
-- 使用 `FlameSdk.setDebug(true)` 查看详细日志
-- 使用异步初始化回调获取具体的错误码和描述
-
-### Q2：初始化失败后再次调用 init 无效
-0.1.8.1 中，初始化失败后 SDK 进入 `Failed` 状态，此时再次调用 init 会直接返回 fail，**不会自动重试**。需要先调用 `FlameSdk.clear()` 重置状态后再重新初始化。
-
-```swift
-// 正确的重试流程
-FlameSdk.clear()
-FlameSdk.initWithAppId("YOUR_APP_ID", appKey: "YOUR_APP_KEY") {
-    // success
-} fail: { code, desc in
-    // 处理失败
-}
-```
-
-### Q3：Banner 广告加载成功但 View 为空
-`retrieveAdView()` 需在 `onAdLoaded` 回调后延迟约 100ms 调用，SDK 内部需要时间完成 View 树构建：
-```swift
-DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-    adView = bannerAd?.retrieveAdView()
-}
-```
-
-### Q4：Banner SelfRender 模式下 `retrieveAdView()` 返回 nil
-SelfRender 模式下请使用 `onAdMaterialReady(_:)` 回调获取素材，而非 `retrieveAdView()`。素材获取后通过 `FlameBannerAdRenderSlots` 组装你的布局，并调用 `bindMaterial(atIndex:slots:)` 绑定展示追踪、点击区域和合规视图。
-
-### Q5：开屏广告 `show()` 参数类型
-开屏广告的 `show()` 传入 `UIWindow`，而非 `UIViewController`，这与其他广告格式不同，请注意区分。
-
-### Q6：Xcode 16 构建报错（Script Sandboxing）
-在 `Podfile` 的 `post_install` hook 中设置 `ENABLE_USER_SCRIPT_SANDBOXING = 'NO'`（参考第一节配置）。
-
-### Q7：Banner SelfRender 模式创建方法
-使用 `createSelfRenderBannerAdWithPlacementId(_:listener:)` 创建自渲染 Banner，**不需要额外调用 `setRenderType`**。渲染模式在创建时即确定，不可更改。
-
-### Q8：多个页面同时调用 init 会怎样
-0.1.8.1 中，`Initializing` 状态下再次调用 init，callback 会被加入等待队列。当初始化完成（成功或失败）时，所有等待中的 callback 都会收到对应的结果回调。**多个调用方可以安全地同时调用 `initWithAppId:appKey:callback:`**，无需自行做互斥处理。
-
----
-
-## 八、测试 AppId 与 AppKey
-
-| 参数 | 值 |
-|------|------|
-| AppId | `b64032443515` |
-| AppKey | `11710c8515a6f980bf9578572cdf4844` |
-
-### 测试广告位 ID
-
-| 广告格式 | Placement ID |
-|---------|--------------|
-| Banner（Express） | `q23035526072` |
-| Banner（SelfRender） | `q65796594128` |
-| Interstitial | `q28769551483` |
-| Native | `q80657462905` |
-| Reward Video | `q86592937069` |
-| Splash | `q89260083668` |
-
-> 正式上线时请替换为媒体平台分配的真实 AppId、AppKey 及 Placement ID。
-
----
-
-## 九、Info.plist 附加配置
-
-### 9.1 SKAdNetwork IDs
-
-苹果 SKAdNetwork 归因框架要求在 Info.plist 中声明所有合作广告网络的 ID。**缺少某个 ID 将导致该网络广告转化无法归因，广告主出价降低，进而影响 eCPM 和填充率。**
-
-建议从 Flame ADX 获取最新列表，将以下代码添加到 Info.plist：
-
-```xml
-<key>SKAdNetworkItems</key>
-  <array>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>kbd757ywx3.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>mls7yz5dvl.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>4fzdc2evr5.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>4pfyvq9l8r.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>ydx93a7ass.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>cg4yq2srnc.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>p78axxw29g.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>737z793b9f.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>v72qych5uu.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>6xzpu9s2p8.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>ludvb6z3bs.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>mlmmfzh3r3.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>c6k4g5qg8m.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>wg4vff78zm.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>523jb4fst2.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>ggvn48r87g.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>22mmun2rn5.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>3sh42y64q3.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>f38h382jlk.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>24t9a8vw3c.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>hs6bdukanm.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>prcb7njmu6.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>m8dbw4sv7c.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>9nlqeag3gk.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>cj5566h2ga.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>cstr6suwn9.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>w9q455wk68.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>wzmmz9fp6w.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>yclnxrl5pm.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>4468km3ulz.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>t38b2kh725.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>k674qkevps.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>7ug5zh24hu.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>5lm9lj6jb7.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>9rd848q2bz.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>7rz58n8ntl.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>4w7y6s5ca2.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>feyaarzu9v.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>ejvt5qm6ak.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>9t245vhmpl.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>n9x2a789qt.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>44jx6755aq.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>zmvfpc5aq8.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>tl55sbb4fm.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>2u9pt9hc89.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>5a6flpkh64.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>8s468mfl3y.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>glqzh8vgby.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>av6w8kgt66.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>klf5c3l5u5.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>dzg6xy7pwj.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>y45688jllp.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>hdw39hrw9y.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>ppxm28t8ap.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>424m5254lk.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>5l3tpt7t6e.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>uw77j35x4d.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>4dzt52r2t5.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>mtkv5xtk9e.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>gta9lk7p23.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>5tjdwbrq8w.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>3rd42ekr43.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>g28c52eehv.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>su67r6k2v3.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>rx5hdcabgc.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>2fnua5tdw4.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>32z4fx6l9h.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>xy9t38ct57.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>54nzkqm89y.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>9b89h5y424.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>pwa73g5rt2.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>79pbpufp6p.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>kbmxgpxpgc.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>275upjj5gd.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>rvh3l7un93.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>qqp299437r.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>294l99pt4k.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>74b6s63p6l.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>44n7hlldy6.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>6p4ks3rnbw.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>f73kdq92p3.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>e5fvkxwrpn.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>97r2b46745.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>3qcr597p9d.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>578prtvx9j.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>n6fk4nfna4.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>b9bk5wbcq9.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>84993kbrcf.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>24zw6aqk47.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>pwdxu55a5a.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>cs644xg564.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>6964rsfnh4.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>9vvzujtq5s.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>a7xqa6mtl2.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>r45fhb6rf7.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>c3frkrj4fj.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>6g9af3uyq4.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>u679fj5vs4.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>g2y4y55b64.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>zq492l623r.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>a8cz6cu7e5.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>s39g8k73mm.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>dbu4b84rxf.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>mj797d8u6f.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>v9wttpbfk9.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>ns5j362hk7.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>mqn7fxpca7.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>cp8zw746q7.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>3qy4746246.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>v4nxqhlyqp.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>vutu7akeur.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>y5ghdn5j9k.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>n38lu8286q.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>47vhws6wlr.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>a2p9lx4jpn.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>8c4e2ghe7u.skadnetwork</string>
-    </dict>
-    <dict>
-      <key>SKAdNetworkIdentifier</key>
-      <string>f7s53z58qe.skadnetwork</string>
-    </dict>
-  </array>
-```
-
-> 建议定期从 Flame ADX 获取最新列表，以确保新接入广告网络的归因数据完整。
-
----
-
-### 9.2 LSApplicationQueriesSchemes
-
-为提高 Flame ADX 的广告收益效果，需声明可查询的第三方 App scheme，用于广告点击 DeepLink 跳转及用户人群定向，**有助于提升电商类高价广告的填充率和 eCPM**。
-
-将以下代码添加到 Info.plist：
-
-```xml
-<key>LSApplicationQueriesSchemes</key>
-<array>
-  <string>taobao</string>
-  <string>pinduoduo</string>
-  <string>openapp.jdmobile</string>
-  <string>imeituan</string>
-  <string>iosamap</string>
-  <string>alipay</string>
-  <string>baiduboxapp</string>
-  <string>vipshop</string>
-  <string>tmall</string>
-  <string>meituanwaimai</string>
-  <string>kwai</string>
-  <string>eleme</string>
-  <string>xhsdiscover</string>
-  <string>ksnebula</string>
-  <string>sinaweibo</string>
-  <string>fleamarket</string>
-  <string>bilibili</string>
-  <string>quark</string>
-  <string>com.sy.dldllhsj</string>
-  <string>com.yunkai.xianyu</string>
-  <string>com.netease.nshm</string>
-  <string>com.lilithgames.solarland.ios.cnnew</string>
-  <string>com.netease.yyslscn</string>
-  <string>infinitynikkicn</string>
-  <string>mdd</string>
-  <string>moyi</string>
-  <string>glg136c4b5fbccab</string>
-  <string>guazi</string>
-  <string>momochat</string>
-  <string>comdzhongfhjc</string>
-  <string>hmjc</string>
-  <string>com.aio.fasting</string>
-  <string>com.pwrd.zhuxian2.zs</string>
-  <string>com.khorgas.hsdj</string>
-  <string>com.gof.china</string>
-  <string>openjdjrapp</string>
-  <string>xtlqabroad</string>
-  <string>com.netease.stzb</string>
-  <string>com.gf.cxswz</string>
-  <string>SilverandBlood</string>
-  <string>stbnt</string>
-  <string>1235601864</string>
-  <string>1001394201</string>
-  <string>tbopen</string>
-  <string>pddopen</string>
-  <string>baiduboxlite</string>
-  <string>wireless1688</string>
-  <string>iqiyi</string>
-  <string>weixin</string>
-  <string>taobaotravel</string>
-  <string>alipays</string>
-  <string>youku</string>
-  <string>taobaolive</string>
-  <string>tongyi</string>
-</array>
-```
-
----
-
-## 十、0.1.8 → 0.1.8.1 升级指南
-
-### 接入方式
+两个 podspec 均已显式声明：
 
 ```ruby
-# Podfile 中将版本号改为 0.1.8.1 即可
-pod 'flame_sdk_ios', '0.1.8.1'
+s.dependency 'OpenSSL-Universal', '~> 3.6'
 ```
 
-### API 变更
+客户 `pod install` 后 OpenSSL.framework 会自动内嵌进 App 的 `Frameworks/` 目录，**无需手动添加**。
+若不显式声明，真机启动会 crash：
 
-**无破坏性变更**。所有 API 接口、回调协议、集成配置均与 0.1.8 完全一致，无需修改对接代码。
+```
+dyld: Library not loaded: @rpath/OpenSSL.framework/OpenSSL
+```
 
-### 行为变更
+---
 
-| 变更项 | 0.1.8 | 0.1.8.1 |
-|--------|-------|---------|
-| 未初始化时创建广告 | `@throw` NSException（Swift 无法捕获，导致 Crash） | `onAdError("14000", ...)` 回调 + 返回 nil |
-| 初始化失败后再次 init | 自动重新发请求（无限制） | 直接返回 fail，需先 `clear()` |
-| Initializing 状态再次 init | 返回 fail（"SDK is already initializing"） | callback 加入等待队列 |
-| 同步初始化 `isInitialized` | 依赖 AdapterManager 状态 | SDK 内部状态机判断 |
+## 四、内部架构（仅供理解，客户无需关心）
 
-### 建议升级原因
+```
+pod 'flame_sdk_ios' (TK 客户)
+├── vendored_frameworks: flame_sdk_ios_core.xcframework
+│   └── module = flame_sdk_ios_core（零三方符号，仅 OpenSSL + 系统库）
+├── source_files:
+│   ├── flame_sdk_ios/wrappers/flame_sdk_ios/*.h  → 转发到 <flame_sdk_ios_core/...>
+│   ├── flame_sdk_ios/mediation/tk/*.m             → FlameTKProvider (+load 自动注册)
+│   └── flame_sdk_ios/adapter/tk/*.m               → AtRewardAdapter 等
+└── dependencies: OpenSSL + AnyThinkiOS + 全 Mediation + AdGain + 飞梭
 
-1. **消除 Crash 风险**：未初始化时不再 Crash，异常数据不再导致类型转换崩溃
-2. **初始化可靠性**：状态机防止重复请求、请求去重防止过期回调
-3. **错误可观测性**：通过 `onAdError` 回调和异步初始化回调获取具体错误信息
+pod 'flame_sdk_ios_tb' (TB 客户)
+├── vendored_frameworks: 同一份 core binary
+├── source_files:
+│   ├── flame_sdk_ios/wrappers/flame_sdk_ios_tb/*.h → 转发到 <flame_sdk_ios_core/...>
+│   ├── flame_sdk_ios/mediation/tb/*.m               → FlameTBProvider (+load 自动注册)
+│   └── flame_sdk_ios/adapter/tb/*.m                 → TbRewardAdapter
+└── dependencies: OpenSSL + ToBid-iOS-RC
+```
+
+平台 Provider（FlameTKProvider / FlameTBProvider）通过 `+load` 自动注册到 `FlameMediationRegistry`，
+SDK 内部根据平台类型激活对应 Provider，客户无需手动选择平台。
+
+---
+
+## 五、常见问题
+
+### Q1: 报错 `transitive dependencies include statically linked binaries`
+A: Podfile 缺少 `use_frameworks! :linkage => :static`，加上即可。
+
+### Q2: 报错 `dyld: Library not loaded: @rpath/OpenSSL.framework/OpenSSL`
+A: podspec 未声明 OpenSSL 依赖。正常情况下 SDK podspec 已自动包含，无需手动加；
+若版本异常可手动在 Podfile 补 `pod 'OpenSSL-Universal', '~> 3.6'`。
+
+### Q3: 同时接入 `flame_sdk_ios` 和 `flame_sdk_ios_tb` 会怎样？
+A: 两者 module name 均为 `flame_sdk_ios`，会冲突。请只接入一个。
+
+### Q4: TB 能用 Banner / Splash / Interstitial / Native 吗？
+A: 当前（Phase 5A）TB 仅 Reward 可用，其他为后续 Phase 6。
+
+### Q5: ToBid Reward 报错 `code 800031 AppId 没有绑定到 ToBid 聚合服务`
+A: 属于 ToBid 后台配置问题，应用尚未在 ToBid 后台注册或绑定。请联系 ToBid 业务侧完成应用绑定后重试，
+SDK 代码链路正常（能正常走到 WindMill 与 ToBid 后台错误回调）。
+
+### Q6: Xcode 16 构建报错（Script Sandboxing）
+A: 在 `Podfile` 的 `post_install` hook 中设置 `ENABLE_USER_SCRIPT_SANDBOXING = 'NO'`（参考第一节配置）。
