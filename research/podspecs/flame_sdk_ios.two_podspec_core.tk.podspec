@@ -38,6 +38,11 @@ Pod::Spec.new do |s|
     'flame_sdk_ios/adapter/tk/**/*.{h,m}'
   ]
 
+  # Core binary 动态依赖 OpenSSL（otool -L 显示 @rpath/OpenSSL.framework/OpenSSL），
+  # 必须显式声明，否则 App 运行时 dyld 找不到 OpenSSL → crash。
+  # TK 靠 AnyThinkiOS 传递依赖能侥幸通过，但显式声明边界更清晰。
+  s.dependency 'OpenSSL-Universal', '~> 3.6'
+
   # TK 运行时依赖（与正式 flame_sdk_ios.podspec 一致）
   s.dependency 'AnyThinkiOS', '6.5.71'
   s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.72.2.1'

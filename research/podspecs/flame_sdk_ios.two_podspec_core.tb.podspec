@@ -42,6 +42,11 @@ Pod::Spec.new do |s|
     'flame_sdk_ios/adapter/tb/**/*.{h,m}'
   ]
 
+  # Core binary 动态依赖 OpenSSL（otool -L 显示 @rpath/OpenSSL.framework/OpenSSL），
+  # 必须显式声明，否则 App 运行时 dyld 找不到 OpenSSL → crash。
+  # TK podspec 靠 AnyThinkiOS 传递依赖 OpenSSL 能侥幸通过；TB 只有 ToBid，必须显式声明。
+  s.dependency 'OpenSSL-Universal', '~> 3.6'
+
   # TB 运行时依赖：WindMill 不在 binary 内，需声明 ToBid-iOS-RC 供 TB 源码编译/运行
   s.dependency 'ToBid-iOS-RC', '5.5.6'
 
