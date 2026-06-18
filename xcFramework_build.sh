@@ -5,22 +5,22 @@ set -e
 # xcFramework_build.sh — 多变体互斥构建脚本
 # ------------------------------------------------------------
 # 用法：
-#   ./xcFramework_build.sh        # 默认 = tk
-#   ./xcFramework_build.sh tk     # 构建 TK 默认包 → build/tk/flame_sdk_ios.xcframework
-#   ./xcFramework_build.sh tb     # 构建 TB 包     → build/tb/flame_sdk_ios.xcframework
-#   ./xcFramework_build.sh core   # 构建 Core 包  → build/core/flame_sdk_ios.xcframework
-#                                 #   （Phase 5A.10 Step 1：平台中立 Thin Core Binary，
-#                                 #    不含 AnyThink/ToBid/WindMill/任何广告源 SDK）
-#   ./xcFramework_build.sh core-named
-#                                 #   Phase 5A.10 Step 4B：构建改名 Core binary（正式输出）
-#                                 #   → build/flame_sdk_ios_core.xcframework
-#                                 #   framework/module/install name 均为 flame_sdk_ios_core
-#                                 #   用于方案 D（双 podspec + 单内部 core binary + 单 pod 接入）：
-#                                 #   pod 名仍为 flame_sdk_ios/flame_sdk_ios_tb，
-#                                 #   但内部 vendored framework 改名避免同名 module 遮蔽
-#                                 #   中间 xcarchive 放 Archives/core_named/，构建后清理
+#   ./xcFramework_build.sh            # 默认 = core-named（正式方案 D，Phase 5A.10 Step 4C）
+#   ./xcFramework_build.sh core-named # 同上，显式写法
+#                                     #   → build/flame_sdk_ios_core.xcframework
+#                                     #   framework/module/install name 均为 flame_sdk_ios_core
+#                                     #   用于方案 D（双 podspec + 单内部 core binary + 单 pod 接入）：
+#                                     #   pod 名仍为 flame_sdk_ios/flame_sdk_ios_tb，
+#                                     #   但内部 vendored framework 改名避免同名 module 遮蔽
+#                                     #   中间 xcarchive 放 Archives/core_named/，构建后清理
+#
+# legacy fallback（旧 dual-binary 兜底，仅 backup 分支正式使用，日常测试无需）：
+#   ./xcFramework_build.sh tk         # → build/tk/flame_sdk_ios.xcframework
+#   ./xcFramework_build.sh tb         # → build/tb/flame_sdk_ios.xcframework
+#   ./xcFramework_build.sh core       # → build/core/flame_sdk_ios.xcframework（未改名，仅历史对比）
 #
 # 依赖入口是唯一的 Podfile，通过环境变量 FLAME_SDK_VARIANT=tk|tb|core 切换构建依赖。
+# 注意：core-named 在 Podfile 内部映射为 core（仅含 OpenSSL），构建后由本脚本改名。
 # 各产物 framework/module 名均为 flame_sdk_ios（同名，接入方 import 不变）
 # 各变体互斥，不能同时接入（同 module 名天然保证）
 # ============================================================
@@ -28,9 +28,14 @@ set -e
 # =========================
 # 变体解析
 # =========================
-VARIANT="${1:-tk}"
+# 无参数默认 = core-named（Phase 5A.10 Step 4C：正式方案 D 唯一产物）
+# tk / tb / core 仍保留为 legacy fallback（旧 dual-binary 兜底），需显式传参。
+VARIANT="${1:-core-named}"
 if [ "$VARIANT" != "tk" ] && [ "$VARIANT" != "tb" ] && [ "$VARIANT" != "core" ] && [ "$VARIANT" != "core-named" ]; then
-  echo "❌ 未知变体: $VARIANT（仅支持 tk / tb / core / core-named）"
+  echo "❌ 未知变体: $VARIANT（仅支持 core-named [默认] / tk / tb / core）"
+  echo "   正式方案 D 请执行：./xcFramework_build.sh            （等同 core-named）"
+  echo "   或显式：           ./xcFramework_build.sh core-named"
+  echo "   legacy fallback：  ./xcFramework_build.sh tk|tb|core （旧 dual-binary 兜底）"
   exit 1
 fi
 
