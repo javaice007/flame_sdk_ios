@@ -36,7 +36,8 @@ target 'flame_sdk_ios' do
   use_frameworks! :linkage => :static
 
   # 公共依赖：Flame core 加密
-  pod 'OpenSSL-Universal', '~> 3.6'
+  # 本地镜像绕过 GitHub releases 网络下载慢（构建环境专用，正式发布用 CocoaPods 官方源）
+  pod 'OpenSSL-Universal', :path => '/Users/khj/Documents/code/97_ad/ios/local_pods/OpenSSL-Universal'
 
   # TK 平台核心：Flame TK 胶水（FlameTKProvider + 6 At*Adapter）编译期需要 AnyThinkSDK 头文件
   # 注意：严格边界 —— 这里只放 AnyThink 核心 SDK，不放 AnyThinkMediation*Adapter / AdGain / FSUnion 等
