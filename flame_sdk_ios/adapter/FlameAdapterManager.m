@@ -14,17 +14,16 @@
 #import "FlameSdk.h"
 
 // ============================================================
-// 平台源码宏隔离
-//   isInitialized / checkInitialization / sharedInstance 等状态方法在
-//   TK / TB / CORE 三个变体中都必须存在（ads/*Impl.m 依赖 checkInitialization）。
-//   AnyThinkSDK 依赖、initSDKWithAppId、setDebug 的 TK 分支仅 TK 变体编译；
-//   CORE 变体下本类退化为纯中立骨架（checkInitialization 委托 FlameSdk，
-//   setDebug 仅打日志），不 import 也不调用 AnyThink。
-//   广告创建工厂方法已删除，统一走 Provider 链路。
+// FlameAdapterManager（Phase 5A.12 mainline：平台中立骨架）
+// ------------------------------------------------------------
+// isInitialized / checkInitialization / sharedInstance 等状态方法始终编译
+// （ads/*Impl.m 依赖 checkInitialization）。
+// initSDKWithAppId 保留 TK 初始化逻辑（ATAPI），但实际调用路径已迁移到
+// FlameTKProvider.initializeWithAppId（本类的 initSDKWithAppId 仅作为历史兼容入口）。
+// setDebug 平台中立：debug 开关由各 Provider 自己处理（TK 走 AnyThink，TB 走 WindMill）。
+// 广告创建工厂方法已删除，统一走 Provider 链路。
 // ============================================================
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
 #import <AnyThinkSDK/AnyThinkSDK.h>
-#endif
 
 
 @implementation FlameAdapterManager
@@ -53,8 +52,6 @@
 - (instancetype)copyWithZone:(NSZone *)zone {
     return self;
 }
-
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
 
 + (void)initSDKWithAppId:(NSString *)appId
                   appKey:(NSString *)appKey
@@ -104,8 +101,6 @@
 //     → FlameTKProvider / FlameTBProvider
 //     → At*Adapter / TbRewardAdapter
 
-#endif // FLAME_BUILD_TK / 默认 TK
-
 // ========= 平台中立方法：TK / TB 两变体均编译 =========
 // isInitialized / checkInitialization 被 ads/*Impl.m 调用，必须始终存在。
 // 初始化状态统一来自 FlameSdk 状态机（由各 Provider 的初始化回调更新），
@@ -113,15 +108,11 @@
 // 也能正确反映初始化结果。
 
 + (void)setDebug:(BOOL)isDebug {
-    // 平台中立：debug 开关的实际行为由各变体自己处理
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
-    // TK 变体：开启 AnyThinkSDK 日志
-    [ATAPI setLogEnabled:YES];
-#else
-    // Core 变体：debug 开关由各 Provider 自己处理（FlameTKProvider 走 AnyThink，FlameTBProvider 走 WindMill），
-    // 此处无需直接调用任何平台 SDK，仅记录开关状态。
-    [FlameLogger i:[NSString stringWithFormat:@"FlameAdapterManager.setDebug:%@ (Core variant, provider handles platform debug setting)", isDebug ? @"YES" : @"NO"]];
-#endif
+    // 平台中立：debug 开关由各 Provider 自己处理
+    // - TK：FlameTKProvider.initializeWithAppId 调用 [ATAPI setLogEnabled:YES]
+    // - TB：FlameTBProvider.initializeWithAppId 调用 [WindMillAds setDebugEnable:YES]
+    // 此处仅记录调用（实际平台 debug 设置在 Provider 初始化时完成）。
+    [FlameLogger i:[NSString stringWithFormat:@"FlameAdapterManager.setDebug:%@ (providers handle platform debug setting)", isDebug ? @"YES" : @"NO"]];
 }
 
 + (BOOL)isInitialized {

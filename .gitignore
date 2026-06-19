@@ -118,3 +118,9 @@ research/staging_tk/
 research/staging_tb/
 research/staging_d_tk/
 research/staging_d_tb/
+
+# Phase 5A.12 本地实验 dist / spec repo（嵌套 git，不入主仓库）
+research/local_dist/flame_sdk_ios/
+research/local_dist/single_binary/
+research/local_dist/single_binary_mainline/
+research/local_specs/flame-specs/

@@ -16,28 +16,23 @@
 #import "FlameMediationRouter.h"
 
 // ============================================================
-// 构建宏隔离：TK / TB / CORE 三变体
-//   FLAME_BUILD_TK=1   → 只注册 FlameTKProvider（默认 TK 包）
-//   FLAME_BUILD_TB=1   → 只注册 FlameTBProvider（TB 包）
-//   FLAME_BUILD_CORE=1 → Thin Core 包：不注册任何内置 Provider，
-//                        平台源码插件由 podspec source_files 编译进接入方 App 后
-//                        自行注册（Step 2 实现）；create*Ad 仍走 Router.currentProvider。
-//   三个宏都未定义时 → 按 TK 处理（源码开发兼容）
-//   正式构建由 xcFramework_build.sh 显式注入宏，不依赖默认值
+// Phase 5A.12 mainline：单二进制架构
+// ------------------------------------------------------------
+// flame_sdk_ios.xcframework 同时内置 Flame core + TK/TB Provider/Adapter 胶水。
+// TK/TB 源码始终全部参与编译（不再使用 FLAME_BUILD_TK / FLAME_BUILD_TB 等宏隔离）。
+//
+// Provider 注册机制：
+//   - FlameTKProvider / FlameTBProvider 的 +load 在 dyld 加载 binary 时自动触发，
+//     分别将 tk / tb 平台注册到 FlameMediationRegistry。
+//   - registerAllProvidersIfNeeded 不再实例化 Provider（避免与 +load 重复注册）。
+//
+// 平台选择：
+//   - 运行期 Router 根据服务端下发的 pt=tk / pt=tb 激活对应 Provider。
+//   - 只有被激活的 Provider 才会调用 initializeWithAppId（进而初始化 AnyThink / WindMill）。
 // ============================================================
-#if defined(FLAME_BUILD_TK) && defined(FLAME_BUILD_TB)
-#error "FLAME_BUILD_TK and FLAME_BUILD_TB cannot both be defined"
-#endif
 
-// 默认 TK 条件：显式 TK，或三个宏都未定义（源码开发兼容）。
-// CORE 模式下显式排除，确保 Core binary 不直接 import FlameTKProvider。
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
 #import "FlameTKProvider.h"
-#endif
-
-#if defined(FLAME_BUILD_TB)
 #import "FlameTBProvider.h"
-#endif
 
 #import "FlameRewardAdapterProtocol.h"
 #import "FlameSplashAdapterProtocol.h"
@@ -354,27 +349,24 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
 + (void)registerAllProvidersIfNeeded {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        // 构建变体决定注册哪些 Provider，不在 create*Ad 中做平台判断
-        // Provider 选择仍通过 Registry → Router
+        // Phase 5A.12 mainline（单二进制架构）：
+        // FlameTKProvider / FlameTBProvider 的 +load 已在 dyld 加载 binary 时自动注册到 Registry。
+        // 此处不再实例化 Provider，避免对同一 platformCode 重复注册（registerProvider 会覆盖 +load 注册的实例）。
         //
-        // CORE 变体（FLAME_BUILD_CORE=1）：此处不注册任何内置 Provider。
-        //   Core binary 不含 TK/TB 平台源码，Provider 由 Step 2 的平台源码插件
-        //   （podspec source_files）在接入方 App 编译时自动注册。
-        //   若 Core binary 单独运行（无插件），create*Ad 会走 Router.currentProvider=nil
-        //   分支，返回 "No active provider" 错误，符合预期。
-#if defined(FLAME_BUILD_TK) || (!defined(FLAME_BUILD_TK) && !defined(FLAME_BUILD_TB) && !defined(FLAME_BUILD_CORE))
-        // TK 变体：注册 FlameTKProvider（TK / TopOn / AnyThink）
-        FlameTKProvider *tkProvider = [[FlameTKProvider alloc] init];
-        [[FlameMediationRegistry sharedRegistry] registerProvider:tkProvider];
-        [FlameLogger i:@"FlameSdk: FlameTKProvider 已注册到 Registry"];
-#endif
-
-#if defined(FLAME_BUILD_TB)
-        // TB 变体：注册 FlameTBProvider（TB / ToBid / WindMill）
-        FlameTBProvider *tbProvider = [[FlameTBProvider alloc] init];
-        [[FlameMediationRegistry sharedRegistry] registerProvider:tbProvider];
-        [FlameLogger i:@"FlameSdk: FlameTBProvider 已注册到 Registry"];
-#endif
+        // 若 dyld 未触发 +load（极端情况，如非 -ObjC 链接配置），此处作为防御性兜底：
+        // 检查 Registry 是否已注册，未注册则补注册。
+        FlameMediationRegistry *registry = [FlameMediationRegistry sharedRegistry];
+        if (![registry hasProviderForPlatformCode:@"tk"]) {
+            FlameTKProvider *tkProvider = [[FlameTKProvider alloc] init];
+            [registry registerProvider:tkProvider];
+            [FlameLogger w:@"FlameSdk: FlameTKProvider 未通过 +load 注册，已防御性补注册（正常应已由 +load 注册）"];
+        }
+        if (![registry hasProviderForPlatformCode:@"tb"]) {
+            FlameTBProvider *tbProvider = [[FlameTBProvider alloc] init];
+            [registry registerProvider:tbProvider];
+            [FlameLogger w:@"FlameSdk: FlameTBProvider 未通过 +load 注册，已防御性补注册（正常应已由 +load 注册）"];
+        }
+        [FlameLogger i:@"FlameSdk: Provider 注册检查完成（默认依赖 +load 自动注册）"];
     });
 }
 

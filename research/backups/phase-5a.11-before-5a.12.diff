@@ -1,0 +1,1127 @@
+diff --git a/Podfile b/Podfile
+index aef8817..3afed85 100644
+--- a/Podfile
++++ b/Podfile
+@@ -27,6 +27,12 @@ variant = ENV.fetch('FLAME_SDK_VARIANT', 'tk').downcase
+ # core-named 构建期复用 core 的依赖（只含 OpenSSL），构建后由脚本改名
+ variant = 'core' if variant == 'core-named'
+ 
++# tk-plugin / tb-plugin 构建期复用对应平台的依赖（OpenSSL + AnyThinkiOS / ToBid-iOS-RC），
++# 由 xcFramework_build.sh 通过 EXCLUDED_SOURCE_FILE_NAMES 剔除 core/ads/utils 源码 + 对端平台，
++# 并注入 FLAME_BUILD_<plat> + FLAME_PLUGIN_<plat> 宏（Phase 5A.11 方案 E 插件二进制）
++variant = 'tk' if variant == 'tk-plugin'
++variant = 'tb' if variant == 'tb-plugin'
++
+ unless ['tk', 'tb', 'core'].include?(variant)
+   raise "❌ Invalid FLAME_SDK_VARIANT=#{variant}. Use tk, tb or core."
+ end
+@@ -38,6 +44,18 @@ platform :ios, '13.0'
+ source 'https://cdn.cocoapods.org/'
+ # source 'https://github.com/CocoaPods/Specs.git'
+ 
++# Phase 5A.11 Step 2 — 链接模式按变体区分
++# 关键差异：AnyThinkSDK 是 dynamic framework（头+dylib），ToBid-iOS-RC 内的
++# WindMillSDK/WindSDK/WindFoundation 都是 static archive（伪装成 framework 的 .a）。
++#   - tk-plugin / tk：AnyThinkSDK 是动态库，:linkage => :static 不会把它合并进来
++#   - tb-plugin：ToBid 静态归档若按常规方式，CocoaPods 生成的 -framework "Wind*"
++#     会让 ld 把全部 WindMill 对象文件（3600+）合并进 plugin binary（6.8M）。
++#     解决：tb-plugin 仍用 :linkage => :static，但 post_install 钩子会从 xcconfig
++#     剔除 -framework "Wind*" flag 并追加 -undefined dynamic_lookup，让 WindMill
++#     符号留为未定义，运行期由 flame_sdk_ios_tb.podspec dependency 'ToBid-iOS-RC' 解析。
++#     头文件仍可访问（use_frameworks! 暴露 WindMillSDK.framework/Headers）。
++#   - tb（legacy）：:linkage => :static，故意把 WindMill 静态内置进 binary（自包含模式）
++
+ target 'flame_sdk_ios' do
+   use_frameworks! :linkage => :static
+ 
+@@ -56,9 +74,11 @@ target 'flame_sdk_ios' do
+ 
+   if variant == 'tb'
+     # TB / ToBid 构建期依赖
+-    # 注意：这里只是 SDK 构建期需要 ToBid 头文件和静态库。
+-    # flame_sdk_ios_tb.podspec 分发期不能再声明 ToBid-iOS-RC，
+-    # 因为 build/tb/flame_sdk_ios.xcframework 已经静态内置 WindMill。
++    # - legacy tb 变体：:linkage => :static 会把 ToBid 静态归档内置进 binary（自包含模式），
++    #   flame_sdk_ios_tb.podspec 分发期不再声明 ToBid-iOS-RC
++    # - tb-plugin 变体：use_frameworks!（动态）让 ToBid 留在外部动态 framework，
++    #   plugin binary 只含 Flame 自己的 FlameTBProvider/TbRewardAdapter，
++    #   分发期由 flame_sdk_ios_tb.podspec dependency 'ToBid-iOS-RC' 提供
+     pod 'ToBid-iOS-RC', '5.5.6'
+   end
+ 
+@@ -120,4 +140,7 @@ post_install do |installer|
+       config.build_settings['HEADER_SEARCH_PATHS'] << ' ${PODS_ROOT}/OpenSSL-Universal/OpenSSL.xcframework/ios-arm64_x86_64-simulator/OpenSSL.framework/Headers'
+     end
+   end
++  # 注：Phase 5A.11 Step 2 tb-plugin 的 Wind* 链接隔离不在 post_install 内做，
++  # 因为 CocoaPods 1.16.2 在 post_install 之后会重新写出 xcconfig（覆盖我们的 patch）。
++  # 改由 xcFramework_build.sh 在 pod install 完成后直接改写 xcconfig 文件（见脚本内 patch_xcconfig）。
+ end
+diff --git a/flame_sdk_ios.podspec b/flame_sdk_ios.podspec
+index 605ba04..11be1bd 100644
+--- a/flame_sdk_ios.podspec
++++ b/flame_sdk_ios.podspec
+@@ -28,15 +28,18 @@
+ # ============================================================
+ Pod::Spec.new do |s|
+   s.name             = 'flame_sdk_ios'
+-  s.version          = '0.1.8.5'
++  s.version          = '1.0.0-alpha.2'
+   s.module_name      = 'flame_sdk_ios'
+   s.summary          = 'Flame iOS Ad SDK - TK Edition'
+   s.description      = 'Flame iOS advertising aggregation SDK, TK / TopOn / AnyThink edition (Scheme D: single internal core binary + TK platform source).'
+   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
+   s.author           = { 'flame' => 'flame@toowe.com' }
+ 
++  # GitHub archive zip 默认不剥除顶层版本目录（cocoapods-downloader 仅对 tgz 默认 flatten），
++  # 必须显式 :flatten => true 才能让 podspec 的精确路径匹配到文件。
+   s.source           = {
+     :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
++    :flatten => true,
+   }
+ 
+   # 商业 sdk
+diff --git a/flame_sdk_ios.xcodeproj/project.pbxproj b/flame_sdk_ios.xcodeproj/project.pbxproj
+index d5b9c5d..1195080 100644
+--- a/flame_sdk_ios.xcodeproj/project.pbxproj
++++ b/flame_sdk_ios.xcodeproj/project.pbxproj
+@@ -7,9 +7,9 @@
+ 	objects = {
+ 
+ /* Begin PBXBuildFile section */
+-		3CB1E0024550D1D037A06772 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE2CCA7B8E2B256AA49DD990 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */; };
++		5699EAC0091F49649081F14F /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E5FAEAA058801E402E32263B /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */; };
+ 		580DC3292F15295900145FF2 /* flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */; };
+-		736D7FBEF2EA54F92B5E8C5B /* Pods_flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FD8A3BE6A8021E400D7F5AC /* Pods_flame_sdk_ios.framework */; };
++		FFC2B87D2BEE8BF6A4E44D82 /* Pods_flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4C27D4E7E152894958726E30 /* Pods_flame_sdk_ios.framework */; };
+ /* End PBXBuildFile section */
+ 
+ /* Begin PBXContainerItemProxy section */
+@@ -23,14 +23,14 @@
+ /* End PBXContainerItemProxy section */
+ 
+ /* Begin PBXFileReference section */
+-		0D590EF5C0B63F2D7B478B21 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; sourceTree = "<group>"; };
+-		1FD29123FC5BEC0BEEFB6032 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; sourceTree = "<group>"; };
+-		4FD8A3BE6A8021E400D7F5AC /* Pods_flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
++		1639CB6EA4CB5A92E0A465D4 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; sourceTree = "<group>"; };
++		3A937D588354307B5296D9E8 /* Pods-flame_sdk_ios.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.release.xcconfig"; sourceTree = "<group>"; };
++		4C27D4E7E152894958726E30 /* Pods_flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+ 		580DC3282F15295900145FF2 /* flame_sdk_iosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flame_sdk_iosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+-		8FBA3585BE7DBF1EECD55DF0 /* Pods-flame_sdk_ios.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.debug.xcconfig"; sourceTree = "<group>"; };
+-		AE2CCA7B8E2B256AA49DD990 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios_flame_sdk_iosTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+-		E141ECDCDFE22B6829B543F5 /* Pods-flame_sdk_ios.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.release.xcconfig"; sourceTree = "<group>"; };
++		9204F0340288E0A3447BABC1 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; sourceTree = "<group>"; };
++		C28FB7F8B2D7C6C4372057CC /* Pods-flame_sdk_ios.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.debug.xcconfig"; sourceTree = "<group>"; };
++		E5FAEAA058801E402E32263B /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios_flame_sdk_iosTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+ /* End PBXFileReference section */
+ 
+ /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+@@ -79,7 +79,7 @@
+ 			isa = PBXFrameworksBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+-				736D7FBEF2EA54F92B5E8C5B /* Pods_flame_sdk_ios.framework in Frameworks */,
++				FFC2B87D2BEE8BF6A4E44D82 /* Pods_flame_sdk_ios.framework in Frameworks */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
+@@ -88,7 +88,7 @@
+ 			buildActionMask = 2147483647;
+ 			files = (
+ 				580DC3292F15295900145FF2 /* flame_sdk_ios.framework in Frameworks */,
+-				3CB1E0024550D1D037A06772 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */,
++				5699EAC0091F49649081F14F /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */,
+ 			);
+ 			runOnlyForDeploymentPostprocessing = 0;
+ 		};
+@@ -98,10 +98,10 @@
+ 		41C2D7F4F2E8A16F42F86EC0 /* Pods */ = {
+ 			isa = PBXGroup;
+ 			children = (
+-				8FBA3585BE7DBF1EECD55DF0 /* Pods-flame_sdk_ios.debug.xcconfig */,
+-				E141ECDCDFE22B6829B543F5 /* Pods-flame_sdk_ios.release.xcconfig */,
+-				1FD29123FC5BEC0BEEFB6032 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */,
+-				0D590EF5C0B63F2D7B478B21 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */,
++				C28FB7F8B2D7C6C4372057CC /* Pods-flame_sdk_ios.debug.xcconfig */,
++				3A937D588354307B5296D9E8 /* Pods-flame_sdk_ios.release.xcconfig */,
++				1639CB6EA4CB5A92E0A465D4 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */,
++				9204F0340288E0A3447BABC1 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */,
+ 			);
+ 			path = Pods;
+ 			sourceTree = "<group>";
+@@ -113,7 +113,7 @@
+ 				580DC32C2F15295900145FF2 /* flame_sdk_iosTests */,
+ 				580DC31E2F15295800145FF2 /* Products */,
+ 				41C2D7F4F2E8A16F42F86EC0 /* Pods */,
+-				5995A993D7317D1FABC0EA16 /* Frameworks */,
++				91E13462D4ED977B2DB7406D /* Frameworks */,
+ 			);
+ 			sourceTree = "<group>";
+ 		};
+@@ -126,11 +126,11 @@
+ 			name = Products;
+ 			sourceTree = "<group>";
+ 		};
+-		5995A993D7317D1FABC0EA16 /* Frameworks */ = {
++		91E13462D4ED977B2DB7406D /* Frameworks */ = {
+ 			isa = PBXGroup;
+ 			children = (
+-				4FD8A3BE6A8021E400D7F5AC /* Pods_flame_sdk_ios.framework */,
+-				AE2CCA7B8E2B256AA49DD990 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */,
++				4C27D4E7E152894958726E30 /* Pods_flame_sdk_ios.framework */,
++				E5FAEAA058801E402E32263B /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */,
+ 			);
+ 			name = Frameworks;
+ 			sourceTree = "<group>";
+@@ -152,7 +152,7 @@
+ 			isa = PBXNativeTarget;
+ 			buildConfigurationList = 580DC3302F15295900145FF2 /* Build configuration list for PBXNativeTarget "flame_sdk_ios" */;
+ 			buildPhases = (
+-				84315226B83800F538F313B1 /* [CP] Check Pods Manifest.lock */,
++				3C8B2DAB7D0AD8F27E25E83C /* [CP] Check Pods Manifest.lock */,
+ 				580DC3182F15295800145FF2 /* Headers */,
+ 				580DC3192F15295800145FF2 /* Sources */,
+ 				580DC31A2F15295800145FF2 /* Frameworks */,
+@@ -174,11 +174,11 @@
+ 			isa = PBXNativeTarget;
+ 			buildConfigurationList = 580DC3352F15295900145FF2 /* Build configuration list for PBXNativeTarget "flame_sdk_iosTests" */;
+ 			buildPhases = (
+-				C811C13ECC294DD9BF7AB37A /* [CP] Check Pods Manifest.lock */,
++				DF6C18FD8DAD913873B172DF /* [CP] Check Pods Manifest.lock */,
+ 				580DC3242F15295900145FF2 /* Sources */,
+ 				580DC3252F15295900145FF2 /* Frameworks */,
+ 				580DC3262F15295900145FF2 /* Resources */,
+-				E59722CD500B8485EE8EE1DC /* [CP] Embed Pods Frameworks */,
++				E4BD1C13B5C4EC16A1DD3564 /* [CP] Embed Pods Frameworks */,
+ 			);
+ 			buildRules = (
+ 			);
+@@ -248,7 +248,7 @@
+ /* End PBXResourcesBuildPhase section */
+ 
+ /* Begin PBXShellScriptBuildPhase section */
+-		84315226B83800F538F313B1 /* [CP] Check Pods Manifest.lock */ = {
++		3C8B2DAB7D0AD8F27E25E83C /* [CP] Check Pods Manifest.lock */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+@@ -270,7 +270,7 @@
+ 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+ 			showEnvVarsInLog = 0;
+ 		};
+-		C811C13ECC294DD9BF7AB37A /* [CP] Check Pods Manifest.lock */ = {
++		DF6C18FD8DAD913873B172DF /* [CP] Check Pods Manifest.lock */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+@@ -292,7 +292,7 @@
+ 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+ 			showEnvVarsInLog = 0;
+ 		};
+-		E59722CD500B8485EE8EE1DC /* [CP] Embed Pods Frameworks */ = {
++		E4BD1C13B5C4EC16A1DD3564 /* [CP] Embed Pods Frameworks */ = {
+ 			isa = PBXShellScriptBuildPhase;
+ 			buildActionMask = 2147483647;
+ 			files = (
+@@ -339,7 +339,7 @@
+ /* Begin XCBuildConfiguration section */
+ 		580DC3312F15295900145FF2 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+-			baseConfigurationReference = 8FBA3585BE7DBF1EECD55DF0 /* Pods-flame_sdk_ios.debug.xcconfig */;
++			baseConfigurationReference = C28FB7F8B2D7C6C4372057CC /* Pods-flame_sdk_ios.debug.xcconfig */;
+ 			buildSettings = {
+ 				CODE_SIGNING_ALLOWED = NO;
+ 				CODE_SIGN_STYLE = Automatic;
+@@ -373,7 +373,7 @@
+ 		};
+ 		580DC3322F15295900145FF2 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+-			baseConfigurationReference = E141ECDCDFE22B6829B543F5 /* Pods-flame_sdk_ios.release.xcconfig */;
++			baseConfigurationReference = 3A937D588354307B5296D9E8 /* Pods-flame_sdk_ios.release.xcconfig */;
+ 			buildSettings = {
+ 				CODE_SIGNING_ALLOWED = NO;
+ 				CODE_SIGN_STYLE = Automatic;
+@@ -531,7 +531,7 @@
+ 		};
+ 		580DC3362F15295900145FF2 /* Debug */ = {
+ 			isa = XCBuildConfiguration;
+-			baseConfigurationReference = 1FD29123FC5BEC0BEEFB6032 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */;
++			baseConfigurationReference = 1639CB6EA4CB5A92E0A465D4 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */;
+ 			buildSettings = {
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;
+@@ -547,7 +547,7 @@
+ 		};
+ 		580DC3372F15295900145FF2 /* Release */ = {
+ 			isa = XCBuildConfiguration;
+-			baseConfigurationReference = 0D590EF5C0B63F2D7B478B21 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */;
++			baseConfigurationReference = 9204F0340288E0A3447BABC1 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */;
+ 			buildSettings = {
+ 				CODE_SIGN_STYLE = Automatic;
+ 				CURRENT_PROJECT_VERSION = 1;
+diff --git a/flame_sdk_ios_tb.podspec b/flame_sdk_ios_tb.podspec
+index ee8ff7c..3af0031 100644
+--- a/flame_sdk_ios_tb.podspec
++++ b/flame_sdk_ios_tb.podspec
+@@ -28,15 +28,18 @@
+ # ============================================================
+ Pod::Spec.new do |s|
+   s.name             = 'flame_sdk_ios_tb'
+-  s.version          = '0.1.8.5'
++  s.version          = '1.0.0-alpha.2'
+   s.module_name      = 'flame_sdk_ios'
+   s.summary          = 'Flame iOS Ad SDK - ToBid Edition'
+   s.description      = 'Flame iOS advertising aggregation SDK, ToBid / WindMill edition (Scheme D: single internal core binary + TB platform source).'
+   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
+   s.author           = { 'flame' => 'flame@toowe.com' }
+ 
++  # GitHub archive zip 默认不剥除顶层版本目录（cocoapods-downloader 仅对 tgz 默认 flatten），
++  # 必须显式 :flatten => true 才能让 podspec 的精确路径匹配到文件。
+   s.source           = {
+     :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
++    :flatten => true,
+   }
+ 
+   # 商业 sdk
+diff --git a/xcFramework_build.sh b/xcFramework_build.sh
+index bc5489c..2352784 100755
+--- a/xcFramework_build.sh
++++ b/xcFramework_build.sh
+@@ -5,40 +5,190 @@ set -e
+ # xcFramework_build.sh — 多变体互斥构建脚本
+ # ------------------------------------------------------------
+ # 用法：
+-#   ./xcFramework_build.sh            # 默认 = core-named（正式方案 D，Phase 5A.10 Step 4C）
+-#   ./xcFramework_build.sh core-named # 同上，显式写法
+-#                                     #   → build/flame_sdk_ios_core.xcframework
+-#                                     #   framework/module/install name 均为 flame_sdk_ios_core
+-#                                     #   用于方案 D（双 podspec + 单内部 core binary + 单 pod 接入）：
+-#                                     #   pod 名仍为 flame_sdk_ios/flame_sdk_ios_tb，
+-#                                     #   但内部 vendored framework 改名避免同名 module 遮蔽
+-#                                     #   中间 xcarchive 放 Archives/core_named/，构建后清理
++#   ./xcFramework_build.sh            # 默认 = release（Phase 5A.11 Step 2 起统一三包构建）
++#                                     #   依次构建 core-named → tk-plugin → tb-plugin，一次输出：
++#                                     #     build/flame_sdk_ios_core.xcframework
++#                                     #     build/tk/flame_sdk_ios.xcframework
++#                                     #     build/tb/flame_sdk_ios.xcframework
++#                                     #   完成后做统一符号校验，任一失败则非 0 退出
++#   ./xcFramework_build.sh release    # 同上，显式写法
++#
++# 单独构建某一变体：
++#   ./xcFramework_build.sh core-named # → build/flame_sdk_ios_core.xcframework（core binary，module 名 flame_sdk_ios_core）
++#   ./xcFramework_build.sh tk-plugin  # → build/tk/flame_sdk_ios.xcframework（TK 平台插件，module 名 flame_sdk_ios）
++#   ./xcFramework_build.sh tb-plugin  # → build/tb/flame_sdk_ios.xcframework（TB 平台插件，module 名 flame_sdk_ios）
+ #
+ # legacy fallback（旧 dual-binary 兜底，仅 backup 分支正式使用，日常测试无需）：
+-#   ./xcFramework_build.sh tk         # → build/tk/flame_sdk_ios.xcframework
+-#   ./xcFramework_build.sh tb         # → build/tb/flame_sdk_ios.xcframework
++#   ./xcFramework_build.sh tk         # → build/tk/flame_sdk_ios.xcframework（旧 TK 自包含二进制）
++#   ./xcFramework_build.sh tb         # → build/tb/flame_sdk_ios.xcframework（旧 TB 自包含二进制）
+ #   ./xcFramework_build.sh core       # → build/core/flame_sdk_ios.xcframework（未改名，仅历史对比）
+ #
++# 方案 E 插件二进制（Phase 5A.11）：
++#   tk-plugin / tb-plugin 二进制只含平台源码（wrappers + mediation/<plat> + adapter/<plat>），
++#   通过 EXCLUDED_SOURCE_FILE_NAMES 排除 core/ads/utils/mediation根/adapter根/对端平台源码。
++#   plugin 构建期显式 link flame_sdk_ios_core.framework（-framework flame_sdk_ios_core +
++#   FRAMEWORK_SEARCH_PATHS 指向 core 切片），因此 otool -L 能看到
++#   @rpath/flame_sdk_ios_core.framework/flame_sdk_ios_core。
++#   为兼容 core binary 缺失或链接边界异常的兜底场景，同时保留 -undefined dynamic_lookup。
++#
+ # 依赖入口是唯一的 Podfile，通过环境变量 FLAME_SDK_VARIANT=tk|tb|core 切换构建依赖。
+ # 注意：core-named 在 Podfile 内部映射为 core（仅含 OpenSSL），构建后由本脚本改名。
+-# 各产物 framework/module 名均为 flame_sdk_ios（同名，接入方 import 不变）
++# tk-plugin 在 Podfile 内部映射为 tk（需要 AnyThinkiOS 头文件）。
++# tb-plugin 在 Podfile 内部映射为 tb（需要 ToBid-iOS-RC 头文件）。
++# 三个 plugin/framework 的 module 名均为 flame_sdk_ios（接入方 import 不变），core 单独为 flame_sdk_ios_core。
+ # 各变体互斥，不能同时接入（同 module 名天然保证）
+ # ============================================================
+ 
+ # =========================
+ # 变体解析
+ # =========================
+-# 无参数默认 = core-named（Phase 5A.10 Step 4C：正式方案 D 唯一产物）
+-# tk / tb / core 仍保留为 legacy fallback（旧 dual-binary 兜底），需显式传参。
+-VARIANT="${1:-core-named}"
+-if [ "$VARIANT" != "tk" ] && [ "$VARIANT" != "tb" ] && [ "$VARIANT" != "core" ] && [ "$VARIANT" != "core-named" ]; then
+-  echo "❌ 未知变体: $VARIANT（仅支持 core-named [默认] / tk / tb / core）"
+-  echo "   正式方案 D 请执行：./xcFramework_build.sh            （等同 core-named）"
+-  echo "   或显式：           ./xcFramework_build.sh core-named"
+-  echo "   legacy fallback：  ./xcFramework_build.sh tk|tb|core （旧 dual-binary 兜底）"
++# 无参数默认 = release（Phase 5A.11 Step 2 起：统一三包构建）
++# release 内部依次构建 core-named → tk-plugin → tb-plugin（依赖顺序：plugin 显式 link core 产物）。
++VARIANT="${1:-release}"
++if [ "$VARIANT" != "tk" ] && [ "$VARIANT" != "tb" ] && [ "$VARIANT" != "core" ] \
++  && [ "$VARIANT" != "core-named" ] && [ "$VARIANT" != "tk-plugin" ] \
++  && [ "$VARIANT" != "tb-plugin" ] && [ "$VARIANT" != "release" ]; then
++  echo "❌ 未知变体: $VARIANT"
++  echo "   支持的变体："
++  echo "     release [默认]    统一三包构建（core-named + tk-plugin + tb-plugin）"
++  echo "     core-named        仅 core binary（→ build/flame_sdk_ios_core.xcframework）"
++  echo "     tk-plugin         仅 TK 平台插件（→ build/tk/flame_sdk_ios.xcframework）"
++  echo "     tb-plugin         仅 TB 平台插件（→ build/tb/flame_sdk_ios.xcframework）"
++  echo "     tk|tb|core        legacy fallback（旧 dual-binary 兜底）"
+   exit 1
+ fi
+ 
++# =========================
++# release 编排：依次构建三包 + 统一符号校验
++# =========================
++# release 不直接构建，而是递归调用本脚本构建每个变体。
++# 顺序敏感：core-named 必须先于 tk-plugin / tb-plugin（plugin 显式 link core 产物）。
++# 每个子变体独立 pod install，互不污染。
++if [ "$VARIANT" = "release" ]; then
++  echo "=========================================="
++  echo "  📦 Release 构建：core-named → tk-plugin → tb-plugin"
++  echo "=========================================="
++  echo ""
++  echo "▶ [1/3] core-named（core binary）"
++  "$0" core-named
++  echo ""
++  echo "▶ [2/3] tk-plugin（TK 平台插件）"
++  "$0" tk-plugin
++  echo ""
++  echo "▶ [3/3] tb-plugin（TB 平台插件）"
++  "$0" tb-plugin
++
++  # =========================
++  # release 统一符号校验
++  # =========================
++  echo ""
++  echo "=========================================="
++  echo "  🔍 Release 统一符号校验"
++  echo "=========================================="
++
++  CORE_BIN="build/flame_sdk_ios_core.xcframework/ios-arm64/flame_sdk_ios_core.framework/flame_sdk_ios_core"
++  TK_BIN="build/tk/flame_sdk_ios.xcframework/ios-arm64/flame_sdk_ios.framework/flame_sdk_ios"
++  TB_BIN="build/tb/flame_sdk_ios.xcframework/ios-arm64/flame_sdk_ios.framework/flame_sdk_ios"
++  RELEASE_FAIL=0
++
++  # 产物存在性
++  for pair in "core|$CORE_BIN" "tk|$TK_BIN" "tb|$TB_BIN"; do
++    name="${pair%%|*}"; path="${pair##*|}"
++    if [ -f "$path" ]; then
++      echo "✅ $name 产物存在：$path ($(du -h "$path" | cut -f1))"
++    else
++      echo "❌ $name 产物缺失：$path"; RELEASE_FAIL=1
++    fi
++  done
++
++  # .m 源码泄漏（三包 xcframework 内均不应有 .m / .mm）
++  LEAK_M=$(find build -path "*/build" -prune -o \( -name "*.m" -o -name "*.mm" \) -print 2>/dev/null)
++  if [ -n "$LEAK_M" ]; then
++    echo "❌ xcframework 内存在 .m/.mm 源码："; echo "$LEAK_M" | sed 's/^/    /'
++    RELEASE_FAIL=1
++  else
++    echo "✅ 三包 xcframework 内无 .m/.mm 源码"
++  fi
++
++  # core 纯净性：不应含 TK/TB Provider/Adapter、广告源 SDK、AnyThink
++  if [ -f "$CORE_BIN" ]; then
++    CORE_POLL=$(nm -gU "$CORE_BIN" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTKProvider|_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_AtNativeSelfRenderView|_OBJC_CLASS_\\\$_TbRewardAdapter|_OBJC_CLASS_\\\$_AT|_OBJC_CLASS_\\\$_Wind|WindMillSDK|WindMillAds|_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob|_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ")
++    CORE_POLL=${CORE_POLL:-0}
++    if [ "${CORE_POLL}" -gt 0 ]; then
++      echo "❌ core 含 ${CORE_POLL} 个平台/三方符号（预期 0）"; RELEASE_FAIL=1
++    else
++      echo "✅ core 纯净：无 TK/TB Provider/Adapter、无 AnyThink、无广告源 SDK"
++    fi
++  fi
++
++  # tk 纯净性：应含 FlameTKProvider + 6 At*Adapter/View，无 TB，无广告源 SDK
++  if [ -f "$TK_BIN" ]; then
++    for sym in FlameTKProvider AtRewardAdapter AtSplashAdapter AtInterstitialAdapter AtBannerAdapter AtNativeAdapter AtNativeSelfRenderView; do
++      cnt=$(nm -gU "$TK_BIN" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}")
++      cnt=${cnt:-0}
++      [ "${cnt}" -gt 0 ] && echo "  ✅ TK 含 ${sym}" || { echo "  ❌ TK 缺 ${sym}"; RELEASE_FAIL=1; }
++    done
++    TK_LEAK=$(nm -gU "$TK_BIN" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_TbRewardAdapter|_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ|_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob|_OBJC_CLASS_\\\$_Wind")
++    TK_LEAK=${TK_LEAK:-0}
++    if [ "${TK_LEAK}" -gt 0 ]; then
++      echo "❌ TK 含 ${TK_LEAK} 个 TB/广告源符号（预期 0）"; RELEASE_FAIL=1
++    else
++      echo "✅ TK 纯净：无 TB 符号、无广告源 SDK 静态符号"
++    fi
++    # TK plugin 显式链接 core 校验
++    if otool -L "$TK_BIN" 2>/dev/null | grep -q "flame_sdk_ios_core"; then
++      echo "✅ TK plugin 显式链接 flame_sdk_ios_core（otool -L 可见）"
++    else
++      echo "⚠️  TK plugin 未显式链接 core（依赖 dynamic_lookup 兜底）"
++    fi
++  fi
++
++  # tb 纯净性：应含 FlameTBProvider + TbRewardAdapter，无 TK，无广告源 SDK，无 WindMill 实现符号
++  if [ -f "$TB_BIN" ]; then
++    for sym in FlameTBProvider TbRewardAdapter; do
++      cnt=$(nm -gU "$TB_BIN" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}")
++      cnt=${cnt:-0}
++      [ "${cnt}" -gt 0 ] && echo "  ✅ TB 含 ${sym}" || { echo "  ❌ TB 缺 ${sym}"; RELEASE_FAIL=1; }
++    done
++    TB_LEAK=$(nm -gU "$TB_BIN" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTKProvider|_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_AtNativeSelfRenderView|_OBJC_CLASS_\\\$_AT|_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ|_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob")
++    TB_LEAK=${TB_LEAK:-0}
++    if [ "${TB_LEAK}" -gt 0 ]; then
++      echo "❌ TB 含 ${TB_LEAK} 个 TK/AnyThink/广告源符号（预期 0）"; RELEASE_FAIL=1
++    else
++      echo "✅ TB 纯净：无 TK/AnyThink 符号、无广告源 SDK 静态符号"
++    fi
++    # ToBid/WindMill 实现符号不应静态打入（应通过 podspec dependency 接入期解析）
++    TB_WIND_IMPL=$(nm -gU "$TB_BIN" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds|WindMillRewardVideo|_OBJC_CLASS_\\\$_WindMillSDK|_OBJC_CLASS_\\\$_WindFoundation")
++    TB_WIND_IMPL=${TB_WIND_IMPL:-0}
++    if [ "${TB_WIND_IMPL}" -gt 0 ]; then
++      echo "⚠️  TB 含 ${TB_WIND_IMPL} 个 ToBid/WindMill 实现符号（应通过 podspec dependency 接入期解析）"
++    else
++      echo "✅ TB 未静态打入 ToBid/WindMill 实现"
++    fi
++    # TB plugin 显式链接 core 校验
++    if otool -L "$TB_BIN" 2>/dev/null | grep -q "flame_sdk_ios_core"; then
++      echo "✅ TB plugin 显式链接 flame_sdk_ios_core（otool -L 可见）"
++    else
++      echo "⚠️  TB plugin 未显式链接 core（依赖 dynamic_lookup 兜底）"
++    fi
++  fi
++
++  echo ""
++  echo "=========================================="
++  if [ "${RELEASE_FAIL}" -eq 0 ]; then
++    echo "  ✅ Release 三包构建 + 统一校验全部通过"
++  else
++    echo "  ❌ Release 统一校验存在失败项（见上方 ❌ 标记）"
++  fi
++  echo "=========================================="
++  echo ""
++  echo "产物："
++  echo "  build/flame_sdk_ios_core.xcframework"
++  echo "  build/tk/flame_sdk_ios.xcframework"
++  echo "  build/tb/flame_sdk_ios.xcframework"
++  exit "${RELEASE_FAIL}"
++fi
++
+ echo "=========================================="
+ echo "  构建 Flame SDK — 变体: $VARIANT"
+ echo "=========================================="
+@@ -55,6 +205,20 @@ elif [ "$VARIANT" = "core-named" ]; then
+   # 正式输出直接放 build/ 顶层（无子目录），中间 xcarchive 放 Archives/core_named/
+   BUILD_MACRO="FLAME_BUILD_CORE=1"
+   VARIANT_OUTPUT_SUBDIR=""  # 正式产物直接到 build/
++elif [ "$VARIANT" = "tk-plugin" ]; then
++  # tk-plugin（Phase 5A.11 Step 1 方案 E 实验）：
++  #   FLAME_BUILD_TK=1  → 使 TK 源码守卫（adapter/tk, mediation/tk）编译生效
++  #   FLAME_PLUGIN_TK=1 → 启用 FlameTKProvider 的 +load 自动注册（plugin 模式专用宏）
++  #   EXCLUDED_SOURCE_FILE_NAMES 在下方 xcodebuild 调用中注入，排除 core/ads/utils/mediation根
++  BUILD_MACRO="FLAME_BUILD_TK=1 FLAME_PLUGIN_TK=1"
++  VARIANT_OUTPUT_SUBDIR="tk"
++elif [ "$VARIANT" = "tb-plugin" ]; then
++  # tb-plugin（Phase 5A.11 Step 2 方案 E 对称实现）：
++  #   FLAME_BUILD_TB=1  → 使 TB 源码守卫（adapter/tb, mediation/tb）编译生效
++  #   FLAME_PLUGIN_TB=1 → 启用 FlameTBProvider 的 +load 自动注册（plugin 模式专用宏）
++  #   EXCLUDED_SOURCE_FILE_NAMES 排除 core/ads/utils/mediation根/adapter根 + TK 平台源码
++  BUILD_MACRO="FLAME_BUILD_TB=1 FLAME_PLUGIN_TB=1"
++  VARIANT_OUTPUT_SUBDIR="tb"
+ else
+   # core：注入 FLAME_BUILD_CORE=1，不注入 TK/TB
+   BUILD_MACRO="FLAME_BUILD_CORE=1"
+@@ -72,7 +236,7 @@ MIN_IOS_VERSION="13.0"
+ 
+ # core-named 的正式输出直接放在 build/ 顶层（无子目录），
+ # 中间 xcarchive 放 Archives/core_named/（构建后清理）。
+-# 其他变体（tk/tb/core）仍用 build/<variant>/ 子目录 + 同目录 xcarchive。
++# 其他变体（tk/tb/core/tk-plugin/tb-plugin）仍用 build/<variant>/ 子目录 + 同目录 xcarchive。
+ if [ "$VARIANT" = "core-named" ]; then
+   OUTPUT_DIR="./build"
+   ARCHIVE_DIR="./Archives/core_named"
+@@ -98,17 +262,201 @@ rm -rf Pods Podfile.lock
+ 
+ echo "📦 pod install（FLAME_SDK_VARIANT=${VARIANT}）..."
+ FLAME_SDK_VARIANT="$VARIANT" pod install
++
++# =========================
++# tb-plugin xcconfig 链接隔离（Phase 5A.11 Step 2）
++# ----------------------------
++# 根本问题：ToBid-iOS-RC 内的 WindMillSDK / WindSDK / WindFoundation 都是 static archive
++# （伪装成 framework 的 .a，filetype=MH_OBJECT），而 AnyThinkSDK 是真正的动态库（MH_DYLIB）。
++# CocoaPods 生成的 xcconfig 把 -framework "WindMillSDK" 等写进 OTHER_LDFLAGS，由于它们是
++# 静态归档，ld 会把全部对象文件（3600+）合并进消费方二进制（6.8M），违反「不能把 ToBid/WindMill
++# 静态打入 plugin binary」红线。TK 无此问题（AnyThinkSDK 是动态库，ld 只记录依赖不合并）。
++#
++# 方案：pod install 完成后直接改写 Pods/Target Support Files 下的 xcconfig 文件：
++#   1) 从 OTHER_LDFLAGS 中剔除 -framework "WindMillSDK|WindSDK|WindFoundation"
++#   2) 追加 -undefined dynamic_lookup（让 WindMill 符号留为未定义，运行期由 ToBid pod 解析）
++# 注意：CocoaPods 1.16.2 在 post_install 钩子之后会重新写出 xcconfig，所以必须在
++#       pod install 返回后再 patch（本脚本位置），而非在 Podfile 的 post_install 内。
++# 头文件仍可访问：use_frameworks! :linkage => :static 暴露 WindMillSDK.framework/Headers，
++#   TB 源码仍能 #import <WindMillSDK/WindMillSDK.h>，只是链接期不合并归档。
++# =========================
++if [ "$VARIANT" = "tb-plugin" ]; then
++  echo "🧩 tb-plugin: 隔离 ToBid 静态归档（防止 -ObjC 自动加载 WindMill 全部符号）"
++  PODS_XCCONFIG_DIR="./Pods/Target Support Files/Pods-flame_sdk_ios"
++  PATCHED_COUNT=0
++  if [ -d "$PODS_XCCONFIG_DIR" ]; then
++    for XC in "$PODS_XCCONFIG_DIR"/*.xcconfig; do
++      [ -f "$XC" ] || continue
++      if grep -qE 'WindMillSDK|WindSDK|WindFoundation|ToBid-iOS-RC' "$XC"; then
++        # 1) 从 OTHER_LDFLAGS 剔除 -framework "WindMillSDK|WindSDK|WindFoundation"
++        sed -i '' -E 's/-framework "(WindMillSDK|WindSDK|WindFoundation)"[[:space:]]*//g' "$XC"
++        # 追加 -undefined dynamic_lookup（让 WindMill 符号留为未定义，运行期由 ToBid pod 解析）
++        if ! grep -q 'dynamic_lookup' "$XC"; then
++          sed -i '' -E 's|^(OTHER_LDFLAGS[[:space:]]*=[[:space:]]*.*)$|\1 -undefined dynamic_lookup|' "$XC"
++        fi
++        PATCHED_COUNT=$((PATCHED_COUNT + 1))
++        echo "   ✏️  patched $(basename "$XC")"
++      fi
++    done
++  fi
++  if [ "${PATCHED_COUNT}" -eq 0 ]; then
++    echo "   ⚠️  未找到含 Wind*/ToBid flag 的 xcconfig（可能 Pods 结构变化），请检查"
++  else
++    echo "   ✅ 已 patch ${PATCHED_COUNT} 个 xcconfig"
++    echo "   --- 复查 Pods-flame_sdk_ios.release.xcconfig ---"
++    echo "   [OTHER_LDFLAGS]"
++    grep "OTHER_LDFLAGS" "$PODS_XCCONFIG_DIR/Pods-flame_sdk_ios.release.xcconfig" 2>/dev/null | head -1 | sed 's/^/   /'
++  fi
++
++  # =========================
++  # ToBid 静态归档二进制隔离（关键步骤）
++  # ----------------------------
++  # -ObjC 会让 ld 自动加载搜索路径上所有静态归档（.a 伪装成 framework）的全部 ObjC/Swift 类。
++  # 即使 OTHER_LDFLAGS 已剔除 -framework WindMillSDK，只要 -F 指向 ToBid 目录且
++  # -ObjC 存在，ld 仍会把 WindMillSDK 的 3000+ 符号合并进 plugin binary。
++  #
++  # 但编译期又必须保留 -F + Headers（#import <WindMillSDK/WindMillSDK.h> 需要框架头解析）。
++  #
++  # 解决：在 Pods 沙箱里把 ToBid 三个静态归档二进制（WindMillSDK/WindSDK/WindFoundation）
++  # 临时改名（加 .flame_hidden 后缀），让 ld 找不到归档文件，但 Headers/Modules 仍在。
++  # 构建结束后恢复原名（不影响后续其他变体构建）。
++  # =========================
++  TOBID_CORE="./Pods/ToBid-iOS-RC/tobid-sdk-ios-cocoapods-cn/Core"
++  HIDDEN_MARKER=".flame_hidden_tb_plugin"
++  HIDDEN_LIST=()
++  if [ -d "$TOBID_CORE" ]; then
++    echo "   🫥  临时隐藏 ToBid 静态归档二进制（保留 Headers/Modules 供编译）..."
++    # 遍历 ToBid Core 下所有 xcframework 的 .framework/<name> 二进制（跳过模拟器 arm64 切片里可能的重名）
++    while IFS= read -r -d '' bin; do
++      # 只处理真正的 Mach-O 静态归档（current ar archive）或 Mach-O 对象，跳过 dSYM/CodeResources
++      if file "$bin" 2>/dev/null | grep -qE "current ar archive|Mach-O.*object"; then
++        mv "$bin" "${bin}${HIDDEN_MARKER}"
++        HIDDEN_LIST+=("${bin}${HIDDEN_MARKER}")
++        echo "      hidden: $(echo "$bin" | sed "s|$TOBID_CORE/||")"
++      fi
++    done < <(find "$TOBID_CORE" -type f -not -name ".*" -not -name "*.plist" -not -name "*.h" \
++                  -not -name "*.swiftmodule" -not -name "*.swiftinterface" \
++                  -not -name "*.json" -not -name "module.modulemap" \
++                  -not -path "*_CodeSignature*" -not -path "*/dSYMs/*" -print0 2>/dev/null)
++    echo "   ✅ 隐藏 ${#HIDDEN_LIST[@]} 个 ToBid 静态归档二进制"
++  else
++    echo "   ⚠️  ToBid Core 目录不存在：$TOBID_CORE"
++  fi
++
++  # 注册退出时恢复钩子（无论构建成功/失败都恢复）
++  restore_tobid_binaries() {
++    if [ "${#HIDDEN_LIST[@]}" -gt 0 ]; then
++      echo ""
++      echo "🧩 tb-plugin: 恢复 ToBid 静态归档二进制原名..."
++      for hidden in "${HIDDEN_LIST[@]}"; do
++        orig="${hidden%${HIDDEN_MARKER}}"
++        if [ -f "$hidden" ]; then
++          mv "$hidden" "$orig"
++        fi
++      done
++      echo "✅ 恢复完成"
++    fi
++  }
++  trap restore_tobid_binaries EXIT
++fi
+ # =========================
+ # 深度清理缓存
+ # =========================
+ rm -rf ~/Library/Developer/Xcode/DerivedData/${FRAMEWORK_NAME}-*
+ rm -rf "${OUTPUT_DIR}"
+ 
++# =========================
++# 插件源码隔离 + 显式链接 core（Phase 5A.11）
++# ----------------------------
++# Xcode 16 工程使用 fileSystemSynchronizedGroups，默认会把 flame_sdk_ios/ 下所有
++# .m 文件编进 Sources phase。插件二进制只能含平台源码：
++#   tk-plugin: wrappers/*.h + mediation/tk/*.m + adapter/tk/*.m
++#   tb-plugin: wrappers/*.h + mediation/tb/*.m + adapter/tb/*.m
++# 不能重复编译 core/ads/utils/mediation根/adapter根 的 .m —— 它们的符号已存在于
++# build/flame_sdk_ios_core.xcframework，重复编译会导致接入期 duplicate symbol。
++# 也不能编译对端平台源码（tk-plugin 不含 tb，反之亦然）。
++#
++# 解决：用 EXCLUDED_SOURCE_FILE_NAMES 在 build setting 层精确剔除这些 .m 文件。
++# .h 文件不受影响（扩展名不同），插件源码仍能 #import 到 FlameLogger / FlameAdapterManager
++# 等头文件；符号在接入期由 core binary 提供链接（标准两 framework 协作）。
++#
++# 显式链接 core（Phase 5A.11 Step 2 优先方案）：
++#   plugin 构建期通过 -framework flame_sdk_ios_core + FRAMEWORK_SEARCH_PATHS 指向 core 切片，
++#   让链接器解析 FlameLogger/FlameAdapterManager/ERROR_CODE_* 等 core 符号，
++#   产物 otool -L 可见 @rpath/flame_sdk_ios_core.framework/flame_sdk_ios_core。
++#   仍保留 -undefined dynamic_lookup 作为兜底（AnyThinkSDK 等运行期依赖的额外保险）。
++# =========================
++if [ "$VARIANT" = "tk-plugin" ] || [ "$VARIANT" = "tb-plugin" ]; then
++  # 1) 校验 core binary 已存在（plugin 显式链接依赖）
++  CORE_XCFW="./build/flame_sdk_ios_core.xcframework"
++  if [ ! -d "$CORE_XCFW" ]; then
++    echo "❌ ${VARIANT} 需要 core binary（${CORE_XCFW}），但未找到。"
++    echo "   请先构建 core-named：./xcFramework_build.sh core-named"
++    echo "   或使用 release 模式（自动先构建 core）：./xcFramework_build.sh release"
++    exit 1
++  fi
++
++  # 2) 构建排除列表（.m 文件名，空格分隔）
++  #    公共排除：core(5) + ads(7) + utils(5) + mediation根(2) + adapter根(1)
++  #    tk-plugin 额外排除：tb 平台源码(2)
++  #    tb-plugin 额外排除：tk 平台源码(7)
++  PLUGIN_EXCLUDED=(
++    FlameAppEntity.m FlameConfigManager.m FlameErrorCode.m FlameLogger.m FlameSdk.m
++    FlameBannerAdImpl.m FlameBannerAdMaterial.m FlameBannerAdRenderSlots.m
++    FlameInterstitialAdImpl.m FlameNativeAdImpl.m FlameRewardAdImpl.m FlameSplashAdImpl.m
++    FlameAesCryptoUtils.m FlameConfigLocalStorage.m FlameMd5SignatureUtils.m
++    FlameNetworkUtils.m FlameUrlParamUtil.m
++    FlameMediationRegistry.m FlameMediationRouter.m FlameAdapterManager.m
++  )
++  if [ "$VARIANT" = "tk-plugin" ]; then
++    # tk-plugin 排除 TB 平台源码
++    PLUGIN_EXCLUDED+=(FlameTBProvider.m TbRewardAdapter.m)
++  else
++    # tb-plugin 排除 TK 平台源码
++    PLUGIN_EXCLUDED+=(
++      FlameTKProvider.m
++      AtBannerAdapter.m AtInterstitialAdapter.m AtNativeAdapter.m
++      AtNativeSelfRenderView.m AtRewardAdapter.m AtSplashAdapter.m
++    )
++  fi
++  EXCLUDED_LIST=""
++  for f in "${PLUGIN_EXCLUDED[@]}"; do
++    EXCLUDED_LIST+="${f} "
++  done
++  EXCLUDED_LIST="${EXCLUDED_LIST% }"
++
++  # 3) core 切片路径（按平台区分，避免链接器扫描到错误架构的 framework）
++  CORE_DEVICE_FW_DIR="${CORE_XCFW}/ios-arm64"
++  CORE_SIM_FW_DIR="${CORE_XCFW}/ios-x86_64-simulator"
++
++  # 真机 archive 参数：FRAMEWORK_SEARCH_PATHS 指向 core 真机切片 + 显式 -framework + dynamic_lookup 兜底
++  # shellcheck disable=SC2206
++  EXTRA_BUILD_ARGS_DEVICE=(
++    "EXCLUDED_SOURCE_FILE_NAMES=${EXCLUDED_LIST}"
++    "FRAMEWORK_SEARCH_PATHS=\$(inherited) ${CORE_DEVICE_FW_DIR}"
++    "OTHER_LDFLAGS=\$(inherited) -framework flame_sdk_ios_core -undefined dynamic_lookup"
++  )
++  # 模拟器 archive 参数：同上，但指向 core 模拟器切片
++  # shellcheck disable=SC2206
++  EXTRA_BUILD_ARGS_SIM=(
++    "EXCLUDED_SOURCE_FILE_NAMES=${EXCLUDED_LIST}"
++    "FRAMEWORK_SEARCH_PATHS=\$(inherited) ${CORE_SIM_FW_DIR}"
++    "OTHER_LDFLAGS=\$(inherited) -framework flame_sdk_ios_core -undefined dynamic_lookup"
++  )
++  echo "🧩 ${VARIANT} 排除源码（${#PLUGIN_EXCLUDED[@]} 个 .m）：core/ads/utils/mediation根/adapter根 + 对端平台"
++  echo "🧩 ${VARIANT} 显式链接 core：-framework flame_sdk_ios_core（FRAMEWORK_SEARCH_PATHS=${CORE_DEVICE_FW_DIR} / sim）"
++  echo "🧩 ${VARIANT} 保留 -undefined dynamic_lookup 兜底（AnyThinkSDK/ToBid 运行期依赖额外保险）"
++else
++  EXTRA_BUILD_ARGS_DEVICE=()
++  EXTRA_BUILD_ARGS_SIM=()
++fi
++
+ # =========================
+ # 真机 Archive
+ # 通过 GCC_PREPROCESSOR_DEFINITIONS 注入构建宏（不改 pbxproj）
+ # =========================
+ echo "📦 正在归档真机（${BUILD_MACRO}）..."
++# shellcheck disable=SC2086
+ xcodebuild archive \
+   -workspace "${WORKSPACE_NAME}" \
+   -scheme "${SCHEME_NAME}" \
+@@ -118,6 +466,7 @@ xcodebuild archive \
+   SKIP_INSTALL=NO \
+   IPHONEOS_DEPLOYMENT_TARGET="${MIN_IOS_VERSION}" \
+   BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
++  "${EXTRA_BUILD_ARGS_DEVICE[@]}" \
+   GCC_PREPROCESSOR_DEFINITIONS='$(inherited) COCOAPODS=1 '"${BUILD_MACRO}"
+ 
+ # =========================
+@@ -127,6 +476,7 @@ xcodebuild archive \
+ # 只归档 x86_64 架构，与已发布的 flame_sdk_ios.xcframework 结构一致。
+ # =========================
+ echo "📦 正在归档模拟器（${BUILD_MACRO}）..."
++# shellcheck disable=SC2086
+ xcodebuild archive \
+   -workspace "${WORKSPACE_NAME}" \
+   -scheme "${SCHEME_NAME}" \
+@@ -137,6 +487,7 @@ xcodebuild archive \
+   SKIP_INSTALL=NO \
+   IPHONEOS_DEPLOYMENT_TARGET="${MIN_IOS_VERSION}" \
+   BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
++  "${EXTRA_BUILD_ARGS_SIM[@]}" \
+   GCC_PREPROCESSOR_DEFINITIONS='$(inherited) COCOAPODS=1 '"${BUILD_MACRO}"
+ 
+ # =========================
+@@ -230,7 +581,7 @@ if [ "$VARIANT" = "core-named" ]; then
+   # core-named 补暴露内部头（Phase 5A.10 Step 2B）
+   # Core binary Headers/ 默认只含 10 个公共 API。平台源码插件还需要 12 个内部头
+   # （mediation 协议 + AdapterManager/ConfigManager/ErrorCode/Logger）。
+-  # 方案 D 要求「平台源码依赖 core binary 的 Headers，不依赖 core 源码树」，
++  # 方案 D/E 要求「平台源码依赖 core binary 的 Headers，不依赖 core 源码树」，
+   # 因此把这 12 个内部头从源码树复制到 framework Headers/。
+   # 这 12 个头只用 #import "..."（同 framework 内相对解析），互相 + 公共 API 已自包含。
+   # modulemap 的 module * { export * } 会自动把它们作为子模块暴露。
+@@ -260,14 +611,103 @@ if [ "$VARIANT" = "core-named" ]; then
+   echo "✅ 内部头补暴露完成"
+ fi
+ 
++# =========================
++# 插件 Headers/Modules 重塑（Phase 5A.11）
++# ----------------------------
++# 插件二进制只含平台源码（FlameTKProvider / At*Adapter 或 FlameTBProvider / TbRewardAdapter），
++# 但 Xcode 工程的 publicHeaders 列表硬编码指向 ads/.../core/...（这些文件在插件构建里被
++# EXCLUDED_SOURCE_FILE_NAMES 剔除，其 .h 不会被自动拷进 framework Headers/）。
++# 因此 archive 产出的 framework Headers/ 可能是空的或不完整。
++#
++# 方案 E 要求：插件 framework 的 Headers/ 应为 wrappers/<module>/*.h（转发头），
++# 让接入方 #import <flame_sdk_ios/FlameSdk.h> 经转发到 core binary 模块。
++# 这里在 xcframework 创建后，把 wrappers 转发头拷进每个切片的 Headers/，
++# 并补写 modulemap（framework module flame_sdk_ios { umbrella header ... }）。
++# module 名保持 flame_sdk_ios（与接入方 import 一致，与 core 的 flame_sdk_ios_core 区分）。
++# =========================
++if [ "$VARIANT" = "tk-plugin" ]; then
++  echo "🏷️  tk-plugin Headers/Modules 重塑..."
++  WRAPPERS_DIR="./flame_sdk_ios/wrappers/flame_sdk_ios"
++  WRAPPER_HEADERS=(
++    "FlameSdk.h"
++    "flame_sdk_ios.h"
++    "FlameBannerAd.h"
++    "FlameBannerAdMaterial.h"
++    "FlameBannerAdRenderSlots.h"
++    "FlameCallback.h"
++    "FlameInterstitialAd.h"
++    "FlameNativeAd.h"
++    "FlameRewardAd.h"
++    "FlameSplashAd.h"
++  )
++  for FW_DIR in "${XCFRAMEWORK_OUTPUT}"/*/*.framework; do
++    [ -d "$FW_DIR" ] || continue
++    rm -rf "${FW_DIR}/Headers"
++    mkdir -p "${FW_DIR}/Headers"
++    for H in "${WRAPPER_HEADERS[@]}"; do
++      if [ -f "${WRAPPERS_DIR}/${H}" ]; then
++        cp "${WRAPPERS_DIR}/${H}" "${FW_DIR}/Headers/${H}"
++      fi
++    done
++    mkdir -p "${FW_DIR}/Modules"
++    cat > "${FW_DIR}/Modules/module.modulemap" <<'MODULEMAP'
++framework module flame_sdk_ios {
++  umbrella header "flame_sdk_ios.h"
++  export *
++  module * { export * }
++}
++MODULEMAP
++  done
++  echo "✅ tk-plugin Headers/Modules 重塑完成（${#WRAPPER_HEADERS[@]} 个转发头）"
++elif [ "$VARIANT" = "tb-plugin" ]; then
++  echo "🏷️  tb-plugin Headers/Modules 重塑..."
++  WRAPPERS_DIR="./flame_sdk_ios/wrappers/flame_sdk_ios_tb"
++  WRAPPER_HEADERS=(
++    "FlameSdk.h"
++    "flame_sdk_ios.h"
++    "FlameBannerAd.h"
++    "FlameBannerAdMaterial.h"
++    "FlameBannerAdRenderSlots.h"
++    "FlameCallback.h"
++    "FlameInterstitialAd.h"
++    "FlameNativeAd.h"
++    "FlameRewardAd.h"
++    "FlameSplashAd.h"
++  )
++  for FW_DIR in "${XCFRAMEWORK_OUTPUT}"/*/*.framework; do
++    [ -d "$FW_DIR" ] || continue
++    rm -rf "${FW_DIR}/Headers"
++    mkdir -p "${FW_DIR}/Headers"
++    for H in "${WRAPPER_HEADERS[@]}"; do
++      if [ -f "${WRAPPERS_DIR}/${H}" ]; then
++        cp "${WRAPPERS_DIR}/${H}" "${FW_DIR}/Headers/${H}"
++      fi
++    done
++    mkdir -p "${FW_DIR}/Modules"
++    cat > "${FW_DIR}/Modules/module.modulemap" <<'MODULEMAP'
++framework module flame_sdk_ios {
++  umbrella header "flame_sdk_ios.h"
++  export *
++  module * { export * }
++}
++MODULEMAP
++  done
++  echo "✅ tb-plugin Headers/Modules 重塑完成（${#WRAPPER_HEADERS[@]} 个转发头）"
++fi
++
+ # ====== 构建完成后清理 ======
+ # 删除 .framework 内部不该存在的文件（.sh 会导致 codesign 失败，.podspec 是冗余文件）
+ find "${XCFRAMEWORK_OUTPUT}" -type f \( -name "*.sh" -o -name "*.podspec" \) -delete
+ 
+-# core-named 中间 xcarchive 清理：正式产物已在 build/ 顶层，xcarchive 仅为中间产物
++# 中间 xcarchive 清理：正式产物已在 xcframework 内，xcarchive 仅为中间产物
+ if [ "$VARIANT" = "core-named" ]; then
+   echo "🧹 清理 core-named 中间 xcarchive..."
+   rm -rf ./Archives
++elif [ "$VARIANT" = "tk-plugin" ] || [ "$VARIANT" = "tb-plugin" ]; then
++  # tk-plugin / tb-plugin 的 xcarchive 与 xcframework 同目录（build/<variant>/），构建后清理
++  echo "🧹 清理 ${VARIANT} 中间 xcarchive..."
++  rm -rf "${ARCHIVE_DIR}/${FRAMEWORK_NAME}_ios.xcarchive" \
++         "${ARCHIVE_DIR}/${FRAMEWORK_NAME}_sim.xcarchive"
+ fi
+ 
+ # 剥离所有 framework 内嵌的 bitcode（Apple 已废弃 bitcode，App Store 不接受含 bitcode 的二进制）
+@@ -289,25 +729,196 @@ if [ "$VARIANT" = "core-named" ]; then
+ else
+   BIN_NAME="${FRAMEWORK_NAME}"
+ fi
+-TK_BINARY=$(find "${XCFRAMEWORK_OUTPUT}" -path "*ios-arm64*/${BIN_NAME}" -type f 2>/dev/null | head -1)
+-if [ -n "$TK_BINARY" ]; then
++CHECK_BINARY=$(find "${XCFRAMEWORK_OUTPUT}" -path "*ios-arm64*/${BIN_NAME}" -type f 2>/dev/null | head -1)
++if [ -n "$CHECK_BINARY" ]; then
+   echo ""
+   echo "🔍 符号校验（${VARIANT} 变体）..."
+   # 体积提示（异常膨胀通常意味三方符号被静态合并）
+-  BIN_SIZE=$(du -h "$TK_BINARY" | cut -f1)
++  BIN_SIZE=$(du -h "$CHECK_BINARY" | cut -f1)
+   echo "   二进制体积: ${BIN_SIZE}"
+ 
+   # 统一污染检测模式：TK 变体不应包含任何三方广告源 SDK 符号
+   # TB 变体不应包含 AnyThink / TK adapter 符号
+   # CORE 变体不应包含任何三方广告 SDK 符号（最严格：连 AT* / FlameTKProvider 都不能有）
+-  if [ "$VARIANT" = "tk" ]; then
++  # TK-PLUGIN 变体（Phase 5A.11 Step 1）：应含 FlameTKProvider/At*Adapter，
++  #   不应含 core 类（FlameSdk/FlameLogger/FlameMediationRouter 等 —— 应在 core binary），
++  #   不应含三方广告源 SDK 静态符号（与 legacy tk 相同的污染红线）。
++  # TB-PLUGIN 变体（Phase 5A.11 Step 2）：应含 FlameTBProvider/TbRewardAdapter，
++  #   不应含 TK/At*Adapter，不应含 AnyThink，不应含广告源 SDK 静态符号，
++  #   不应静态打入 ToBid/WindMill 实现（应通过 podspec dependency 接入期解析）。
++  if [ "$VARIANT" = "tk-plugin" ]; then
++    # 1) 期望符号：FlameTKProvider + 6 个 At*Adapter/View（plugin 主体）
++    echo "   --- 期望符号（plugin 主体）---"
++    for sym in FlameTKProvider AtRewardAdapter AtSplashAdapter AtInterstitialAdapter AtBannerAdapter AtNativeAdapter AtNativeSelfRenderView; do
++      cnt=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}")
++      cnt=${cnt:-0}
++      if [ "${cnt}" -gt 0 ]; then
++        echo "   ✅ ${sym}: ${cnt} 个符号"
++      else
++        echo "   ❌ ${sym}: 缺失（期望 >0）"
++      fi
++    done
++
++    # 2) 不应含的 core 类（应存在于 core binary，重复则 duplicate symbol）
++    echo "   --- 不应含的 core 类（应仅在 core binary）---"
++    CORE_LEAK=0
++    for sym in FlameSdk FlameLogger FlameMediationRouter FlameMediationRegistry FlameAdapterManager FlameConfigManager FlameErrorCode FlameAppEntity FlameRewardAdImpl FlameInterstitialAdImpl FlameSplashAdImpl FlameBannerAdImpl FlameNativeAdImpl FlameAesCryptoUtils FlameConfigLocalStorage FlameMd5SignatureUtils FlameNetworkUtils FlameUrlParamUtil FlameBannerAdMaterial FlameBannerAdRenderSlots; do
++      cnt=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}")
++      cnt=${cnt:-0}
++      if [ "${cnt}" -gt 0 ]; then
++        echo "   ❌ ${sym}: ${cnt} 个符号（不应出现在 tk-plugin）"
++        CORE_LEAK=$((CORE_LEAK + cnt))
++      fi
++    done
++    if [ "${CORE_LEAK}" -eq 0 ]; then
++      echo "   ✅ OK: tk-plugin 无 core 类符号泄漏（EXCLUDED_SOURCE_FILE_NAMES 生效）"
++    else
++      echo "   ❌ 严重：tk-plugin 泄漏 ${CORE_LEAK} 个 core 类符号（接入期会 duplicate symbol）"
++    fi
++
++    # 3) 不应含 TB 平台符号
++    TB_LEAK=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_TbRewardAdapter|WindMillSDK|WindMillAds")
++    TB_LEAK=${TB_LEAK:-0}
++    if [ "${TB_LEAK}" -gt 0 ]; then
++      echo "   ❌ 严重：tk-plugin 含 ${TB_LEAK} 个 TB 符号（预期为 0）"
++    else
++      echo "   ✅ OK: tk-plugin 无 TB 符号"
++    fi
++
++    # 4) 三方广告源 SDK 静态污染检测（与 legacy tk 相同红线）
++    POLLUTION_ADCS=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ|_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob|_OBJC_CLASS_\\\$_Wind")
++    POLLUTION_ADCS=${POLLUTION_ADCS:-0}
++    if [ "${POLLUTION_ADCS}" -gt 0 ]; then
++      echo "   ❌ 严重：tk-plugin 含 ${POLLUTION_ADCS} 个三方广告源 SDK 符号（静态合并污染）"
++    else
++      echo "   ✅ OK: tk-plugin 无三方广告源 SDK 静态符号（AdGain/BU/CSJ/Baidu/GDT/KS/FS/Sigmob/Wind）"
++    fi
++
++    # 5) 未定义符号检查（应引用 AT*/Flame core，运行期由 core + AnyThink 解析）
++    echo "   --- （参考）未定义符号（U）抽查 ---"
++    AT_UNDEF=$(nm -u "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
++    AT_UNDEF=${AT_UNDEF:-0}
++    echo "   AnyThink AT* 未定义引用: ${AT_UNDEF}（>0 正常，运行期由 AnyThinkiOS 提供）"
++    FLAME_UNDEF=$(nm -u "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_Flame|_ERROR_CODE")
++    FLAME_UNDEF=${FLAME_UNDEF:-0}
++    echo "   Flame/ERROR_CODE 未定义引用: ${FLAME_UNDEF}（显式链接生效后期望为 0；>0 则依赖 dynamic_lookup 兜底）"
++
++    # 6) otool -L 动态依赖（重点：是否显式链接 core）
++    echo "   --- （参考）otool -L 动态依赖 ---"
++    if otool -L "$CHECK_BINARY" 2>/dev/null | grep -q "flame_sdk_ios_core"; then
++      echo "   ✅ 显式链接 flame_sdk_ios_core（otool -L 可见 @rpath/flame_sdk_ios_core.framework/flame_sdk_ios_core）"
++    else
++      echo "   ⚠️  未显式链接 core（Flame 符号依赖 dynamic_lookup 兜底，运行期风险）"
++    fi
++    otool -L "$CHECK_BINARY" 2>/dev/null | grep -iE "AnyThink|WindMill|WindSDK|ToBid|Sigmob|Baidu|GDT|KSAd|FSUnion|AdGain|BUAd|CSJ" \
++      && echo "   ⚠️  发现三方动态依赖（请确认是否为构建期 Pod 链接残留）" \
++      || echo "   ✅ 无三方广告 SDK 动态依赖"
++  elif [ "$VARIANT" = "tb-plugin" ]; then
++    # 1) 期望符号：FlameTBProvider + TbRewardAdapter（plugin 主体）
++    echo "   --- 期望符号（plugin 主体）---"
++    for sym in FlameTBProvider TbRewardAdapter; do
++      cnt=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}")
++      cnt=${cnt:-0}
++      if [ "${cnt}" -gt 0 ]; then
++        echo "   ✅ ${sym}: ${cnt} 个符号"
++      else
++        echo "   ❌ ${sym}: 缺失（期望 >0）"
++      fi
++    done
++
++    # 2) 不应含的 core 类（应存在于 core binary，重复则 duplicate symbol）
++    echo "   --- 不应含的 core 类（应仅在 core binary）---"
++    CORE_LEAK=0
++    for sym in FlameSdk FlameLogger FlameMediationRouter FlameMediationRegistry FlameAdapterManager FlameConfigManager FlameErrorCode FlameAppEntity FlameRewardAdImpl FlameInterstitialAdImpl FlameSplashAdImpl FlameBannerAdImpl FlameNativeAdImpl FlameAesCryptoUtils FlameConfigLocalStorage FlameMd5SignatureUtils FlameNetworkUtils FlameUrlParamUtil FlameBannerAdMaterial FlameBannerAdRenderSlots; do
++      cnt=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}")
++      cnt=${cnt:-0}
++      if [ "${cnt}" -gt 0 ]; then
++        echo "   ❌ ${sym}: ${cnt} 个符号（不应出现在 tb-plugin）"
++        CORE_LEAK=$((CORE_LEAK + cnt))
++      fi
++    done
++    if [ "${CORE_LEAK}" -eq 0 ]; then
++      echo "   ✅ OK: tb-plugin 无 core 类符号泄漏（EXCLUDED_SOURCE_FILE_NAMES 生效）"
++    else
++      echo "   ❌ 严重：tb-plugin 泄漏 ${CORE_LEAK} 个 core 类符号（接入期会 duplicate symbol）"
++    fi
++
++    # 3) 不应含 TK 平台符号
++    TK_LEAK=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTKProvider|_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_AtNativeSelfRenderView")
++    TK_LEAK=${TK_LEAK:-0}
++    if [ "${TK_LEAK}" -gt 0 ]; then
++      echo "   ❌ 严重：tb-plugin 含 ${TK_LEAK} 个 TK 符号（预期为 0）"
++    else
++      echo "   ✅ OK: tb-plugin 无 TK 符号"
++    fi
++
++    # 4) 不应含 AnyThink 符号
++    AT_LEAK=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
++    AT_LEAK=${AT_LEAK:-0}
++    if [ "${AT_LEAK}" -gt 0 ]; then
++      echo "   ❌ 严重：tb-plugin 含 ${AT_LEAK} 个 AnyThink 符号（预期为 0）"
++    else
++      echo "   ✅ OK: tb-plugin 无 AnyThink 符号"
++    fi
++
++    # 5) 三方广告源 SDK 静态污染检测
++    POLLUTION_ADCS=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ|_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob")
++    POLLUTION_ADCS=${POLLUTION_ADCS:-0}
++    if [ "${POLLUTION_ADCS}" -gt 0 ]; then
++      echo "   ❌ 严重：tb-plugin 含 ${POLLUTION_ADCS} 个三方广告源 SDK 符号（静态合并污染）"
++    else
++      echo "   ✅ OK: tb-plugin 无三方广告源 SDK 静态符号"
++    fi
++
++    # 6) ToBid/WindMill 实现符号：不应静态打入（应通过 podspec dependency 接入期解析）
++    #    允许有 ToBid/WindMill 的未定义引用（U），但不能有定义（T/D）—— 定义意味被静态合并。
++    WIND_IMPL=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds|WindMillRewardVideo|_OBJC_CLASS_\\\$_WindMillSDK|_OBJC_CLASS_\\\$_WindFoundation")
++    WIND_IMPL=${WIND_IMPL:-0}
++    if [ "${WIND_IMPL}" -gt 0 ]; then
++      echo "   ⚠️  tb-plugin 含 ${WIND_IMPL} 个 ToBid/WindMill 实现符号（应通过 podspec dependency 接入期解析，不应静态打入）"
++    else
++      echo "   ✅ OK: tb-plugin 未静态打入 ToBid/WindMill 实现（由 flame_sdk_ios_tb.podspec dependency 控制）"
++    fi
++
++    # 7) +load 符号（FLAME_PLUGIN_TB 应启用 FlameTBProvider 的 +load 自动注册）
++    LOAD_SYM=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTBProvider")
++    LOAD_SYM=${LOAD_SYM:-0}
++    if [ "${LOAD_SYM}" -gt 0 ]; then
++      echo "   ✅ FlameTBProvider 类符号存在（+load 自动注册依赖此类，FLAME_PLUGIN_TB 生效）"
++    else
++      echo "   ⚠️  FlameTBProvider 类符号缺失（+load 可能未注册）"
++    fi
++
++    # 8) 未定义符号抽查
++    echo "   --- （参考）未定义符号（U）抽查 ---"
++    FLAME_UNDEF=$(nm -u "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_Flame|_ERROR_CODE")
++    FLAME_UNDEF=${FLAME_UNDEF:-0}
++    echo "   Flame/ERROR_CODE 未定义引用: ${FLAME_UNDEF}（显式链接生效后期望为 0；>0 则依赖 dynamic_lookup 兜底）"
++    WIND_UNDEF=$(nm -u "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_Wind|WindMill")
++    WIND_UNDEF=${WIND_UNDEF:-0}
++    echo "   ToBid/WindMill 未定义引用: ${WIND_UNDEF}（>0 正常，接入期由 ToBid-iOS-RC pod 提供）"
++
++    # 9) otool -L 动态依赖（重点：是否显式链接 core，是否静态打入 ToBid/WindMill）
++    echo "   --- （参考）otool -L 动态依赖 ---"
++    if otool -L "$CHECK_BINARY" 2>/dev/null | grep -q "flame_sdk_ios_core"; then
++      echo "   ✅ 显式链接 flame_sdk_ios_core（otool -L 可见）"
++    else
++      echo "   ⚠️  未显式链接 core（依赖 dynamic_lookup 兜底）"
++    fi
++    otool -L "$CHECK_BINARY" 2>/dev/null | grep -iE "WindMill|WindSDK|WindFoundation|ToBid|Funlink" \
++      && echo "   ⚠️  发现 ToBid/WindMill 动态依赖（请确认是否为构建期 Pod 链接残留）" \
++      || echo "   ✅ 无 ToBid/WindMill 动态依赖"
++    otool -L "$CHECK_BINARY" 2>/dev/null | grep -iE "AnyThink|Sigmob|Baidu|GDT|KSAd|FSUnion|AdGain|BUAd|CSJ" \
++      && echo "   ⚠️  发现三方广告 SDK 动态依赖（请确认是否为构建期 Pod 链接残留）" \
++      || echo "   ✅ 无三方广告 SDK 动态依赖"
++  elif [ "$VARIANT" = "tk" ]; then
+     # TK 变体：Flame 源码只依赖 AnyThinkSDK，不应静态嵌入任何三方广告源 SDK
+     # 构建期 Podfile 只含 OpenSSL + AnyThinkiOS，运行时广告源依赖在 podspec 分发期声明
+     # 以下任一非零说明三方 SDK 被静态合并进了 framework binary（archive 期 static link 污染）
+-    POLLUTION_TOBID=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds|WindMillRewardVideo|_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_TbRewardAdapter")
+-    POLLUTION_ADCS=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ")
+-    POLLUTION_WIND=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_Wind|_OBJC_CLASS_\\\$_WindMill|_OBJC_CLASS_\\\$_WindFoundation")
+-    POLLUTION_OTHER=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob")
++    POLLUTION_TOBID=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds|WindMillRewardVideo|_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_TbRewardAdapter")
++    POLLUTION_ADCS=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ")
++    POLLUTION_WIND=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_Wind|_OBJC_CLASS_\\\$_WindMill|_OBJC_CLASS_\\\$_WindFoundation")
++    POLLUTION_OTHER=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob")
+     POLLUTION_TOBID=${POLLUTION_TOBID:-0}
+     POLLUTION_ADCS=${POLLUTION_ADCS:-0}
+     POLLUTION_WIND=${POLLUTION_WIND:-0}
+@@ -326,22 +937,22 @@ if [ -n "$TK_BINARY" ]; then
+ 
+     # AnyThink SDK 作为构建期依赖，二进制内可以有 AT* 符号引用，但不应该把整个 AnyThinkSDK 静态嵌入
+     # 这部分仅做信息提示，不阻塞
+-    ANYTHINK_COUNT=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
++    ANYTHINK_COUNT=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
+     ANYTHINK_COUNT=${ANYTHINK_COUNT:-0}
+     echo "   （参考）AnyThink AT* 符号数: ${ANYTHINK_COUNT}（Flame adapter 胶水层引用，正常）"
+   elif [ "$VARIANT" = "tb" ]; then
+     # TB 变体应含 WindMill（已内置），不应含 TK adapter / FlameTKProvider
+-    WINDMILL_COUNT=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds")
++    WINDMILL_COUNT=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds")
+     WINDMILL_COUNT=${WINDMILL_COUNT:-0}
+     echo "✅ TB 二进制含 ${WINDMILL_COUNT} 个 ToBid WindMill 符号（预期 >0，自包含模式）"
+-    TK_COUNT=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_FlameTKProvider")
++    TK_COUNT=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_FlameTKProvider")
+     TK_COUNT=${TK_COUNT:-0}
+     if [ "${TK_COUNT}" -gt 0 ]; then
+       echo "❌ 严重：TB 二进制含 ${TK_COUNT} 个 TK/AT* 符号（预期为 0）"
+     else
+       echo "✅ OK: TB 二进制无 TK / AT* adapter 符号"
+     fi
+-    ANYTHINK_POLLUTION=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
++    ANYTHINK_POLLUTION=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
+     ANYTHINK_POLLUTION=${ANYTHINK_POLLUTION:-0}
+     if [ "${ANYTHINK_POLLUTION}" -gt 0 ]; then
+       echo "❌ 严重：TB 二进制含 ${ANYTHINK_POLLUTION} 个 AnyThink AT* 符号（预期为 0）"
+@@ -355,10 +966,10 @@ if [ -n "$TK_BINARY" ]; then
+     #   - WindMill / Wind / WindFoundation：TB 平台依赖，Core 不应含
+     #   - 广告源 SDK：Baidu/GDT/KS/FSUnion/Sigmob/AdGain/BU/CSJ，Core 不应含
+     #   - TK/TB 平台 Provider 与 Adapter 类：FlameTKProvider/FlameTBProvider/At*Adapter/TbRewardAdapter
+-    CORE_POLL_AT=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT|AnyThink")
+-    CORE_POLL_WIND=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_WindMill|_OBJC_CLASS_\\\$_WindFoundation|_OBJC_CLASS_\\\$_WindSDK|WindMillSDK|WindMillAds")
+-    CORE_POLL_ADS=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob|_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ")
+-    CORE_POLL_PROVIDER=$(nm -gU "$TK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTKProvider|_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_TbRewardAdapter")
++    CORE_POLL_AT=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT|AnyThink")
++    CORE_POLL_WIND=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_WindMill|_OBJC_CLASS_\\\$_WindFoundation|_OBJC_CLASS_\\\$_WindSDK|WindMillSDK|WindMillAds")
++    CORE_POLL_ADS=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob|_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ")
++    CORE_POLL_PROVIDER=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_FlameTKProvider|_OBJC_CLASS_\\\$_FlameTBProvider|_OBJC_CLASS_\\\$_AtRewardAdapter|_OBJC_CLASS_\\\$_AtSplashAdapter|_OBJC_CLASS_\\\$_AtInterstitialAdapter|_OBJC_CLASS_\\\$_AtBannerAdapter|_OBJC_CLASS_\\\$_AtNativeAdapter|_OBJC_CLASS_\\\$_TbRewardAdapter")
+     CORE_POLL_AT=${CORE_POLL_AT:-0}
+     CORE_POLL_WIND=${CORE_POLL_WIND:-0}
+     CORE_POLL_ADS=${CORE_POLL_ADS:-0}
+@@ -378,7 +989,7 @@ if [ -n "$TK_BINARY" ]; then
+ 
+     # otool -L 动态依赖复查：Core 不应依赖 AnyThink/WindMill framework
+     echo "   （参考）otool -L 动态依赖复查："
+-    otool -L "$TK_BINARY" 2>/dev/null | grep -iE "AnyThink|WindMill|WindSDK|WindFoundation|ToBid|Sigmob" && echo "   ⚠️  发现三方动态依赖" || echo "   ✅ 无 AnyThink/WindMill/ToBid 动态依赖"
++    otool -L "$CHECK_BINARY" 2>/dev/null | grep -iE "AnyThink|WindMill|WindSDK|WindFoundation|ToBid|Sigmob" && echo "   ⚠️  发现三方动态依赖" || echo "   ✅ 无 AnyThink/WindMill/ToBid 动态依赖"
+   fi
+ 
+   # 资源 bundle 污染检查（三方 SDK 资源不应出现在 framework 内部）

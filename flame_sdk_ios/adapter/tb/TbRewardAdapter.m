@@ -7,8 +7,6 @@
 //
 
 // TB 平台源码宏隔离：TK 构建变体下整个文件置空，避免编译期 import WindMill/ToBid
-#if defined(FLAME_BUILD_TB)
-
 #import "TbRewardAdapter.h"
 #import "FlameLogger.h"
 #import <WindMillSDK/WindMillSDK.h>
@@ -188,4 +186,3 @@
 
 @end
 
-#endif // FLAME_BUILD_TB

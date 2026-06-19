@@ -6,9 +6,7 @@
 //  Copyright © 2026 Flame. All rights reserved.
 //
 
-// TB 平台源码宏隔离：TK 构建变体下整个文件置空，避免编译期 import WindMill/ToBid
-#if defined(FLAME_BUILD_TB)
-
+// TB 平台源码（Phase 5A.12 mainline：始终编译，不再用宏隔离）
 #import "FlameTBProvider.h"
 #import "FlameLogger.h"
 #import "FlameMediationRegistry.h"
@@ -25,21 +23,17 @@ static NSString * const kFlamePlatformTB = @"tb";
 
 @implementation FlameTBProvider
 
-#pragma mark - 插件自动注册（仅 Thin Core 插件模式启用）
+#pragma mark - +load 自动注册（Phase 5A.12 mainline：始终启用）
 
-// FLAME_PLUGIN_TB 仅由 research/podspecs/flame_sdk_ios.thin_core.tb.podspec 的
-// pod_target_xcconfig 注入。旧双二进制构建（xcFramework_build.sh tb）只定义
-// FLAME_BUILD_TB，不定义 FLAME_PLUGIN_TB，因此此处 +load 不会在旧 TB binary 中触发，
-// 避免 Core binary + 旧 TB binary 同时存在时重复注册。
-#if defined(FLAME_PLUGIN_TB)
+// dyld 加载 flame_sdk_ios.framework 时自动触发，将 FlameTBProvider 注册到 Registry。
+// +load 只做注册，不调用 WindMill/ToBid SDK（初始化延迟到 Router 激活后的 initializeWithAppId）。
 + (void)load {
     @autoreleasepool {
         FlameTBProvider *provider = [[FlameTBProvider alloc] init];
         [[FlameMediationRegistry sharedRegistry] registerProvider:provider];
-        [FlameLogger i:[NSString stringWithFormat:@"FlameTBProvider: +load 自动注册完成 (plugin 模式, platformCode=%@)", [provider platformCode]]];
+        [FlameLogger i:[NSString stringWithFormat:@"FlameTBProvider: +load 自动注册完成 (platformCode=%@)", [provider platformCode]]];
     }
 }
-#endif // FLAME_PLUGIN_TB
 
 - (NSString *)platformCode {
     return kFlamePlatformTB;
@@ -117,4 +111,3 @@ static NSString * const kFlamePlatformTB = @"tb";
 
 @end
 
-#endif // FLAME_BUILD_TB
