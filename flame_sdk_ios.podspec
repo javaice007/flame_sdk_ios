@@ -3,7 +3,7 @@
 # 客户只需：pod 'flame_sdk_ios'
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '1.0.0-alpha.5'
+  s.version          = '1.0.0-alpha.1'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TK Edition'
   s.description      = 'Flame iOS advertising aggregation SDK. TK edition.'

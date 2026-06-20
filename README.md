@@ -1,13 +1,13 @@
 # Flame SDK iOS 接入说明
 
-Flame SDK 是 iOS 广告聚合 SDK。当前客户接入版本为 `1.0.0-alpha.5`。
+Flame SDK 是 iOS 广告聚合 SDK。当前客户接入版本为 `1.0.0-alpha.1`。
 
 ## 一、版本说明
 
 | Pod | 适用场景 | 版本 |
 |---|---|---|
-| `flame_sdk_ios` | TK 客户 | `1.0.0-alpha.5` |
-| `flame_sdk_ios_tb` | TB 客户 | `1.0.0-alpha.5` |
+| `flame_sdk_ios` | TK 客户 | `1.0.0-alpha.1` |
+| `flame_sdk_ios_tb` | TB 客户 | `1.0.0-alpha.1` |
 
 `flame_sdk_ios` 与 `flame_sdk_ios_tb` 二选一接入，不能同时接入。
 
@@ -19,10 +19,10 @@ source 'https://cdn.cocoapods.org/'
 
 target 'YourApp' do
   # TK 客户
-  pod 'flame_sdk_ios', '1.0.0-alpha.5'
+  pod 'flame_sdk_ios', '1.0.0-alpha.1'
 
   # 或 TB 客户，二选一
-  # pod 'flame_sdk_ios_tb', '1.0.0-alpha.5'
+  # pod 'flame_sdk_ios_tb', '1.0.0-alpha.1'
 end
 ```
 
@@ -65,7 +65,6 @@ import flame_sdk_ios
 ## 六、注意事项
 
 1. `flame_sdk_ios` 与 `flame_sdk_ios_tb` 不能同时接入。
-2. 客户应使用 `1.0.0-alpha.5` 及以上版本，`1.0.0-alpha.4` 仅作为内部验证版本保留，不建议接入。
 3. 如果 TB 接入时返回 `800031`，通常是 ToBid 后台 AppId 未绑定到聚合服务，请检查后台配置。
 4. TK 客户不需要手动声明 `flame_sdk_ios_tk_sigmob_adapter`，`flame_sdk_ios` 会自动带上所需依赖。
 
