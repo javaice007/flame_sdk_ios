@@ -1,42 +1,35 @@
 # ============================================================
-# Flame iOS Ad SDK — TB 正式 podspec（方案 D）
+# Flame iOS Ad SDK — TB 客户 podspec（Phase 5A.12 single-binary mainline）
 # ------------------------------------------------------------
-# Phase 5A.10 Step 3 正式化：两个对外 podspec + 一个内部 core binary。
+# 单二进制架构：flame_sdk_ios.xcframework 同时内置 Flame core + TK/TB Provider/Adapter 胶水。
+#
+# 本 podspec（flame_sdk_ios_tb）面向 TB 客户：
+#   - 引用同一个 flame_sdk_ios.xcframework（与 flame_sdk_ios.podspec 共用）
+#   - 公共平台核心依赖：OpenSSL + AnyThinkiOS + ToBid-iOS-RC（两个 podspec 都声明）
+#   - 差异化广告源依赖：当前为空（TB Reward 阶段使用 ToBid-iOS-RC 默认 ToBidSDK 子规范）
+#     后续接 TB Splash/Interstitial/Banner/Native 时再加 ToBid-iOS-RC/<Adapter> 子规范
+#
+# 关键：pod 名是 flame_sdk_ios_tb，但 module name 统一为 flame_sdk_ios。
+#   TB 客户接入方代码仍可 `import flame_sdk_ios`（与 TK 客户一致）。
+#   pod 名决定客户 Podfile 写什么；module name 决定 import 写什么。
 #
 # 客户只写一行：
 #   pod 'flame_sdk_ios_tb'     # TB 客户（与 flame_sdk_ios 互斥，不能同时接入）
 #
-# 关键：pod 名是 flame_sdk_ios_tb，但 module name 统一为 flame_sdk_ios。
-#   这样 TB 客户接入方代码仍可 `import flame_sdk_ios`（与 TK 客户一致），
-#   无需因 pod 名是 flame_sdk_ios_tb 而改 import。
-#   pod 名决定客户 Podfile 写什么；module name 决定 import 写什么。
-#
-# 内部架构（与 TK podspec 对称）：
-#   vendored_frameworks = flame_sdk_ios_core.xcframework（发布仓库根目录，同一份 core binary）
-#   source_files = 正式转发头 + TB 平台源码（FlameTBProvider + TbRewardAdapter）
-#     - 转发头将 #import <flame_sdk_ios/...> 转发到 <flame_sdk_ios_core/...>
-#     - TB 源码注入 FLAME_PLUGIN_TB 宏，编译出 +load 自动注册 FlameTBProvider
-#
-# 红线：
-#   - 不依赖 AnyThinkiOS / AnyThinkMediation* / SigmobAd-iOS（这些是 TK 专属）
-#   - 不依赖 flame_sdk_ios（避免带入 TK 依赖）
-#   - 必须显式依赖 OpenSSL（core binary 动态依赖，否则真机 dyld crash）
-#
 # 推荐 Podfile：
 #   use_frameworks! :linkage => :static
-#   pod 'flame_sdk_ios_tb', :path => '...' 或远端
+#   pod 'flame_sdk_ios_tb'
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb'
-  s.version          = '1.0.0-alpha.2'
+  s.version          = '1.0.0-alpha.4'
   s.module_name      = 'flame_sdk_ios'
-  s.summary          = 'Flame iOS Ad SDK - ToBid Edition'
-  s.description      = 'Flame iOS advertising aggregation SDK, ToBid / WindMill edition (Scheme D: single internal core binary + TB platform source).'
+  s.summary          = 'Flame iOS Ad SDK - TB Edition (Single Binary)'
+  s.description      = 'Flame iOS advertising aggregation SDK, single binary with TK/TB platform glue embedded. TB ads deps edition.'
   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
   s.author           = { 'flame' => 'flame@toowe.com' }
 
-  # GitHub archive zip 默认不剥除顶层版本目录（cocoapods-downloader 仅对 tgz 默认 flatten），
-  # 必须显式 :flatten => true 才能让 podspec 的精确路径匹配到文件。
+  # GitHub archive zip 默认不剥除顶层版本目录，必须显式 :flatten => true
   s.source           = {
     :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
     :flatten => true,
@@ -52,51 +45,38 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '13.0'
   s.swift_version = '5.0'
 
-  # ========= 内部 Core Binary（与 TK podspec 共用同一份）=========
-  # 零三方符号，仅 OpenSSL + 系统库依赖。
-  # 发布产物路径：flame_sdk_ios_core.xcframework（发布仓库根目录）
-  s.vendored_frameworks = 'flame_sdk_ios_core.xcframework'
+  # ========= 单二进制 vendored xcframework（与 TK podspec 共用同一份）=========
+  s.vendored_frameworks = 'flame_sdk_ios.xcframework'
 
-  # ========= 转发头（对外公共 API，转发到 core binary）=========
-  # 接入方 #import <flame_sdk_ios/FlameSdk.h> 经此转发到 <flame_sdk_ios_core/FlameSdk.h>
-  # （module_name 统一为 flame_sdk_ios，转发头目录虽叫 flame_sdk_ios_tb，
-  #   但接入方 import 走的是 module name，不受目录名影响）
-  s.public_header_files = ['flame_sdk_ios/wrappers/flame_sdk_ios_tb/*.h']
-
-  # ========= 源码（转发头 + TB 平台源码：FlameTBProvider + TbRewardAdapter）=========
-  # Phase 5A：TB 仅实现 Reward；Splash/Interstitial/Banner/Native 仍为 nil 占位（后续 Phase 6）
-  s.source_files = [
-    'flame_sdk_ios/wrappers/flame_sdk_ios_tb/*.{h,m,mm}',
-    'flame_sdk_ios/mediation/tb/**/*.{h,m,mm}',
-    'flame_sdk_ios/adapter/tb/**/*.{h,m,mm}'
-  ]
-
-  # TB 内部协议/适配器头为私有
-  s.private_header_files = [
-    'flame_sdk_ios/mediation/tb/**/*.h',
-    'flame_sdk_ios/adapter/tb/**/*.h'
-  ]
-
-  # ========= 依赖 =========
-  # Core binary 动态依赖 OpenSSL，必须显式声明（TB 只有 ToBid，不靠 AnyThink 传递）。
+  # ========= 公共平台核心依赖（与 flame_sdk_ios.podspec 一致）=========
+  # binary 动态依赖 OpenSSL（otool -L 可见 @rpath/OpenSSL.framework/OpenSSL），必须显式声明。
   s.dependency 'OpenSSL-Universal', '~> 3.6'
 
-  # TB 运行时依赖：WindMill 不在 binary 内，需声明 ToBid-iOS-RC 供 TB 源码编译/运行。
+  # binary 动态依赖 AnyThinkSDK（otool -L 可见 @rpath/AnyThinkSDK.framework/AnyThinkSDK），必须显式声明。
+  # 即使 pt=tb 永不调用 TK 代码，dyld 启动时仍需找到 AnyThinkSDK.framework（LC_LOAD_DYLIB 硬依赖）。
+  # 两个 podspec 都声明，作为公共平台核心依赖。
+  s.dependency 'AnyThinkiOS', '6.5.71'
+
+  # ToBid-iOS-RC 是 TB 平台核心（WindMillSDK/WindSDK/WindFoundation 静态归档）。
+  # binary 内的 TB 胶水（FlameTBProvider/TbRewardAdapter）通过 U 引用 WindMill 符号，
+  # pt=tb 调用 FlameTBProvider.initializeWithAppId 时由 ToBid-iOS-RC 解析。
   s.dependency 'ToBid-iOS-RC', '5.5.6'
 
-  # 红线：不依赖 AnyThinkiOS / AnyThinkMediationSigmobAdapter / SigmobAd-iOS / TK adapter
+  # ========= 差异化广告源依赖（TB 专属，当前为空）=========
+  # 当前 TB Reward 阶段使用 ToBid-iOS-RC 默认 ToBidSDK 子规范（已含 WindMill 核心）。
+  # 后续 Phase 5A.13+ 接 TB Splash/Interstitial/Banner/Native 时，按需增加：
+  #   s.dependency 'ToBid-iOS-RC/CSJAdapter', '...'
+  #   s.dependency 'ToBid-iOS-RC/GDTAdapter', '...'
+  #   ...（ToBid-iOS-RC 的 21 个 Adapter 子规范）
 
-  # ========= pod_target_xcconfig（与 TK podspec 对称，仅宏不同）=========
-  # 注意：-F 路径是 ${PODS_XCFRAMEWORKS_BUILD_DIR}/flame_sdk_ios（不是 flame_sdk_ios_tb），
-  # 因为 CocoaPods 把 vendored framework 统一 staging 到 PODS_XCFRAMEWORKS_BUILD_DIR 下的
-  # pod name 子目录；TB pod name 是 flame_sdk_ios_tb，所以 staging 目录也是这个名字。
-  # （Step 2B 实测：TB 的 staging 目录是 flame_sdk_ios_tb/，故 -F 指向它）
+  # 红线：不依赖 AnyThinkMediation* / AdGain / FSUnion（TK 广告源适配器不在此 podspec）
+
+  # ========= xcconfig（与 TK podspec 完全一致）=========
   s.pod_target_xcconfig = {
-    'OTHER_LDFLAGS' => '$(inherited) -ObjC',
-    'OTHER_CFLAGS'  => '$(inherited) -DFLAME_BUILD_TB=1 -DFLAME_PLUGIN_TB=1 -F${PODS_XCFRAMEWORKS_BUILD_DIR}/flame_sdk_ios_tb',
-    'OTHER_CPLUSPLUSFLAGS' => '$(inherited) -F${PODS_XCFRAMEWORKS_BUILD_DIR}/flame_sdk_ios_tb',
-    'FRAMEWORK_SEARCH_PATHS' => '$(inherited) "${PODS_XCFRAMEWORKS_BUILD_DIR}/flame_sdk_ios_tb"',
-    'HEADER_SEARCH_PATHS' => '$(inherited) "${PODS_XCFRAMEWORKS_BUILD_DIR}/flame_sdk_ios_tb/flame_sdk_ios_core.framework/Headers"',
-    'DEFINES_MODULE' => 'YES'
+    'OTHER_LDFLAGS' => '$(inherited) -ObjC'
+  }
+
+  s.user_target_xcconfig = {
+    'OTHER_LDFLAGS' => '$(inherited) -ObjC'
   }
 end
