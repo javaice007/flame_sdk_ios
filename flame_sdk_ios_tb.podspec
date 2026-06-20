@@ -22,7 +22,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb'
-  s.version          = '1.0.0-alpha.4'
+  s.version          = '1.0.0-alpha.5'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Edition (Single Binary)'
   s.description      = 'Flame iOS advertising aggregation SDK, single binary with TK/TB platform glue embedded. TB ads deps edition.'
@@ -30,10 +30,7 @@ Pod::Spec.new do |s|
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   # GitHub archive zip 默认不剥除顶层版本目录，必须显式 :flatten => true
-  s.source           = {
-    :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
-    :flatten => true,
-  }
+  s.source = { :git => 'https://github.com/javaice007/flame_sdk_ios.git', :tag => s.version.to_s }
 
   # 商业 sdk
   s.license = {

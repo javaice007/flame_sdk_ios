@@ -22,7 +22,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '1.0.0-alpha.4'
+  s.version          = '1.0.0-alpha.5'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TK Edition (Single Binary)'
   s.description      = 'Flame iOS advertising aggregation SDK, single binary with TK/TB platform glue embedded. TK ads deps edition.'
@@ -30,10 +30,7 @@ Pod::Spec.new do |s|
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   # GitHub archive zip 默认不剥除顶层版本目录，必须显式 :flatten => true
-  s.source           = {
-    :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
-    :flatten => true,
-  }
+  s.source = { :git => 'https://github.com/javaice007/flame_sdk_ios.git', :tag => s.version.to_s }
 
   # 商业 sdk
   s.license = {
@@ -74,11 +71,11 @@ Pod::Spec.new do |s|
   s.dependency 'AnyThinkMediationFunlinkAdapter', '2.9.0.1.2.2.0'
   s.dependency 'AnyThinkMediationBeiZiAdapter', '5.5.0.3.2.0'
   s.dependency 'AnyThinkMediationKuaiShouAdapter', '5.4.10.1.2.0'
-  # Phase 5A.12 Step 1f: Sigmob adapter 改为 flame-sdk-tk-sigmob-adapter（Flame 私有规范命名 podspec 包装层）
+  # Phase 5A.12 Step 1f: Sigmob adapter 改为 flame_sdk_ios_tk_sigmob_adapter（与 flame_sdk_ios 命名风格统一）
   # 复用 TopOn AnyThinkSigmobAdapter.xcframework，去掉 SigmobAd-iOS 传递依赖，
   # WindSDK / WindFoundation 由 ToBid-iOS-RC 统一提供，避免与 ToBid-iOS-RC 的同名 framework 冲突。
   # 此 pod 当前在私有 spec repo javaice007-flame-specs 提供（pod repo push 后；本地实验在 research/local_specs）。
-  s.dependency 'flame-sdk-tk-sigmob-adapter', '4.20.12.2.0'
+  s.dependency 'flame_sdk_ios_tk_sigmob_adapter', '4.20.12.2.0'
   s.dependency 'AnyThinkMediationTTAdapter_Mix', '7.6.0.4.2.0'
   s.dependency 'AnyThinkMediationGDTAdapter', '4.15.90.2.0'
 
