@@ -27,7 +27,7 @@ flame_sdk_ios/
 │   ├── splash/                 # 开屏广告
 │   ├── interstitial/           # 插屏广告
 │   ├── banner/                 # 横幅广告
-│   └── nativate/               # 原生广告
+│   └── nativate/               # 原生广告（历史目录命名，当前保持兼容）
 ├── utils/              # 日志、网络、加密、本地缓存等工具能力
 └── flame_sdk_ios.h    # 对外统一头文件
 ```
@@ -92,8 +92,8 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 |---|---|---|
 | pod install | ✅ 通过 | ✅ 通过 |
 | 编译验证 | ✅ BUILD SUCCEEDED | ✅ BUILD SUCCEEDED |
-| 真机启动 | ✅ 通过 | ✅ 通过 |
-| Sigmob 广告链路 | ✅ 已验证可调用 | — |
+| 真机启动 | ⏳ 待持续验证 | ⏳ 待持续验证 |
+| Sigmob 广告链路 | ⏳ 仅完成依赖接入与编译验证 | — |
 | 真实广告位业务验证 | ⏳ 待持续验证 | ⏳ 待验证 |
 | ToBid 后台 AppId 绑定 | — | ⏳ 待配置（当前返回 800031）|
 
