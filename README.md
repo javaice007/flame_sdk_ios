@@ -1,286 +1,129 @@
-# Flame SDK for iOS
+# Flame iOS SDK
 
-Flame SDK 是一个用于 iOS 平台的广告聚合 SDK，当前基于 TopOn (AnyThinkSDK) 实现。
+Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid** 双线维护。
 
 ## 版本信息
 
-- **SDK 版本**: 1.0.0
-- **最低支持**: iOS 10.0+
+- **SDK 版本**: 1.0.0-alpha.1
+- **最低支持**: iOS 13.0+
 - **开发语言**: Objective-C
 
 ## 目录结构
 
 ```
 flame_sdk_ios/
-├── core/                    # 核心模块
-│   ├── FlameSdk.{h,m}      # SDK 主入口
-│   ├── FlameConfigManager   # 配置管理器
-│   └── FlameAppEntity       # 配置实体
-├── adapter/                 # 广告平台适配器
-│   ├── tk/                  # TopOn 适配器
-│   └── FlameAdapterManager  # 适配器管理器
-├── ads/                     # 广告类型实现
-│   ├── reward/             # 激励视频
-│   ├── interstitial/       # 插屏广告
-│   ├── splash/             # 开屏广告
-│   ├── banner/             # 横幅广告
-│   ├── native/             # 原生广告
-└── utils/                   # 工具类
-    ├── FlameLogger         # 日志工具
-    ├── FlameConfigLocalStorage  # 本地存储
-    └── ...
+├── core/               # SDK 初始化、配置管理、公共实体
+├── mediation/          # 聚合层抽象与 TK / ToBid 双线分发逻辑
+│   ├── FlameMediationRegistry   # Provider 注册中心
+│   ├── FlameMediationRouter     # 平台路由（按 pt 激活）
+│   ├── tk/                      # TK Provider（TopOn）
+│   └── tb/                      # ToBid Provider（WindMill）
+├── adapter/            # 第三方平台适配层
+│   ├── FlameAdapterManager      # 适配器管理
+│   ├── tk/                      # TK 适配器（激励/开屏/插屏/横幅/原生）
+│   └── tb/                      # ToBid 适配器（激励视频）
+├── ads/                # 广告类型封装
+│   ├── reward/                 # 激励视频
+│   ├── splash/                 # 开屏广告
+│   ├── interstitial/           # 插屏广告
+│   ├── banner/                 # 横幅广告
+│   └── nativate/               # 原生广告
+├── utils/              # 日志、网络、加密、本地缓存等工具能力
+└── flame_sdk_ios.h    # 对外统一头文件
 ```
 
-## 初始化
+## 当前发布形态
 
-### 基础初始化
+| 组成 | 说明 |
+|---|---|
+| `flame_sdk_ios.xcframework` | 唯一二进制包，TK 和 ToBid 共用 |
+| `flame_sdk_ios.podspec` | TK 客户 podspec |
+| `flame_sdk_ios_tb.podspec` | ToBid 客户 podspec |
+| `flame_sdk_ios_tk_sigmob_adapter` | TK 侧 Sigmob 适配器（TK 客户自动带出，不需手动声明）|
 
-```objective-c
-#import <FlameSdk/FlameSdk.h>
+TK 和 ToBid 两条线共用同一个二进制包，通过不同 podspec 区分广告源依赖。
 
+## TK 与 ToBid 的区别
+
+| 维度 | TK 版本（`flame_sdk_ios`）| ToBid 版本（`flame_sdk_ios_tb`）|
+|---|---|---|
+| 聚合平台 | TopOn (AnyThink) | ToBid (WindMill) |
+| TK 广告源依赖 | ✅ 含（AnyThinkMediation* / AdGain / FSUnion）| ❌ 不含 |
+| Sigmob 适配器 | ✅ 自动带出 | ❌ 不含 |
+| 广告类型 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 | 激励视频（其他待接入）|
+| module name | `flame_sdk_ios` | `flame_sdk_ios`（一致）|
+
+两条线可以独立接入、独立验证、独立演进。`flame_sdk_ios` 与 `flame_sdk_ios_tb` **互斥**，不能同时接入。
+
+## 客户接入方式
+
+```ruby
+source 'https://github.com/javaice007/flame-specs.git'
+source 'https://cdn.cocoapods.org/'
+
+target 'YourApp' do
+  # TK 客户
+  pod 'flame_sdk_ios', '1.0.0-alpha.1'
+
+  # ToBid 客户，二选一
+  # pod 'flame_sdk_ios_tb', '1.0.0-alpha.1'
+end
+```
+
+接入代码（TK / ToBid 一致）：
+
+```objc
+#import <flame_sdk_ios/FlameSdk.h>
+```
+
+```swift
+import flame_sdk_ios
+```
+
+```objc
 [FlameSdk initWithAppId:@"your_app_id" appKey:@"your_app_key"];
 ```
 
-### 带回调的初始化
+Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `use_frameworks!` 配置，可按原工程配置保留。
 
-```objective-c
-[FlameSdk initWithAppId:@"your_app_id"
-                 appKey:@"your_app_key"
-               callback:^{
-    - (void)success {
-        NSLog(@"SDK 初始化成功");
-    }
+## 当前验证状态
 
-    - (void)fail:(NSString *)code desc:(NSString *)desc {
-        NSLog(@"SDK 初始化失败: %@ - %@", code, desc);
-    }
-}];
-```
+| 验证项 | TK | ToBid |
+|---|---|---|
+| pod install | ✅ 通过 | ✅ 通过 |
+| 编译验证 | ✅ BUILD SUCCEEDED | ✅ BUILD SUCCEEDED |
+| 真机启动 | ✅ 通过 | ✅ 通过 |
+| Sigmob 广告链路 | ✅ 已验证可调用 | — |
+| 真实广告位业务验证 | ⏳ 待持续验证 | ⏳ 待验证 |
+| ToBid 后台 AppId 绑定 | — | ⏳ 待配置（当前返回 800031）|
 
-## 广告位ID缓存策略
-
-### 缓存架构
-
-Flame SDK 采用**两级缓存策略**，确保快速启动和离线可用：
-
-```
-┌────────────────────────────────────────┐
-│          SDK 初始化流程                 │
-└───────────────┬────────────────────────┘
-                ↓
-    ┌──────────────────────┐
-    │   检查本地持久化缓存   │
-    │   (NSUserDefaults)    │
-    └──────┬───────┬────────┘
-           │       │
-    缓存存在│       │缓存不存在
-           ↓       ↓
-    ┌──────────┐ ┌──────────────┐
-    │ 加载到内存│ │ 请求远程服务器 │
-    │ 立即可用  │ │ (HTTPS API)   │
-    └──────────┘ └───────┬───────┘
-                         ↓
-                  ┌─────────────┐
-                  │ 保存到本地   │
-                  │ + 加载到内存 │
-                  └─────────────┘
-```
-
-### 1. 内存缓存（第一级）
-
-**实现位置**: `FlameConfigManager.appEntity`
-
-**数据结构**:
-```objective-c
-FlameAppEntity {
-    NSString *pt;      // 平台类型
-    NSString *aId;     // Adapter AppId (TopOn)
-    NSString *aKey;    // Adapter AppKey
-    NSMutableDictionary *pIds;  // 广告位映射表
-                                 // Key: Flame PlacementId
-                                 // Value: TopOn PlacementId
-}
-```
-
-**特性**:
-- 线程安全: `atomic` 属性保护
-- 访问速度: O(1) 字典查找
-- 生命周期: App 运行期间
-
-### 2. 持久化缓存（第二级）
-
-**实现位置**: `FlameConfigLocalStorage`
-
-**存储方式**: `NSUserDefaults` (沙盒存储)
-
-**Suite Name**: `flame_sdk_conf`
-
-**存储键值**:
-| Key | 描述 | 示例 |
-|-----|------|------|
-| `pt` | 平台类型 | "topon" |
-| `aId` | Adapter AppId | "a63abc123456" |
-| `aKey` | Adapter AppKey | "7f8e9d..." |
-| `pMap` | 广告位映射表 | "flame_id1=topon_id1&flame_id2=topon_id2" |
-
-**特性**:
-- 持久化: App 重启后保留
-- 跨会话: 无需重复网络请求
-- 清除时机: 仅手动调用 `[FlameSdk clear]`
-
-### 缓存读取流程
-
-```objective-c
-// 初始化时的缓存策略
-- (void)updateAppWithAppId:(NSString *)appId
-                    appKey:(NSString *)appKey
-                  callback:(id<FlameCallback>)callback {
-
-    // Step 1: 尝试读取本地缓存
-    NSString *aId = [storage getAId];
-    NSString *aKey = [storage getAKey];
-    NSDictionary *pMap = [storage getPMap];
-
-    // Step 2: 检查缓存完整性
-    if (aId.length > 0 && aKey.length > 0 && pMap.count > 0) {
-        // ✅ 缓存命中 - 直接使用
-        [FlameLogger i:@"load ad from local cache......"];
-        self.appEntity = [[FlameAppEntity alloc] init];
-        self.appEntity.aId = aId;
-        self.appEntity.aKey = aKey;
-        [self.appEntity.pIds addEntriesFromDictionary:pMap];
-        [callback success];
-        return;  // 不发起网络请求
-    }
-
-    // Step 3: 缓存未命中 - 请求远程服务器
-    [FlameLogger i:@"load ad from remote server......"];
-    [self fetchFromRemoteServer:appId appKey:appKey callback:callback];
-}
-```
-
-### 广告位ID查询性能
-
-```objective-c
-// 运行时查询 - 纯内存操作，无网络请求
-NSString *toponPlacementId = [[FlameConfigManager sharedInstance] getPId:@"flame_placement_id"];
-
-// 时间复杂度: O(1)
-// 线程安全: ✅
-// 网络请求: ❌ 无
-```
-
-### 缓存刷新策略
-
-**当前策略**:
-- 首次启动: 请求远程 API → 保存缓存
-- 后续启动: 读取本地缓存 → 直接使用
-- **无自动过期**: 缓存永久有效，直到手动清除
-
-**手动清除缓存**:
-```objective-c
-// 清除所有配置缓存（内存 + 持久化）
-[FlameSdk clear];
-```
-
-### 缓存策略特性对比
-
-| 特性 | 支持情况 | 说明 |
-|------|---------|------|
-| 持久化存储 | ✅ | 使用 NSUserDefaults |
-| 离线可用 | ✅ | 缓存后无需网络 |
-| 自动过期 | ❌ | 无 TTL 机制 |
-| 版本控制 | ❌ | 无缓存版本号 |
-| 完整性校验 | ⚠️ | 仅检查非空 |
-| 线程安全 | ✅ | atomic + @synchronized |
-| 强制刷新 | ⚠️ | 需先 clear 再 init |
-
-### 缓存数据流
-
-```
-App 首次启动:
-  [FlameSdk init]
-    → 检查本地缓存 (未命中)
-    → HTTPS 请求 api.adsurge.cn/api/v1/sdk/init
-    → AES 解密响应数据
-    → 保存到 NSUserDefaults
-    → 加载到内存 (appEntity)
-    ✅ 初始化完成
-
-App 后续启动:
-  [FlameSdk init]
-    → 检查本地缓存 (命中)
-    → 加载到内存 (appEntity)
-    ✅ 初始化完成 (无网络请求)
-
-运行时查询:
-  getPId:@"placement_id"
-    → 从内存读取 (appEntity.pIds)
-    → 返回映射的 TopOn PlacementId
-    ✅ O(1) 查找
-```
-
-## 异常处理
-
-### 初始化失败处理
-
-SDK 在初始化过程中可能遇到以下异常：
-
-| 场景 | 行为 | 状态 |
-|------|------|------|
-| 网络故障 | 触发 `fail` 回调 | `FlameSDKInitStateFailed` |
-| 配置解析失败 | 触发 `fail` 回调 | `FlameSDKInitStateFailed` |
-| Adapter 初始化失败 | 触发 `fail` 回调 | `FlameSDKInitStateFailed` |
-| 重复初始化 | 直接返回成功 | `FlameSDKInitStateInitialized` |
-
-**安全保障**:
-```objective-c
-// 检查初始化状态
-if (![FlameSdk isInitialized]) {
-    // SDK 未初始化，不应请求广告
-}
-
-// 失败后可以重试
-[FlameSdk initWithAppId:appId appKey:appKey callback:callback];
-```
-
-## 调试模式
-
-```objective-c
-// 开启 Debug 日志
-[FlameSdk setDebug:YES];
-```
+**说明**：`1.0.0-alpha.1` 已完成 SDK 接入和编译验证。ToBid 当前还没有正式应用接入，真实广告位、广告请求、展示、点击、回调尚未完成业务验证。
 
 ## 广告类型
 
-Flame SDK 支持以下广告类型：
-
-- ✅ 激励视频 (`FlameRewardAd`)
-- ✅ 插屏广告 (`FlameInterstitialAd`)
-- ✅ 开屏广告 (`FlameSplashAd`)
-- ✅ 横幅广告 (`FlameBannerAd`)
-- ✅ 原生广告 (`FlameNativeAd`)
-
-详细使用文档请参考各广告类型的接口说明。
+| 广告类型 | TK | ToBid |
+|---|---|---|
+| 激励视频 | ✅ | ✅ |
+| 开屏广告 | ✅ | ⏳ 待接入 |
+| 插屏广告 | ✅ | ⏳ 待接入 |
+| 横幅广告 | ✅ | ⏳ 待接入 |
+| 原生广告 | ✅ | ⏳ 待接入 |
 
 ## 注意事项
 
-1. **缓存更新**: 当前版本不支持自动缓存过期，如需更新广告位配置，请先调用 `[FlameSdk clear]` 清除缓存后重新初始化
+1. `flame_sdk_ios` 与 `flame_sdk_ios_tb` 不能同时接入。
+2. 如果 ToBid 接入时返回 `800031`，通常是 ToBid 后台 AppId 未绑定到聚合服务，请检查后台配置。
+3. TK 客户不需要手动声明 `flame_sdk_ios_tk_sigmob_adapter`，`flame_sdk_ios` 会自动带上所需依赖。
 
-2. **线程安全**: SDK 内部已处理线程安全，可在任意线程调用
+## 发布规范
 
-3. **初始化时机**: 建议在 `application:didFinishLaunchingWithOptions:` 中完成初始化
+后续版本发布必须遵循以下规范：
 
-4. **网络依赖**: 首次启动需要网络请求，后续启动依赖本地缓存（建议首次启动时有网络环境）
+- 发布前必须执行 `./scripts/preflight_release.sh <version>`，校验通过后才允许发布。
+- alpha 版本号格式：`1.0.0-alpha.1`、`1.0.0-alpha.2`、`1.0.0-alpha.3` ...
+- 禁止裸 `1.0.0-alpha`（无序号）。
+- 禁止跳号、覆盖、重复发布。
 
 ## 技术支持
 
-如有问题，请联系技术支持团队。
-
-## 更新日志
-
-### v1.0.0 (2026-03-18)
-- 初始版本发布
-- 支持 TopOn 适配器
-- 实现两级缓存策略
-- 支持 6 种广告类型
+如有接入问题，请联系 Flame SDK 技术支持。
