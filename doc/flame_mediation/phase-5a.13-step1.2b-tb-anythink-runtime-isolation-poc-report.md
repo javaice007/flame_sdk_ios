@@ -516,7 +516,7 @@ refactor: weak-link AnyThink for clean TB runtime (Phase 5A.13 Step 1.2B PoC)
 
 ## 十四、/compact
 
-Phase 5A.13 Step 1.3 完成（AnyThink 弱链接方案正式纳入）。用户确认后执行：TK 真机冒烟通过（全广告位正常加载，无 TK_PLATFORM_REQUIRES_ANYTHINK）；发现并修正 TK podspec sigmob adapter 名 bug（hyphen→underscore，c40e4fe 之前所有 TK 客户接入都会卡）；正式 flame_sdk_ios_tb.podspec 移除 AnyThinkiOS（保留 OpenSSL + ToBid-iOS-RC）；重建 XCFramework（BUILD EXIT 0，弱链接双断言 PASS）；正式 TB pod install 仅 4 pods（无 AnyThink），App/Frameworks 无 AnyThinkSDK；公共 API 未变；客户不强制 use_frameworks! :linkage => :static。本地 commit，未 push/tag/release/改远程 specs/改版本号。新增非阻塞问题登记：Reward 后 3 次 NSURLErrorDomain -1002（高概率推断 Sigmob WindSDK S2S rvCallbackURL 为空）。等用户确认进入 Phase 5A.14 TB 插屏。
+Phase 5A.13 Step 1.3 完成（AnyThink 弱链接方案正式纳入）。用户确认后执行：TK 真机冒烟通过（全广告位正常加载，无 TK_PLATFORM_REQUIRES_ANYTHINK）；发现并修正 TK podspec sigmob adapter 名（旧版 TK podspec 使用了错误的 Sigmob Adapter 依赖名；使用该版本 spec 安装时可能导致依赖解析失败，本阶段修正为实际存在的 underscore 形式）；正式 flame_sdk_ios_tb.podspec 移除 AnyThinkiOS（保留 OpenSSL + ToBid-iOS-RC）；重建 XCFramework（BUILD EXIT 0，弱链接双断言 PASS）；正式 TB pod install 仅 4 pods（无 AnyThink），App/Frameworks 无 AnyThinkSDK；公共 API 未变；客户不强制 use_frameworks! :linkage => :static。本地 commit，未 push/tag/release/改远程 specs/改版本号。新增非阻塞问题登记：Reward 后 3 次 NSURLErrorDomain -1002（高概率推断 Sigmob WindSDK S2S rvCallbackURL 为空）。等用户确认进入 Phase 5A.14 TB 插屏。
 
 ---
 
