@@ -7,7 +7,36 @@
 
 ## Phase 5A.15（进行中）— TB 开屏广告接入
 
-### Phase 5A.15：TB 开屏 Adapter 接入（本次 SDK feat commit）
+### Phase 5A.15.1：验收补齐 + 文档收口（本次 SDK docs commit）
+
+**变更类型**：仅文档变更（SDK 业务代码零改动）
+
+**起因**：Phase 5A.15（commit `0d13dd5`）初版报告中 R3 独立冷启动、Reward 完整回归、TK 编译回归三项均未完成（分别写"未单独执行/留待后续/留待后续"）。Phase 5A.15.1 补齐这三项验收。
+
+**三项补齐结果**：
+
+| 项 | 结果 |
+|---|---|
+| Splash R3 独立冷启动 | ✅ 通过（完全杀进程重启，pt=tb，load/show/willPresent/didPresent/skip+close 完整链路，finishOnce 二次拦截生效，无 AnyThink 弹窗/黑屏/重复展示，主页面正常） |
+| Splash 三次独立冷启动 | ✅ 全部通过（R1 倒计时关闭 + R2/R3 skip/close 幂等，finishOnce 守卫二次拦截均生效） |
+| Reward 完整展示回归 | ✅ 通过（两轮闭环 load/show/willVisible/didVisible/didClose/next-load/next-didLoad，presenter/vcWindow 非空，thread=1；cachedVC=0x0 时动态 presenter 修复仍生效；奖励回调本轮未出现，非阻塞） |
+| TK 干净编译回归 | ✅ 通过（28 pods + BUILD SUCCEEDED + AnyThinkSDK.framework 进入 App + flame_sdk_ios.framework 进入 App + Flame binary 保持 LC_LOAD_WEAK_DYLIB + TK guard 已编入；本轮未重新执行 TK 真机初始化，guard 真机未触发沿用 Phase 5A.13 Step 1.3 结论） |
+| AnyThink 隔离 | ✅ 无回归（TK podspec 带入嵌入 / Flame binary 保持 weak / TB podspec 不带入） |
+| 公共 API | ❌ 未变 |
+
+**关键表述修正（按 Phase 5A.15.1 v2 §6/§10.4）**：
+- ❌ 不写"TK 构建中 AnyThink 强加载"；✅ "TK podspec 负责将 AnyThinkSDK.framework 带入并嵌入 App；Flame binary 对 AnyThinkSDK 仍保持 LC_LOAD_WEAK_DYLIB。"
+- ❌ 不写"二进制有 guard 字符串，因此本轮 guard 未触发"；✅ "TK guard 已编入二进制；本轮未重新执行 TK 真机初始化。Phase 5A.13 Step 1.3 的 TK 真机验证中 ATAPI 守卫通过，未出现 TK_PLATFORM_REQUIRES_ANYTHINK。"
+- ❌ 不写"下一条 ad 地址必须不同"；✅ 以 adapter 轮次 + load created + isCurrent 为准。
+- ❌ 不写"R2 关闭后预热 load 等于 R3 独立冷启动"；✅ R3 已执行真正的独立冷启动（杀进程重启）。
+
+**红线遵守**：未 push / 未 tag / 未发布 / 未改 SDK 业务代码 / 未改 TbSplashAdapter/TbRewardAdapter/TbInterstitialAdapter / 未改公共 API / 未重引入 AnyThinkiOS / 未升级版本 / 未改版本号 / 未提交 project.pbxproj 环境差异 / Pods / Podfile.lock / xcworkspace / 测试 placementId / 真机日志。
+
+**结论**：Phase 5A.15 正式完成。下一阶段（TB Banner）存在待沟通问题，未进入 Phase 5A.16，未创建或修改 Banner Adapter。
+
+---
+
+### Phase 5A.15：TB 开屏 Adapter 接入（commit `0d13dd5`）
 
 **变更类型**：新增广告类型适配器（非破坏性）
 

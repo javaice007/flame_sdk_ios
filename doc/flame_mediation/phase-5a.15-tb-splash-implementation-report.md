@@ -3,6 +3,10 @@
 > 本报告记录 Phase 5A.15：ToBid (WindMill) 开屏广告 Adapter 接入与真机验证。
 > 验收口径严格区分 **实现（代码）** / **静态审计** / **真机实测** 三档，未做专项实测的异常场景不写成"已验证"。
 
+> **修订记录（Phase 5A.15.1，docs 收口）**：初版（commit `0d13dd5`）R3/Reward/TK 三项均为"未完成/留待后续"。Phase 5A.15.1 补齐：(1) R3 真正独立冷启动通过（见 §20 修订）；(2) Reward 完整展示回归通过（两轮闭环，见 §25 修订）；(3) TK 干净 pod install + BUILD SUCCEEDED（见 §26 修订）。本报告相应章节已用真实数据替换初版表述，§30 结论已更新为"Phase 5A.15 正式完成"。
+
+
+
 ---
 
 ## 1. 基线
@@ -451,16 +455,88 @@ SPEC REPOS:
 
 ---
 
-## 20. R3 冷启动
+## 20. R3 冷启动（Phase 5A.15.1 独立冷启动补齐）
 
-本轮真机日志包含 R1（看完）+ R2（跳过）两次独立冷启动。**R3（第三次冷启动）本轮未单独执行**——R1/R2 已覆盖"正常关闭"和"skip 关闭"两条核心路径，且每次冷启动后 Demo Coordinator 都会自动触发下一轮 Splash 后台预加载（日志中 `[Splash] 预加载｜开始后台加载` + `[TB_SPLASH_DIAG] didLoad` 已观察到第二轮 Splash 加载成功，即 R2 冷启动后的预热 load success）。
+> **修订（Phase 5A.15.1）**：初版本节写"R3 未单独执行（R2 关闭后预热 load 已成功，等价覆盖）"。该表述口径错误——**预热 load 不等于独立冷启动**。Phase 5A.15.1 执行了真正的独立冷启动（完全杀进程后 Xcode Run），替换如下。
+
+**操作**：完全杀掉 Demo App → 等待数秒确认进程退出 → Xcode Run → 等 Splash 独立完成展示 + 关闭。
+
+**完整链路（真机日志 `pasted-text-20260719-232755-54803477.txt`）**：
+
+```
+23:27:28.970  [SDK_INIT] 初始化开始
+23:27:29.340  [SDK] 初始化完成
+23:27:29.417  ■ 初始化成功 | 耗时 0.447s     ← pt=tb，Router 激活 FlameTBProvider
+23:27:29.421  [Splash] 创建广告实例
+23:27:29.421  [Splash] 开始加载
+23:27:29.423  [TB_SPLASH_DIAG] load: adapter=0x10ef0d140 oldAd=0x0 placementId=8374774642581842 thread=1
+23:27:29.425  [TB_SPLASH_DIAG] load created: adapter=0x10ef0d140 newAd=0x10eea3c00
+23:27:30.030  [TB_SPLASH_DIAG] didLoad: ad=0x10eea3c00 adapter=0x10ef0d140 isCurrent=1
+23:27:30.030  [Splash][trace] #1 +906ms onAdLoaded
+23:27:30.030  [TB_SPLASH_DIAG] show: adapter=0x10ef0d140 ad=0x10eea3c00 window=0x10618fe40 thread=1 ready=1
+23:27:30.030  [TB_SPLASH_DIAG] willPresent: ad=0x10eea3c00 isCurrent=1
+23:27:30.030  [TB_SPLASH_DIAG] didPresent(didVisible): ad=0x10eea3c00 isCurrent=1
+23:27:30.327  [Splash][trace] #1 +73ms onAdShow
+23:27:30.400  [Splash] 展示
+23:27:31.031  [ToBid] onSplashAdSkiped(_:)                       ← Sigmob 先回调 skip
+23:27:31.031  [ToBid] onSplashAdClosed(_:)                       ← 紧接着回调 close
+23:27:31.031  [TB_SPLASH_DIAG] didSkip: ad=0x10eea3c00 isCurrent=1
+23:27:31.031  [TB_SPLASH_DIAG] finish: reason=skip ad=0x10eea3c00  ← finish 第一次（skip 触发）
+23:27:31.613  [Splash] 关闭                                     ← 业务 onAdClosed 通知【一次】
+23:27:31.031  [TB_SPLASH_DIAG] willClose: ad=0x10eea3c00 isCurrent=1
+23:27:31.031  [TB_SPLASH_DIAG] didClose: ad=0x10eea3c00 adapter=0x10ef0d140 isCurrent=1
+23:27:31.031  [TB_SPLASH_DIAG] finish already done: reason=close  ← 【finishOnce 守卫拦下第二次】
+23:27:31.619  [Coordinator] 开始预加载所有广告                  ← 主页面切换正常
+```
+
+placementId 映射：`q<REDACTED>`（Demo 本地配置，不提交）→ `8374774642581842`（后台下发，pMap 解析）。
+
+### 20.1 R3 验收项
+
+| 项 | 结果 |
+|---|---|
+| 是否完全杀进程后重启 | ✅ 是（独立冷启动，不复用 R2 进程） |
+| pt | ✅ `tb` |
+| Router | ✅ 激活 `tb` |
+| adapter | `0x10ef0d140`（新生命周期） |
+| ad | `0x10eea3c00` |
+| window | ✅ `0x10618fe40`（非空，Demo LaunchScreenWindow） |
+| ready | ✅ `1` |
+| thread | ✅ `1` |
+| willPresent | ✅ 到达（isCurrent=1） |
+| didPresent(didVisible) | ✅ 到达（isCurrent=1） |
+| close/skip | ✅ skip 路径（Sigmob 先 `onSplashAdSkiped` 后 `onSplashAdClosed`） |
+| finish reason | `skip` |
+| finish 通知次数 | ✅ **1 次**（第二次 `finish already done: reason=close` 被守卫拦截） |
+
+### 20.2 用户肉眼确认项（人工）
+
+| 项 | 结果 |
+|---|---|
+| AnyThink ADX 弹窗 | ✅ 未出现 |
+| Splash 黑屏 | ✅ 否 |
+| Splash 内容正常显示 | ✅ 是 |
+| Splash 重复展示 | ✅ 否 |
+| Splash 关闭后主页面正常显示 | ✅ 是 |
+| 主页面可正常交互 | ✅ 是 |
+| 卡在启动页 | ✅ 否 |
+| 闪退 | ✅ 未发生 |
+| skip + close 到达，finishOnce 仅通知业务一次 | ✅ 是 |
+
+### 20.3 R3 地址判断
+
+> 不以裸 ad 指针值判断对象是否为"同一对象"——对象释放后地址可能被内存分配器复用。R3 判定依据：**新的 App 冷启动** + **新的 Adapter 生命周期**（`0x10ef0d140` ≠ R2 `0x124f41f20` ≠ R1 `0x11af57d50`）+ **新的 load created** + **`isCurrent=1`** + **finish 生命周期重新开始**。
+
+### 20.4 R1/R2/R3 对照
 
 | 项 | R1 | R2 | R3 |
 |---|---|---|---|
-| 冷启动 load → didLoad | ✅ | ✅ | ⚠️ 未单独执行（R2 关闭后预热 load 已成功，等价覆盖） |
-| show → visible | ✅ | ✅ | — |
-| 关闭路径 | ✅ 倒计时 close | ✅ skip + close 幂等 | — |
-| 主页面恢复 | ✅ | ✅ | — |
+| 冷启动 load → didLoad | ✅ | ✅ | ✅ |
+| show → didVisible | ✅ | ✅ | ✅ |
+| 关闭路径 | ✅ 倒计时 close | ✅ skip + close 幂等 | ✅ skip + close 幂等（finishOnce 二次拦截） |
+| 主页面恢复 | ✅ | ✅ | ✅ |
+
+**三次冷启动全部通过**。R2/R3 均为 skip 路径，且都验证了 finishOnce 二次拦截生效。
 
 ---
 
@@ -518,40 +594,140 @@ SPEC REPOS:
 
 ---
 
-## 25. Reward 完整回归
+## 25. Reward 完整回归（Phase 5A.15.1 补齐）
 
-基于 R1 日志（line 199-211, 254-256）与 R2 日志（line 205-217, 252-254）：
+> **修订（Phase 5A.15.1）**：初版本节写"仍为仅加载回归通过，未补齐 show/close"。Phase 5A.15.1 在 R3 同一次 TB 真机运行中手动触发了两次 Reward 展示，取得完整闭环证据，**Reward 完整展示回归通过**。
+
+基于真机日志 `pasted-text-20260719-232755-54803477.txt`（R3 冷启动后续运行）。
+
+### 25.1 第一轮（23:27:38~23:27:41）
 
 ```
-[RewardVideo] 开始加载
-[TB_REWARD_DIAG] load: adapter=0x1274e9560 oldAd=0x0 placementId=1886359231652093 thread=1
-[TB_REWARD_DIAG] load created: adapter=0x1274e9560 newAd=0x1274bdbc0
-[TB_REWARD_DIAG] didLoad: ad=0x1274bdbc0 adapter=0x1274e9560 isCurrent=1
-[RewardVideo] 加载成功
+23:27:31.632  [RewardVideo] 开始加载                         ← R3 主页面后 Coordinator 预加载
+23:27:31.031  [TB_REWARD_DIAG] load: adapter=0x12491d290 oldAd=0x0 placementId=1886359231652093 thread=1
+23:27:31.031  [TB_REWARD_DIAG] load created: adapter=0x12491d290 newAd=0x1248b0a20
+23:27:32.032  [TB_REWARD_DIAG] didLoad: ad=0x1248b0a20 adapter=0x12491d290 isCurrent=1
+23:27:32.094  [RewardVideo] 加载成功
+23:27:38.038  [TB_REWARD_DIAG] show: adapter=0x12491d290 ad=0x1248b0a20 presenter=0x10c2d0000 vcWindow=0x106193f30 cachedVC=0x10c2d0000 thread=1
+23:27:38.038  [TB_REWARD_DIAG] willVisible: ad=0x1248b0a20
+23:27:39.039  [TB_REWARD_DIAG] didVisible: ad=0x1248b0a20
+23:27:39.379  [RewardVideo] 展示
+23:27:41.041  [ToBid] rewardVideoAdDidClose(_:)
+23:27:41.041  [TB_REWARD_DIAG] willClose: ad=0x1248b0a20
+23:27:41.041  [TB_REWARD_DIAG] didClose: ad=0x1248b0a20 adapter=0x12491d290
+23:27:41.117  [RewardVideo] 关闭 → 加载下一个
+23:27:41.041  [TB_REWARD_DIAG] load: adapter=0x13c3bca80 oldAd=0x0 placementId=1886359231652093 thread=1
+23:27:41.041  [TB_REWARD_DIAG] load created: adapter=0x13c3bca80 newAd=0x13c368ae0
+23:27:41.318  [RewardVideo] 加载成功（第二轮 didLoad isCurrent=1）
 ```
 
-| 项 | 结果 |
-|---|---|
-| Reward load | ✅ 通过 |
-| Reward didLoad | ✅ 通过（isCurrent=1） |
-| Reward show/didVisible/didClose | ⚠️ 本轮未触发展示（Coordinator 仅预加载） |
+### 25.2 第二轮（23:27:42~23:27:44，证明 close→next load 循环未断）
 
-**结论**：本轮 Reward **仍为仅加载回归通过**，未补齐 show/close 完整回归（与 Phase 5A.14.1 状态一致，未倒退）。Reward 完整回归留待后续专项触发。
+```
+23:27:41.318  [RewardVideo] 加载成功                          ← 上一轮关闭后自动加载
+23:27:42.042  [TB_REWARD_DIAG] show: adapter=0x13c3bca80 ad=0x13c368ae0 presenter=0x10c2d0000 vcWindow=0x106193f30 cachedVC=0x0 thread=1
+23:27:42.042  [TB_REWARD_DIAG] willVisible: ad=0x13c368ae0
+23:27:42.042  [TB_REWARD_DIAG] didVisible: ad=0x13c368ae0
+23:27:42.878  [RewardVideo] 展示
+23:27:44.044  [ToBid] rewardVideoAdDidClose(_:)
+23:27:44.044  [TB_REWARD_DIAG] willClose: ad=0x13c368ae0
+23:27:44.044  [TB_REWARD_DIAG] didClose: ad=0x13c368ae0 adapter=0x13c3bca80
+23:27:44.138  [RewardVideo] 关闭 → 加载下一个
+23:27:44.044  [TB_REWARD_DIAG] load: adapter=0x13c3091a0 newAd=0x13c36a0a0
+23:27:44.341  [RewardVideo] 加载成功（第三轮 didLoad isCurrent=1）
+```
+
+### 25.3 Reward 验收项
+
+| 项 | 第一轮 | 第二轮 |
+|---|---|---|
+| load → load created → didLoad | ✅ isCurrent=1 | ✅ isCurrent=1 |
+| show | ✅ presenter=`0x10c2d0000`（**非空**） | ✅ presenter=`0x10c2d0000`（**非空**） |
+| vcWindow | ✅ `0x106193f30`（**非空**） | ✅ `0x106193f30`（**非空**） |
+| thread | ✅ `1` | ✅ `1` |
+| willVisible | ✅ | ✅ |
+| didVisible | ✅ | ✅ |
+| didClose | ✅ adapter=0x12491d290 | ✅ adapter=0x13c3bca80 |
+| `[RewardVideo] 关闭 → 加载下一个` | ✅ | ✅ |
+| next load → next load created → next didLoad | ✅ isCurrent=1 | ✅ isCurrent=1 |
+| 奖励回调 | ⚠️ 本轮未出现（非强制项） | ⚠️ 本轮未出现（非强制项） |
+
+**补充观察**：第二轮 show 时 `cachedVC=0x0`（Demo 重建 adapter 时传入 nil），但 `presenter=0x10c2d0000` 非空——`flame_topViewController()` 动态解析到稳定 presenter，**与 Interstitial 同款动态 presenter 修复在 Reward 场景同样生效**。
+
+### 25.4 下一轮对象判断
+
+> 不强制要求"下一条 Reward ad 地址必须不同"——对象地址可能被系统复用。验收以 **didClose 后 Demo 触发下一轮 load** + **新的 load 日志** + **新的 load created** + **新的 didLoad** + **`isCurrent=1`** + **下一轮无 stale callback 污染** 为准。本轮两轮均满足。
+
+### 25.5 Reward 回归结论
+
+✅ **Reward 完整展示回归通过**：`load → show → didVisible → didClose → next load → next didLoad`（两轮闭环，presenter/vcWindow 非空，thread=1，循环未断）。
+
+奖励回调本轮未出现（非强制项，不阻塞验收）。
 
 ---
 
-## 26. TK 编译回归
+## 26. TK 编译回归（Phase 5A.15.1 补齐）
 
-| 维度 | 状态 |
+> **修订（Phase 5A.15.1）**：初版本节写"本轮未执行 TK 编译回归"。Phase 5A.15.1 完成了 TK 干净 pod install + xcodebuild，结果如下。**本阶段后续未再修改 SDK 二进制或 podspec，不重复执行**（Phase 5A.15.1 v2 §二）。
+
+### 26.1 操作
+
+Demo Podfile 临时切到 TK（`pod 'flame_sdk_ios', :path => '../flame_ios_sdk'`，保留本地 OpenSSL/Funlink + post_install 签名设置），执行：
+```
+pod deintegrate || true
+rm -rf Pods Podfile.lock
+find . -maxdepth 1 -name "*.xcworkspace" -exec rm -rf {} +
+pod install
+xcodebuild -workspace adshurge-ios-demo.xcworkspace -scheme adshurge-ios-demo \
+  -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
+```
+验证完成后恢复 Podfile 到 TB + 重新 pod install（4 pods）。
+
+### 26.2 验收项
+
+| 检查项 | 结果 |
 |---|---|
-| 本轮修改共享 Splash 协议 | ❌ 未修改（只新增 adapter + 改 FlameTBProvider 工厂） |
-| TK pod install + BUILD | ⚠️ **本轮未执行 TK 编译回归**（仅完成 TB 真机验证；TK 回归留待后续） |
+| TK pod install | ✅ 通过，28 pods |
+| `flame_sdk_ios` | 1.0.0-alpha.4-local |
+| `AnyThinkiOS` | 6.5.71 |
+| `flame_sdk_ios_tk_sigmob_adapter` | 4.20.12.2.0 |
+| `ToBid-iOS-RC` | 5.5.6 |
+| `OpenSSL-Universal` | 3.6.2000 |
+| Podfile.lock 是否包含 `flame_sdk_ios_tb` | ❌ 否（TK 构建正确不带入 TB pod） |
+| `xcodebuild ... build` | ✅ **BUILD SUCCEEDED** |
+| AnyThinkSDK.framework 进入 TK App | ✅ `App/Frameworks/AnyThinkSDK.framework` 存在 |
+| flame_sdk_ios.framework 进入 TK App | ✅ 存在 |
+| Flame binary 对 AnyThink 链接方式 | ✅ **LC_LOAD_WEAK_DYLIB**（`otool -l` 确认；`otool -L` 显示 `(weak)`） |
+| TK guard | ✅ 二进制含 `TK_PLATFORM_REQUIRES_ANYTHINK` 常量（已编入） |
+| Demo 环境恢复 | ✅ 已恢复 TB（4 pods） |
 
-**风险评估**：本轮改动仅限 `flame_sdk_ios/adapter/tb/TbSplashAdapter.{h,m}`（新增）+ `FlameTBProvider.m`（import + 工厂），**未触碰** TK 侧任何文件（`AtSplashAdapter`、`FlameTKProvider`、共享协议 `FlameSplashAdapterProtocol`/`FlameSplashAd` 零改动）。TK 编译路径不受影响。建议下一阶段开始前补一次 TK pod install + BUILD 冒烟。
+### 26.3 AnyThink 表述（按 Phase 5A.15.1 §6.1）
+
+> ❌ 不写"TK 构建中 AnyThink 强加载"。
+>
+> ✅ 正确写法：**TK podspec 负责将 AnyThinkSDK.framework 带入并嵌入 App；Flame binary 对 AnyThinkSDK 仍保持 LC_LOAD_WEAK_DYLIB。** 即 TK App 的 AnyThinkSDK 是通过 podspec 嵌入 + 系统加载（运行时 dyld 解析），Flame 二进制本身对它只是弱链接声明（TB App 缺该 framework 时不崩溃，TK App 有该 framework 时正常解析）。
+
+### 26.4 TK guard 表述（按 Phase 5A.15.1 §6.2）
+
+> ❌ 不写"二进制有 guard 字符串，因此本轮 guard 未触发"——字符串存在只能证明守卫代码已编入，不能证明运行时未触发。
+>
+> ✅ 正确写法：**TK guard 已编入二进制；本轮 TK 验证只做 pod install / 编译 / App Framework 审计 / 二进制链接审计，未重新执行 TK 真机初始化。Phase 5A.13 Step 1.3 的 TK 真机验证中 ATAPI 守卫通过，未出现 `TK_PLATFORM_REQUIRES_ANYTHINK`。**
+
+### 26.5 第三方 warning（按 Phase 5A.15.1 §6.3）
+
+构建过程的 warning 全部来自第三方 SDK（AnyThinkiOS/ToBid/KSAdSDK/GDTMobSDK 等）的 `IPHONEOS_DEPLOYMENT_TARGET` 配置（如 KSAdSDK 设为 9.0、OctopusSDK 设为 11.0 等），与 Flame 修改无关。
+
+> ✅ 正确写法：**构建通过；warning 来自第三方 SDK 的 deployment target 配置，本轮未发现由 Flame 修改引起的新编译错误。**（不对所有第三方 warning 逐项下"无影响"结论。）
+
+### 26.6 TK 编译回归结论
+
+✅ **TK 干净 pod install + 编译回归通过**：28 pods、BUILD SUCCEEDED、AnyThinkSDK 进入 App、Flame binary 保持 weak link、TK guard 已编入（真机 guard 未触发沿用 Phase 5A.13 Step 1.3 结论）。
 
 ---
 
 ## 27. 文件修改
+
+### 27.1 Phase 5A.15（commit `0d13dd5`）
 
 | 文件 | 类型 | 说明 |
 |---|---|---|
@@ -559,21 +735,40 @@ SPEC REPOS:
 | `flame_sdk_ios/adapter/tb/TbSplashAdapter.m` | 新增 | FlameSplashAdapterProtocol + WindMillSplashAdDelegate（14 方法）+ finishOnce 幂等 |
 | `flame_sdk_ios/mediation/tb/FlameTBProvider.m` | 修改 | +1 import、占位 return nil → 创建 adapter |
 | `doc/flame_mediation/phase-5a.14-tb-interstitial-implementation-report.md` | 修改（§3 前置） | 异常场景口径收紧 + R3 内存复用说明 |
-| `doc/flame_mediation/phase-5a.15-tb-splash-implementation-report.md` | 新增 | 本报告 |
+| `doc/flame_mediation/phase-5a.15-tb-splash-implementation-report.md` | 新增 | 本报告（初版） |
 | `doc/flame_mediation/09_change_log.md` | 修改 | Phase 5A.15 条目 |
 | `README.md` | 修改 | 开屏 ToBid 列 ⏳ → ✅ |
 
+### 27.2 Phase 5A.15.1（docs 收口 commit）
+
+| 文件 | 类型 | 说明 |
+|---|---|---|
+| `doc/flame_mediation/phase-5a.15-tb-splash-implementation-report.md` | 修改 | §20 R3 独立冷启动、§25 Reward 完整回归、§26 TK 编译回归、§29/§30/§31 收口 |
+| `doc/flame_mediation/09_change_log.md` | 修改 | Phase 5A.15.1 条目（R3 / Reward 完整 / TK） |
+| `README.md` | 修改 | 补充三项补齐说明 |
+
+**SDK 业务代码零改动**（Phase 5A.15.1 仅文档收口）。
 **project.pbxproj 零改动**（PBXFileSystemSynchronizedRootGroup 自动同步）。
 
 ---
 
 ## 28. Git
 
+### 28.1 Phase 5A.15（commit `0d13dd5`）
+
 **SDK commit**（adapter + provider + 文档）：
 - 消息：`feat: add ToBid splash adapter`
 - 排除：project.pbxproj 环境差异、Pods、Podfile.lock、xcworkspace、DerivedData、build、Archives、测试 placementId、真机日志、临时脚本
 
+### 28.2 Phase 5A.15.1（docs 收口 commit）
+
+**SDK commit**（仅文档收口，业务代码零改动）：
+- 消息：`test: complete ToBid splash regression validation`
+- 排除：同 28.1
+
 **Demo commit**：无（Demo 代码零改动，仅本地临时 placementId）
+
+### 28.3 操作状态
 
 | 操作 | 状态 |
 |---|---|
@@ -588,33 +783,35 @@ SPEC REPOS:
 
 ## 29. 剩余问题
 
+> **修订（Phase 5A.15.1）**：初版本节列出的"Reward 完整回归 / TK 编译回归 / R3 独立冷启动"三项均已在 Phase 5A.15.1 补齐（见 §20/§25/§26）。更新后的剩余项如下。
+
 | 问题 | 归属 | 处理 |
 |---|---|---|
-| Reward 完整回归（show/didClose） | SDK 验证项 | 沿用 Phase 5A.14.1 状态（仅加载回归），留待后续专项触发 |
-| TK 编译回归（pod install + BUILD） | SDK 验证项 | 本轮未执行（改动未触及 TK 侧，风险低）；下一阶段开始前补冒烟 |
-| 异常场景"未就绪 show"真机实测 | SDK 验证项 | App 启动后 Splash 未 ready 时点击展示 → 观察 onAdError AD_NOT_READY |
-| 异常场景"重复 show"真机实测 | SDK 验证项 | 同一 Splash 快速双击 show |
-| 异常场景"stale callback"真机实测 | SDK 验证项 | 守卫已实现并静态审计通过，未观察到触发 |
+| 异常场景"未就绪 show"真机实测 | SDK 验证项 | 守卫已实现 + 静态审计通过；App 启动后 Splash 未 ready 时点击展示 → 观察 onAdError AD_NOT_READY，留待后续专项触发 |
+| 异常场景"重复 show"真机实测 | SDK 验证项 | 守卫已实现 + 静态审计通过；同一 Splash 快速双击 show，留待后续专项触发 |
+| 异常场景"stale callback"真机实测 | SDK 验证项 | 守卫已实现 + 静态审计通过；R1/R2/R3 中 `isCurrent` 全 1，未观察到触发 |
+| Reward 奖励回调真机实测 | SDK 验证项 | Phase 5A.15.1 两轮 Reward 完整回归中奖励回调未出现（非阻塞，奖励链路留待后续有奖励素材时验证） |
 | Reward NSURLErrorDomain -1002 | 第三方（Sigmob WindSDK S2S） | Phase 5A.13 已登记为"高概率推断"，非阻塞 |
-| R3 第三次冷启动 | SDK 验证项 | R1/R2 已覆盖核心路径；R2 关闭后预热 load 已成功（等价覆盖） |
 
 ---
 
-## 30. 结论
+## 30. 结论（Phase 5A.15.1 三项补齐后更新）
 
 | 项 | 结果 |
 |---|---|
 | 公共 API 是否变化 | ❌ 未变（FlameSplashListener / FlameSplashAd / FlameSplashAdapterProtocol 零改动） |
 | 单一 XCFramework | ✅ 保持（TK/TB 共享同一 binary，TbSplashAdapter 符号在两个 App 都存在） |
-| 是否重新引入 AnyThink | ❌ 否（TB 包仍不携带 AnyThinkSDK，弱链接无回归，真机无 ADX 弹窗） |
-| TB Splash 关闭闭环 | ✅ R1 倒计时关闭完整闭环（load/show/didVisible/didClose/finish/onAdClosed） |
-| **skip/close 幂等** | ✅ **R2 真机专项验证通过**（skip+close 连续到达，业务只通知一次） |
-| 异常场景 | ⚠️ 仅 skip/close 幂等真机实测通过；未就绪 show / 重复 show / stale callback 为代码实现 + 静态审计 |
-| Reward 完整回归 | ⚠️ 仅加载回归通过（沿用 5A.14.1 状态，未倒退） |
-| 是否可以进入 TB Banner | ✅ 可以（开屏核心路径 + 幂等已真机验证；Banner 同模式可复用，但建议先补 TK 编译回归） |
+| 是否重新引入 AnyThink | ❌ 否（TB 包仍不携带 AnyThinkSDK，Flame binary 保持 LC_LOAD_WEAK_DYLIB，TK 真机无 ADX 弹窗） |
+| AnyThink 隔离 | ✅ TK podspec 带入嵌入 / Flame binary 保持 weak / TB podspec 不带入（Phase 5A.13 方案无回归） |
+| TB Splash 三次独立冷启动 | ✅ R1 倒计时关闭 + R2/R3 skip+close 幂等（finishOnce 守卫二次拦截均生效） |
+| skip/close 幂等 | ✅ R2/R3 真机专项验证通过（Sigmob 先 skip 后 close，业务只通知一次） |
+| Reward 完整展示回归 | ✅ 两轮闭环（load/show/didVisible/didClose/next-load/next-didLoad），presenter/vcWindow 非空 |
+| TK 干净编译回归 | ✅ 28 pods + BUILD SUCCEEDED + AnyThinkSDK 进入 App + Flame binary 保持 weak link |
+| 异常场景 | ⚠️ skip/close 幂等真机实测通过；未就绪 show / 重复 show / stale callback 为代码实现 + 静态审计 |
+| **Phase 5A.15 是否正式完成** | ✅ **正式完成**（Phase 5A.15.1 三项补齐全部通过） |
 
 ---
 
 ## 31. /compact
 
-Phase 5A.15 完成：新增 `TbSplashAdapter.{h,m}`（实现 FlameSplashAdapterProtocol + WindMillSplashAdDelegate 14 方法），接入 FlameTBProvider 工厂。关键差异已落实：`loadAd`（非 loadAdData）、`showAdInWindow:withBottomView:`（非 showAdFromRootViewController:）、`finishOnceWithReason:` 幂等（skip+close 收敛到一次 onAdClosed）。XCFramework 构建成功，TbSplashAdapter 符号 + TB_SPLASH_DIAG 两 slice 命中，AnyThink weak-link 无回归。真机 R1（倒计时关闭）完整闭环，R2（跳过）**专项验证 skip+close 幂等**（日志显示 `finish already done: reason=close` 正确拦下第二次 finish）。异常场景仅幂等真机实测通过，其余为代码+静态审计。Reward 仍仅加载回归。未 push/tag/release，等用户确认进入 TB Banner。
+Phase 5A.15.1 收口：补齐 Phase 5A.15 三项验收。R3 独立冷启动通过（完全杀进程重启，pt=tb，load/show/willPresent/didPresent/skip+close 完整链路，finishOnce 二次拦截生效，无 AnyThink 弹窗/黑屏/重复展示，主页面正常）。Reward 完整展示回归通过（两轮闭环 load/show/willVisible/didVisible/didClose/next-load/next-didLoad，presenter/vcWindow 非空，thread=1，cachedVC=0x0 时动态 presenter 修复仍生效；奖励回调本轮未出现非阻塞）。TK 干净编译回归通过（28 pods，BUILD SUCCEEDED，AnyThinkSDK 进入 App，Flame binary 保持 LC_LOAD_WEAK_DYLIB，TK guard 已编入）。Phase 5A.15 正式完成。本地 docs commit `test: complete ToBid splash regression validation`，未 push/tag/release。Phase 5A.15.1 完成后停止，Banner 接入方案存在待沟通问题，未进入 Phase 5A.16，未创建或修改 Banner Adapter。
