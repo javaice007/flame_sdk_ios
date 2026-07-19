@@ -13,6 +13,7 @@
 #import <WindMillSDK/WindMillSDK.h>
 #import "TbRewardAdapter.h"
 #import "TbInterstitialAdapter.h"
+#import "TbSplashAdapter.h"
 #import "FlameRewardAd.h"
 #import "FlameSplashAd.h"
 #import "FlameInterstitialAd.h"
@@ -84,12 +85,15 @@ static NSString * const kFlamePlatformTB = @"tb";
     return adapter;
 }
 
-#pragma mark - Phase 6 占位（本阶段不实现，返回 nil）
+#pragma mark - FlameSplashAdapterProtocol 创建（Phase 5A.15）
 
 - (id<FlameSplashAdapterProtocol>)createSplashAdapterWithViewController:(UIViewController *)viewController
                                                            placementId:(NSString *)placementId
                                                               listener:(id<FlameSplashListener>)listener {
-    return nil;
+    TbSplashAdapter *adapter = [[TbSplashAdapter alloc] initWithViewController:viewController
+                                                                    placementId:placementId
+                                                                        listener:listener];
+    return adapter;
 }
 
 - (id<FlameInterstitialAdapterProtocol>)createInterstitialAdapterWithViewController:(UIViewController *)viewController

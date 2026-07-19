@@ -168,6 +168,8 @@
 
 R3 在 R2 关闭后立刻自动加载成功，证明"关闭 → 加载下一条"循环未断（与 Phase 5A.13 的 Reward 修复效果一致）。
 
+> **关于 R3 `newAd=0x1392ce100` 与 R2 ad (`0x1392ce100`) 指针相同**：地址可能因对象释放后被内存分配器复用，**不能仅依据指针值判断是否为同一对象**。R3 是**新的 adapter 实例**（`0x13a0ee3d0` ≠ R2 `0x13a164ea0`），且 `didLoad` 时 `isCurrent=1`（即新 adapter 的 `self.intersititialAd` 已指向新创建的对象），因此判定为新一轮加载而非对象复用。后续轮次判定一律以 **adapter 轮次 + `isCurrent`** 为准，不以裸指针值为准。
+
 ## 9. 第一轮插屏（**已被 §8 取代**）
 
 > ⚠️ **本节为初版（commit `f97e746`）基于旧 Demo 的过程数据**，由于旧 Demo `onShow → load()` 提前销毁 Adapter，**未产生 didClose**，按 §8 修订口径**不构成完整闭环**。保留以记录历史事实，验收以 §8 为准。
@@ -201,11 +203,14 @@ placementId 映射：`q<REDACTED>`（旧 Demo 配置）→ `6364573199167167`（
 | 场景 | 代码实现 | 静态审计 | 真机实测 |
 |---|---|---|---|
 | 未就绪 show | ✅ `show` 入口 `isAdReady` 守卫，不就绪 → `onAdError:@"AD_NOT_READY"`，不调 ToBid show | ✅ 通过 | ❌ **未专项触发**（本次 Run 中插屏均在用户点击前已 ready） |
-| 连续 show | ✅ `isAdReady` 守卫 + 单实例强引用 | ✅ 通过 | ✅ R1/R2 两次 show 间隔 ~30s，无重复 present、无黑屏 |
-| load 中再次 load | ✅ `load` 入口先 `delegate=nil; intersititialAd=nil`，旧对象立即释放 | ✅ 通过 | ✅ R1→R2→R3 三次 load 的 adapter 地址均不同（`0x10a2ece70` → `0x13a164ea0` → `0x13a0ee3d0`），无 reuse 现象 |
+| 连续 show | ✅ `isAdReady` 守卫 + 单实例强引用 | ✅ 通过 | ⚠️ **未专项实测**：代码已实现 isAdReady/单实例防护；本轮 R1/R2 为正常顺序展示，未专项进行同一广告快速重复点击 |
+| load 中再次 load | ✅ `load` 入口先 `delegate=nil; intersititialAd=nil`，旧对象立即释放 | ✅ 通过 | ⚠️ **未专项实测**：正常关闭后重新加载已通过；未专项在上一轮 load 未完成时再次调用 load |
 | stale callback | ✅ 每个回调 `if (intersititialAd != self.intersititialAd) return` | ✅ 通过 | ❌ **未实际触发**（本次 Run 中 `isCurrent` 全 1，对象替换时机正确，未观察到 stale 守卫命中） |
 
-> 修订说明：初版把"代码已实现"误写为"已验证"。本次按 §6 口径，只把"连续 show"与"load 中再 load"列为真机实测（基于 §8 的多轮日志），其余两类为代码实现 + 静态审计。
+> 修订说明（Phase 5A.14.1 初版 → 收口）：
+> - 初版把"代码已实现"误写为"已验证"；本次按 §6 三档口径（实现/静态审计/真机实测）严格区分。
+> - **第二轮修订（Phase 5A.15 前置）**：进一步收紧"连续 show"与"load 中再次 load"的口径——这两项原本被列为"已实测"，但本轮真机仅观察到 R1/R2 顺序展示、R1→R2→R3 顺序加载，**未做专项的同一广告快速重复点击、未做 load 未完成时再次 load 的注入**，因此降级为"代码实现 + 静态审计，未专项实测"。
+> - 仅"正常关闭后重新加载"与"R1/R2 完整关闭闭环"属于本轮真机实测项。
 
 ## 12. 回归
 
@@ -293,7 +298,7 @@ docs: close TB interstitial validation gap (Phase 5A.14.1)
 | TB 插屏关闭闭环 | ✅ R1/R2 两轮真机完整闭环（load/show/visible/didClose/next-load），R3 load success |
 | 动态 presenter 修复 | ✅ R2 cachedVC=0x0 时仍正常展示/关闭 |
 | Reward 回归 | ⚠️ **仅加载回归通过**（load/didLoad 正常，未实测 show/close）|
-| 异常场景 | ⚠️ 连续 show / load 中再 load 已实测；未就绪 show / stale callback 仅代码实现 + 静态审计 |
+| 异常场景 | ⚠️ 四项（未就绪 show / 连续 show / load 中再 load / stale callback）均为代码实现 + 静态审计；本轮真机仅做正常顺序展示，未做专项异常注入 |
 | 是否可以进入 TB 开屏 | ✅ 可以（插屏关闭闭环已真实验证，Splash 同模式可复用） |
 
 ## 16. 剩余问题
@@ -307,4 +312,4 @@ docs: close TB interstitial validation gap (Phase 5A.14.1)
 
 ## 17. /compact
 
-Phase 5A.14.1 收口：修正 Phase 5A.14 报告验收口径，按"实现/静态审计/真机实测"三档区分。修正 Demo `InterstitialAdManager` 预加载时机（`onShow→load()` 改为 `onClosed→load()`，Demo commit `11c5958`），重新真机验证 R1/R2 完整关闭闭环（load/show/willVisible/didVisible/**didClose**/next-load，ad 地址 R1≠R2，R2 cachedVC=0x0 动态 presenter 修复生效），R3 load success。Reward 仅做加载回归（load/didLoad 正常，未实测 show/close，未写"完整回归通过"）。异常场景：连续 show / load 中再 load 已实测；未就绪 show / stale callback 仅代码实现 + 静态审计。SDK 报告修订为本地 docs commit，未 push/tag/release。等用户确认进入 TB 开屏。
+Phase 5A.14.1 收口：修正 Phase 5A.14 报告验收口径，按"实现/静态审计/真机实测"三档区分。修正 Demo `InterstitialAdManager` 预加载时机（`onShow→load()` 改为 `onClosed→load()`，Demo commit `11c5958`），重新真机验证 R1/R2 完整关闭闭环（load/show/willVisible/didVisible/**didClose**/next-load，ad 地址 R1≠R2，R2 cachedVC=0x0 动态 presenter 修复生效），R3 load success（注意：R3 `newAd` 指针与 R2 相同系内存分配器复用，判定以 adapter 轮次 + `isCurrent` 为准）。Reward 仅做加载回归（load/didLoad 正常，未实测 show/close，未写"完整回归通过"）。异常场景四项（未就绪 show / 连续 show / load 中再 load / stale callback）均为代码实现 + 静态审计，**未做专项异常注入**（第二轮修订进一步收紧，初版曾误把"连续 show"/"load 中再 load"列为已实测）。SDK 报告修订为本地 docs commit，未 push/tag/release。等用户确认进入 TB 开屏。

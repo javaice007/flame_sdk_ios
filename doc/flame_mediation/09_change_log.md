@@ -5,6 +5,47 @@
 
 ---
 
+## Phase 5A.15（进行中）— TB 开屏广告接入
+
+### Phase 5A.15：TB 开屏 Adapter 接入（本次 SDK feat commit）
+
+**变更类型**：新增广告类型适配器（非破坏性）
+
+**核心改动**：
+
+| 文件 | 改动 | 目的 |
+|------|------|------|
+| `flame_sdk_ios/adapter/tb/TbSplashAdapter.{h,m}`（新增） | 实现 `FlameSplashAdapterProtocol` + `WindMillSplashAdDelegate`（14 方法） | TB 开屏接入 |
+| `flame_sdk_ios/mediation/tb/FlameTBProvider.m`（修改） | 工厂接入：`createSplashAdapter...` 占位 `return nil` → 创建 adapter | 打通 Router → Provider → Adapter 链路 |
+| `doc/flame_mediation/phase-5a.14-tb-interstitial-implementation-report.md`（修改，§3 前置） | 异常场景口径收紧 + R3 内存复用说明 | 5A.15 前置修正 |
+
+**实现要点**（复用 TbRewardAdapter/TbInterstitialAdapter 已验证模式 + Splash 特化）：
+
+- 加载方法 **`loadAd`**（不是 Reward/Interstitial 的 `loadAdData`）
+- 展示方法 **`showAdInWindow:window withBottomView:nil`**（取 `UIWindow*`，不是 `showAdFromRootViewController:`）
+- show 参数来自协议 `show:(UIWindow *)window`（Demo LaunchScreenWindow / keyWindow），**不需要** `flame_topViewController()`
+- **`finishOnceWithReason:` 幂等**：ToBid 的 `onSplashAdSkiped:` + `onSplashAdClosed:` 收敛到一次 `onAdClosed`（click 不视为 close）
+- stale callback 守卫（每个回调判断 `splashAd == self.splashAd`）
+- 14 个 `WindMillSplashAdDelegate` 方法全实现（WindMill 拼写错误 `Skiped`/`WillClosed`/`AdDidAutoLoad` 严格保留）
+- `[TB_SPLASH_DIAG]` 诊断日志全覆盖
+- Xcode 工程：`PBXFileSystemSynchronizedRootGroup` 自动识别新文件，**project.pbxproj 零改动**
+
+**验证（基于 Demo 本地 TB 配置 + `flame_sdk_ios_tb 1.0.0-alpha.4-local`）**：
+
+| 项 | 结果 |
+|---|---|
+| XCFramework 构建 | ✅ BUILD EXIT 0，binary 320K→324K（+4K），两 slice 符号齐全 |
+| AnyThinkSDK weak link 断言 | ✅ 无回归（两 slice LC_LOAD_WEAK_DYLIB，真机无 ADX 弹窗） |
+| 真机 R1 倒计时关闭完整闭环 | ✅ load/show/willPresent/didPresent(didVisible)/[6s]/willClose/didClose/finish(reason=close)/onAdClosed |
+| **真机 R2 skip+close 幂等** | ✅ **专项验证通过**：Sigmob 先 `onSplashAdSkiped` 后 `onSplashAdClosed`，finishOnce 守卫正确拦下第二次（日志 `finish already done: reason=close`），业务 onAdClosed 只通知一次 |
+| 异常场景 | ⚠️ 仅 skip/close 幂等真机实测通过；未就绪 show / 重复 show / stale callback 为代码实现 + 静态审计 |
+| Reward 完整回归 | ⚠️ 仅加载回归通过（沿用 5A.14.1 状态，未倒退） |
+| TK 编译回归 | ⚠️ 本轮未执行（改动未触及 TK 侧，风险低，留待下阶段冒烟） |
+
+**红线遵守**：未 push / 未 tag / 未发布 / 未改公共 API / 未加第二套公共 Splash 类 / 未重引入 AnyThinkiOS / 未加 ADX / 未调私有 API / 未 Hook/swizzle / 未用固定延时掩盖 Window 问题 / 未改 Reward/Interstitial Adapter / 未升级版本 / 未改版本号 / 未提交 project.pbxproj 环境差异 / Demo 代码零改动 / 测试 placementId / Pods / Podfile.lock。
+
+---
+
 ## Phase 5A.14（进行中）— TB 插屏广告接入
 
 ### Phase 5A.14.1：验收口径修正 + Demo 预加载时机修正（本次 SDK docs commit）
