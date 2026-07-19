@@ -104,7 +104,8 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 - Phase 5A.13 完成两项关键修复（本地 commit，未发布）：
   - **TB Reward 关闭后重载失败修复**（commit `1abfdae`）：`show()` 阶段动态获取 presenter，避免使用 `load()` 时缓存的失效 UIViewController。
   - **AnyThinkSDK 弱链接方案**（commit `c40e4fe` + Step 1.3）：Flame binary 对 AnyThinkSDK 改为 LC_LOAD_WEAK_DYLIB，TB podspec 移除 AnyThinkiOS 依赖，消除 TB App 冷启动 "AnyThink Adx SDK 重要组件缺失" 弹窗；TK podspec 独家带入 AnyThinkiOS，TK 客户不受影响。
-- Phase 5A.14 完成 TB 插屏接入（本地 commit，未发布）：新增 `TbInterstitialAdapter`，复用 Reward 已验证模式（动态 presenter + stale callback 守卫），真机 3 轮展示闭环通过。
+- Phase 5A.14 完成 TB 插屏接入（本地 commit `f97e746`，未发布）：新增 `TbInterstitialAdapter`，复用 Reward 已验证模式（动态 presenter + stale callback 守卫）。
+- Phase 5A.14.1 修正验收口径（本地 docs commit，未发布）：修正 Demo 预加载时机后，R1/R2 真机完整关闭闭环（load/show/visible/**didClose**/next-load），R3 load success；Reward 仅加载回归通过。
 
 ## 广告类型
 
@@ -112,7 +113,7 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 |---|---|---|
 | 激励视频 | ✅ | ✅ |
 | 开屏广告 | ✅ | ⏳ 待接入 |
-| 插屏广告 | ✅ | ✅（Phase 5A.14，真机 3 轮展示验证） |
+| 插屏广告 | ✅ | ✅（Phase 5A.14.1，真机 R1/R2 完整关闭闭环验证） |
 | 横幅广告 | ✅ | ⏳ 待接入 |
 | 原生广告 | ✅ | ⏳ 待接入 |
 

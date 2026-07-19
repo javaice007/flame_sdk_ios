@@ -7,7 +7,41 @@
 
 ## Phase 5A.14（进行中）— TB 插屏广告接入
 
-### TB 插屏 Adapter 正式接入（本次 commit）
+### Phase 5A.14.1：验收口径修正 + Demo 预加载时机修正（本次 SDK docs commit）
+
+**变更类型**：仅文档变更（SDK 代码零改动）
+
+**起因**：Phase 5A.14 初版（`f97e746`）在 Demo `InterstitialAdManager.onShow` 立即触发 `load()` 的情况下做真机验证，整段日志 **0 个 didClose**，但报告误将"load/show/visible 通过"写成"3 轮全闭环"，并把 Reward 的 load/didLoad 写成"回归通过"。
+
+**Demo 修正（Demo 仓库 `11c5958`，独立本地 commit）**：
+
+- `InterstitialAdManager.onShow` 不再调用 `load()`，仅置 `isReady=false` 并通知展示成功
+- `onClosed` 中清空当前 `interstitialAd` 后再 `load()` 下一条（对齐 `RewardVideoAdManager` 已验证模式）
+
+**修正后真机结果（基于 Demo `11c5958`）**：
+
+| 项 | 结果 |
+|---|---|
+| R1 完整闭环 | ✅ load/show/willVisible/didVisible/**didClose**/next-load |
+| R2 完整闭环（ad ≠ R1） | ✅ load/show/didVisible/**didClose**/next-load；cachedVC=0x0 时动态 presenter 仍生效 |
+| R3 load success | ✅ R2 关闭后立即自动加载成功（循环未断）|
+| AnyThink ADX 弹窗（全程）| ❌ 未出现 |
+| Reward 回归 | ⚠️ **仅加载回归通过**（load/didLoad 正常，未实测 show/close，不写"完整回归通过"） |
+| 异常场景 | 连续 show / load 中再 load 已实测；未就绪 show / stale callback 仅代码实现 + 静态审计 |
+
+**SDK 报告修订（本次 docs commit）**：
+
+- §8 新增"修正后真机验证"章节（R1/R2/R3 真实地址与事件）
+- §9/§10 标注旧版数据"已被 §8 取代"，保留以记录历史
+- §11 异常场景按"实现 / 静态审计 / 真机实测"三档区分
+- §12 Reward 回归改为"仅加载回归通过"
+- §13 责任边界按真实结果表述，不绝对断言 SDK 无缺陷
+
+**红线遵守**：未 push / 未 tag / 未发布 / 未改公共 API / 未重引入 AnyThinkiOS / 未调私有 API / 未 Hook / 未升级版本 / 未提交 project.pbxproj 环境差异 / Demo 测试配置 / Pods / Podfile.lock。
+
+---
+
+### Phase 5A.14 初版：TB 插屏 Adapter 接入（commit `f97e746`，验收口径已在 5A.14.1 修正）
 
 **变更类型**：新增广告类型适配器（非破坏性）
 
@@ -26,23 +60,19 @@
 - `[TB_INTERSTITIAL_DIAG]` 诊断日志全覆盖
 - Xcode 工程：`PBXFileSystemSynchronizedRootGroup` 自动识别新文件，**project.pbxproj 零改动**
 
-**验证**：
+**验证（Phase 5A.14.1 修正后口径）**：
 
 | 项 | 结果 |
 |---|---|
 | XCFramework 构建 | BUILD EXIT 0，binary 300K→320K（+20K） |
 | AnyThinkSDK weak link 断言 | ✅ 无回归 |
-| 真机插屏 3 轮展示 | ✅ load/show/willVisible/didVisible 全闭环 |
-| 动态 presenter 修复（R2/R3 cachedVC=0x0） | ✅ 持续生效 |
-| Reward 回归 | ✅ 未破坏 |
+| 真机插屏 R1/R2 完整关闭闭环 | ✅ load/show/willVisible/didVisible/didClose/next-load |
+| 真机插屏 R3 load success | ✅ |
+| 动态 presenter 修复（R2 cachedVC=0x0） | ✅ 持续生效 |
+| Reward 加载回归 | ✅ load/didLoad 正常 |
+| Reward 完整回归（show/close） | ⚠️ 未实测 |
 | TK 编译回归 | ✅ BUILD SUCCEEDED（单一二进制双线共享） |
 | 公共 API | ❌ 未变 |
-
-**已知问题（Demo 层，不在本 commit 修复）**：
-
-- `didClose` 未触发：Demo `InterstitialAdManager.onShow` 在展示后立即 `load()` → `destroy()` 清空 adapter delegate → 用户关闭广告时 `intersititialAdDidClose:` 无法到达。**非 SDK 缺陷**，建议 Demo 把预加载从 `onShow` 改到 `onClosed`。
-
-**红线遵守**：未 push / 未 tag / 未发布 / 未改公共 API / 未重引入 AnyThinkiOS / 未调私有 API / 未 Hook / 未升级版本 / 未提交 project.pbxproj 环境差异 / Demo 测试配置。
 
 ---
 
