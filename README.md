@@ -90,14 +90,20 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 
 | 验证项 | TK | ToBid |
 |---|---|---|
-| pod install | ✅ 通过 | ✅ 通过 |
+| pod install | ✅ 通过（28 pods，含 AnyThinkiOS + ADX adapter） | ✅ 通过（4 pods，不含 AnyThinkiOS） |
 | 编译验证 | ✅ BUILD SUCCEEDED | ✅ BUILD SUCCEEDED |
-| 真机启动 | ⏳ 待持续验证 | ⏳ 待持续验证 |
-| Sigmob 广告链路 | ⏳ 仅完成依赖接入与编译验证 | — |
-| 真实广告位业务验证 | ⏳ 待持续验证 | ⏳ 待验证 |
-| ToBid 后台 AppId 绑定 | — | ⏳ 待配置（当前返回 800031）|
+| 真机启动 | ✅ 通过（Phase 5A.13 Step 1.3，全广告位正常加载） | ✅ 通过（Phase 5A.13 Step 1.2B，冷启动 3/3 无 ADX 弹窗） |
+| 激励视频业务验证 | ✅ TK 广告链路正常 | ✅ TB Reward 3 轮闭环（load/show/visible/reward/close/next-load） |
+| Sigmob 广告链路 | ✅ 通过（flame_sdk_ios_tk_sigmob_adapter） | —（ToBid 内置 Sigmob） |
+| ToBid 后台 AppId 绑定 | — | ✅ 已配置（appId=b22375234108） |
+| AnyThinkSDK 运行时隔离 | ✅ TK App 强加载（含 ADX，不弹窗） | ✅ TB App 不加载（弱链接 + podspec 不带入，不弹窗） |
 
-**说明**：`1.0.0-alpha.1` 已完成 SDK 接入和编译验证。ToBid 当前还没有正式应用接入，真实广告位、广告请求、展示、点击、回调尚未完成业务验证。
+**说明**：
+
+- `1.0.0-alpha.1` 已发布到远程 flame-specs（Phase 5A.12）。
+- Phase 5A.13 完成两项关键修复（本地 commit，未发布）：
+  - **TB Reward 关闭后重载失败修复**（commit `1abfdae`）：`show()` 阶段动态获取 presenter，避免使用 `load()` 时缓存的失效 UIViewController。
+  - **AnyThinkSDK 弱链接方案**（commit `c40e4fe` + Step 1.3）：Flame binary 对 AnyThinkSDK 改为 LC_LOAD_WEAK_DYLIB，TB podspec 移除 AnyThinkiOS 依赖，消除 TB App 冷启动 "AnyThink Adx SDK 重要组件缺失" 弹窗；TK podspec 独家带入 AnyThinkiOS，TK 客户不受影响。
 
 ## 广告类型
 

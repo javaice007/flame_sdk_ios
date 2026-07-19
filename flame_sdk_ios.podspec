@@ -74,11 +74,13 @@ Pod::Spec.new do |s|
   s.dependency 'AnyThinkMediationFunlinkAdapter', '2.9.0.1.2.2.0'
   s.dependency 'AnyThinkMediationBeiZiAdapter', '5.5.0.3.2.0'
   s.dependency 'AnyThinkMediationKuaiShouAdapter', '5.4.10.1.2.0'
-  # Phase 5A.12 Step 1f: Sigmob adapter 改为 flame-sdk-tk-sigmob-adapter（Flame 私有规范命名 podspec 包装层）
+  # Phase 5A.12 Step 1f: Sigmob adapter 用 Flame 私有规范包装层
   # 复用 TopOn AnyThinkSigmobAdapter.xcframework，去掉 SigmobAd-iOS 传递依赖，
   # WindSDK / WindFoundation 由 ToBid-iOS-RC 统一提供，避免与 ToBid-iOS-RC 的同名 framework 冲突。
   # 此 pod 当前在私有 spec repo javaice007-flame-specs 提供（pod repo push 后；本地实验在 research/local_specs）。
-  s.dependency 'flame-sdk-tk-sigmob-adapter', '4.20.12.2.0'
+  # Phase 5A.13 Step 1.3: 依赖名修正为 flame_sdk_ios_tk_sigmob_adapter（下划线），
+  #   与 flame-specs 实际发布的 spec 名一致（c40e4fe 之前误用 hyphen 命名，导致 TK pod install 找不到 spec）。
+  s.dependency 'flame_sdk_ios_tk_sigmob_adapter', '4.20.12.2.0'
   s.dependency 'AnyThinkMediationTTAdapter_Mix', '7.6.0.4.2.0'
   s.dependency 'AnyThinkMediationGDTAdapter', '4.15.90.2.0'
 

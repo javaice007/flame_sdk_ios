@@ -338,17 +338,129 @@ FlameTKProvider 加 NSClassFromString(@"ATAPI") 守卫（pt=tk 但 AnyThink 缺�
 2. **是否正式纳入 SDK**：等用户确认后，修改正式 `flame_sdk_ios_tb.podspec` 移除 `s.dependency 'AnyThinkiOS'`，并更新 TK podspec 注释（说明 binary 已弱链接，AnyThinkiOS 由 TK podspec 独家带入）
 3. **是否进入 TB 插屏接入**：见第十三节
 
+### 10.3 Step 1.3 正式纳入（用户确认后执行）
+
+**用户决策**：AnyThink 弱链接方案可以正式纳入 SDK。本节记录 Step 1.3 正式化执行结果。
+
+#### 10.3.1 TK 真机冒烟验证（前置）
+
+为确认共享 XCFramework 弱链接改造未破坏 TK 运行时，先做 TK 真机冒烟：
+
+| 检查项 | 结果 |
+|---|---|
+| Demo Podfile 切换到 TK | `pod 'flame_sdk_ios', :path => '../flame_ios_sdk'` ✅ |
+| TK pod install | 28 pods（AnyThinkiOS 6.5.71 / flame_sdk_ios_tk_sigmob_adapter / AnyThinkMediation* / AdGain / FSUnion / ToBid-iOS-RC）✅ |
+| TK Demo BUILD SUCCEEDED | ✅ |
+| TK App Frameworks 含 AnyThinkSDK.framework | ✅（+ SmartdigimktSDK.framework = ADX 组件，TK 不弹窗） |
+| Flame binary AnyThinkSDK weak 标记 | ✅（framework 存在则正常解析） |
+| TK 真机 Run（用户执行） | ✅ **"所有广告位都能正常加载"** |
+| 是否出现 TK_PLATFORM_REQUIRES_ANYTHINK | ❌ 未出现（守卫通过，ATAPI 类正常解析） |
+| 是否出现 dyld 错误 | ❌ 未出现 |
+
+**发现并修复的阻塞 bug**（c40e4fe 之前就存在）：
+
+`flame_sdk_ios.podspec` 第 81 行原为 `s.dependency 'flame-sdk-tk-sigmob-adapter'`（hyphen），与 flame-specs 实际发布的 `flame_sdk_ios_tk_sigmob_adapter`（underscore）不一致，导致所有 TK 客户 `pod install` 报 `Unable to find a specification`。本次修正为 underscore，纳入 Step 1.3 commit。
+
+#### 10.3.2 正式修改 TB podspec
+
+`flame_sdk_ios_tb.podspec`：
+
+- ❌ 删除 `s.dependency 'AnyThinkiOS', '6.5.71'`
+- ✅ 保留 `s.dependency 'OpenSSL-Universal', '~> 3.6'`
+- ✅ 保留 `s.dependency 'ToBid-iOS-RC', '5.5.6'`
+- ✅ 头部注释更新：说明 binary 已弱链接、TB 不带 AnyThinkiOS 的原因、AnyThinkiOS 由 TK podspec 独家带入
+- ✅ 红线注释：明确列出 TB podspec 禁止依赖的 TK 专属组件（AnyThinkiOS / AnyThinkMediation* / flame_sdk_ios_tk_sigmob_adapter / AdGain / FSUnion / SigmobAd-iOS）
+
+#### 10.3.3 重新构建正式 XCFramework
+
+`./xcFramework_build.sh` → BUILD EXIT 0：
+
+- ✅ 双 Archive 成功
+- ✅ AnyThinkSDK 弱链接 patch 幂等通过（本次替换 2 / 幂等跳过 0）
+- ✅ fail-fast 未触发
+- ✅ 后置 otool 双断言：`AnyThinkSDK 动态依赖（otool -L 显示 weak 标记）` + `LC_LOAD_WEAK_DYLIB（load command 层面确认）`
+- ✅ TB_REWARD_DIAG 仍存在（11 个 format string）
+- ✅ TK_PLATFORM_REQUIRES_ANYTHINK 仍存在
+
+#### 10.3.4 正式 TB podspec 依赖验证
+
+Demo 切换到正式 TB podspec（`pod 'flame_sdk_ios_tb', :path => '../flame_ios_sdk'`）：
+
+**Podfile.lock（4 pods，依赖树干净）**：
+
+```
+flame_sdk_ios_tb (1.0.0-alpha.4-local)
+├── OpenSSL-Universal (~> 3.6)
+└── ToBid-iOS-RC (= 5.5.6)
+```
+
+**禁依赖审计**（应全 0）：
+
+| 禁依赖 | 出现次数 |
+|---|---|
+| AnyThinkiOS | 0 ✅ |
+| AnyThinkMediation* | 0 ✅ |
+| flame_sdk_ios_tk_sigmob_adapter | 0 ✅ |
+| AdGain | 0 ✅ |
+| FSUnion | 0 ✅ |
+| SigmobAd-iOS | 0 ✅ |
+
+**App Frameworks（不含 AnyThinkSDK）**：
+
+```
+$ ls adshurge-ios-demo.app/Frameworks/
+OpenSSL.framework
+flame_sdk_ios.framework
+```
+
+- ✅ 无 AnyThinkSDK.framework
+- ✅ Flame binary：`@rpath/AnyThinkSDK.framework/AnyThinkSDK (... weak)`
+
+**TB Demo BUILD SUCCEEDED**（编译回归过；真机 Reward 3 轮闭环已在 Step 1.2B 验证，不重复）
+
+#### 10.3.5 双 podspec 静态审计对照表
+
+| 项 | flame_sdk_ios (TK) | flame_sdk_ios_tb (TB) |
+|---|---|---|
+| Flame XCFramework | 同一个 `build/flame_sdk_ios.xcframework` | 同一个 |
+| module name | `flame_sdk_ios` | `flame_sdk_ios` |
+| AnyThinkiOS | ✅ 有（`6.5.71`） | ❌ 无（已移除） |
+| flame_sdk_ios_tk_sigmob_adapter | ✅ 有（`4.20.12.2.0`） | ❌ 无 |
+| AnyThinkMediation* | ✅ 有（8 个 ad source adapter） | ❌ 无 |
+| AdGain / FSUnion | ✅ 有 | ❌ 无 |
+| ToBid-iOS-RC | ✅ 有（`5.5.6`） | ✅ 有（`5.5.6`） |
+| OpenSSL-Universal | ✅ 有（`~> 3.6`） | ✅ 有（`~> 3.6`） |
+| AnyThink 链接方式（binary） | LC_LOAD_WEAK_DYLIB（weak） | LC_LOAD_WEAK_DYLIB（weak） |
+| App 是否携带 AnyThinkSDK.framework | ✅ 是（TK podspec 带入） | ❌ 否（TB podspec 不带入） |
+| 客户是否需要 `use_frameworks! :linkage => :static` | 否（CocoaPods 默认即可） | 否（CocoaPods 默认即可） |
+
+> 关于 `use_frameworks! :linkage => :static`：Phase 5A.12 文档曾"推荐"客户使用此配置，但当前 Demo 实测在 CocoaPods 默认配置（无 `use_frameworks!` 指令）下即可正常工作。客户**不被强制要求**添加 `use_frameworks! :linkage => :static`。
+
+#### 10.3.6 公共 API 未变确认
+
+| 检查项 | 结果 |
+|---|---|
+| FlameSdk 公共方法签名 | 未变 |
+| FlameRewardAd / FlameInterstitialAd / 等协议 | 未变 |
+| FlameMediationProvider 协议 | 未变 |
+| +load 注册接口 | 未变 |
+| module name | `flame_sdk_ios`（不变） |
+| 客户 import 语句 | `import flame_sdk_ios`（不变） |
+| 客户 Podfile 写法 | TK: `pod 'flame_sdk_ios'` / TB: `pod 'flame_sdk_ios_tb'`（不变） |
+
 ## 十一、Git 状态
 
 | 项 | 状态 |
 |---|---|
-| SDK commit | ✅ 本地 commit（不 push） |
-| SDK push | ❌ 未 push |
+| Step 1.2B commit | `c40e4fe`（弱链接 PoC + TK 守卫 + 构建脚本加固） |
+| Step 1.3 commit | 本次新建（正式化 podspec + sigmob 名修正 + 文档） |
+| SDK push | ❌ 未 push（领先 origin 3 个 commit） |
 | SDK tag | ❌ 未 tag |
-| release | ❌ 未发布 |
+| release | ❌ 未发布（仍为 1.0.0-alpha.4-local） |
 | 远程 flame-specs | ❌ 未修改 |
-| 正式 `flame_sdk_ios_tb.podspec` | ❌ 未修改（等用户确认正式纳入） |
-| Demo commit | ❌ 未 commit（Podfile :path 仅为测试） |
+| 正式 `flame_sdk_ios_tb.podspec` | ✅ 已修改（移除 AnyThinkiOS） |
+| 正式 `flame_sdk_ios.podspec` | ✅ 已修改（sigmob adapter 名修正 + 注释） |
+| Demo commit | ❌ 未 commit（Podfile :path 仅为测试，TB 配置已恢复） |
 | Demo push | ❌ 未 push |
 
 ### 11.1 SDK 本地 commit 内容
@@ -391,16 +503,20 @@ refactor: weak-link AnyThink for clean TB runtime (Phase 5A.13 Step 1.2B PoC)
 
 ## 十三、下一步是否可以继续 TB 插屏
 
-**可以**。前置条件：
+**可以**（Phase 5A.13 Step 1.3 已完成正式化）。前置条件全部满足：
 
-1. ✅ 本轮 TB 真机 3 次冷启动无弹窗（已完成）
-2. ✅ Reward 3 轮闭环（已完成）
-3. ⏳ 等用户确认是否正式纳入 SDK（修改正式 `flame_sdk_ios_tb.podspec` 移除 AnyThinkiOS）
-4. ⏳ 然后进入 TB 插屏接入（Phase 5A.14 或类似）
+1. ✅ 本轮 TB 真机 3 次冷启动无弹窗（Step 1.2B 已验证）
+2. ✅ Reward 3 轮闭环（Step 1.2B 已验证）
+3. ✅ TK 真机冒烟通过（Step 1.3，全广告位正常加载）
+4. ✅ 正式 podspec 已修改（TB 移除 AnyThinkiOS / TK sigmob adapter 名修正）
+5. ✅ 正式 XCFramework 重建 + 弱链接断言通过
+6. ✅ 本地 commit（c40e4fe + 本次 Step 1.3 commit）
+
+下一步：Phase 5A.14 TB 插屏接入（待用户确认进入）。
 
 ## 十四、/compact
 
-Phase 5A.13 Step 1.2B 收口完成。AnyThinkSDK ADX 弹窗根因 C 类（动态栈证实）。弱链接方案 PoC：xcFramework_build.sh 把 `-framework "AnyThinkSDK"` patch 为 `-weak_framework AnyThinkSDK`（幂等 + fail-fast + 后置 otool 双断言：weak 标记 + LC_LOAD_WEAK_DYLIB，失败 exit 1），binary 现为 LC_LOAD_WEAK_DYLIB；FlameTKProvider 加 NSClassFromString(@"ATAPI") 守卫（ATAPI 是 AnyThinkiOS 6.5.71 公开 Header）。用户真机验证 3/3 冷启动无弹窗 + Reward 3 轮闭环（load/show/visible/reward/close/next-load 全过）。TK 编译回归过。已本地 commit，未 push/tag/release/改正式 podspec/改远程 specs。新增非阻塞问题：Reward 后 3 次 NSURLErrorDomain -1002（高概率推断来自 Sigmob WindSDK S2S 奖励回调 rvCallbackURL 为空，登记后续单独处理，不在本轮修）。
+Phase 5A.13 Step 1.3 完成（AnyThink 弱链接方案正式纳入）。用户确认后执行：TK 真机冒烟通过（全广告位正常加载，无 TK_PLATFORM_REQUIRES_ANYTHINK）；发现并修正 TK podspec sigmob adapter 名 bug（hyphen→underscore，c40e4fe 之前所有 TK 客户接入都会卡）；正式 flame_sdk_ios_tb.podspec 移除 AnyThinkiOS（保留 OpenSSL + ToBid-iOS-RC）；重建 XCFramework（BUILD EXIT 0，弱链接双断言 PASS）；正式 TB pod install 仅 4 pods（无 AnyThink），App/Frameworks 无 AnyThinkSDK；公共 API 未变；客户不强制 use_frameworks! :linkage => :static。本地 commit，未 push/tag/release/改远程 specs/改版本号。新增非阻塞问题登记：Reward 后 3 次 NSURLErrorDomain -1002（高概率推断 Sigmob WindSDK S2S rvCallbackURL 为空）。等用户确认进入 Phase 5A.14 TB 插屏。
 
 ---
 
