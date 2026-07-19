@@ -12,6 +12,7 @@
 #import "FlameMediationRegistry.h"
 #import <WindMillSDK/WindMillSDK.h>
 #import "TbRewardAdapter.h"
+#import "TbInterstitialAdapter.h"
 #import "FlameRewardAd.h"
 #import "FlameSplashAd.h"
 #import "FlameInterstitialAd.h"
@@ -94,7 +95,10 @@ static NSString * const kFlamePlatformTB = @"tb";
 - (id<FlameInterstitialAdapterProtocol>)createInterstitialAdapterWithViewController:(UIViewController *)viewController
                                                                   placementId:(NSString *)placementId
                                                                         listener:(id<FlameInterstitialListener>)listener {
-    return nil;
+    TbInterstitialAdapter *adapter = [[TbInterstitialAdapter alloc] initWithViewController:viewController
+                                                                                placementId:placementId
+                                                                                    listener:listener];
+    return adapter;
 }
 
 - (id<FlameBannerAdapterProtocol>)createBannerAdapterWithPlacementId:(NSString *)placementId

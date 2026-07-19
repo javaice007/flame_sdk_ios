@@ -5,7 +5,48 @@
 
 ---
 
-## Phase 5A.13（进行中）— AnyThink 弱链接方案正式纳入
+## Phase 5A.14（进行中）— TB 插屏广告接入
+
+### TB 插屏 Adapter 正式接入（本次 commit）
+
+**变更类型**：新增广告类型适配器（非破坏性）
+
+**核心改动**：
+
+| 文件 | 改动 | 目的 |
+|------|------|------|
+| `flame_sdk_ios/adapter/tb/TbInterstitialAdapter.{h,m}`（新增） | 实现 `FlameInterstitialAdapterProtocol` + `WindMillIntersititialAdDelegate` | TB 插屏接入 |
+| `flame_sdk_ios/mediation/tb/FlameTBProvider.m`（修改） | 工厂接入：`createInterstitialAdapter...` 占位 `return nil` → 创建 adapter | 打通 Router → Provider → Adapter 链路 |
+
+**实现要点**（复用 TbRewardAdapter 已验证模式）：
+
+- `flame_topViewController()` 动态获取 presenter（解决关闭后重载的 VC 失效，与 Reward 同修复）
+- stale callback 守卫（每个回调判断 `intersititialAd == self.intersititialAd`）
+- 11 个 `WindMillIntersititialAdDelegate` 方法全实现（WindMill 类名拼写错误 `Intersititial` 严格保留）
+- `[TB_INTERSTITIAL_DIAG]` 诊断日志全覆盖
+- Xcode 工程：`PBXFileSystemSynchronizedRootGroup` 自动识别新文件，**project.pbxproj 零改动**
+
+**验证**：
+
+| 项 | 结果 |
+|---|---|
+| XCFramework 构建 | BUILD EXIT 0，binary 300K→320K（+20K） |
+| AnyThinkSDK weak link 断言 | ✅ 无回归 |
+| 真机插屏 3 轮展示 | ✅ load/show/willVisible/didVisible 全闭环 |
+| 动态 presenter 修复（R2/R3 cachedVC=0x0） | ✅ 持续生效 |
+| Reward 回归 | ✅ 未破坏 |
+| TK 编译回归 | ✅ BUILD SUCCEEDED（单一二进制双线共享） |
+| 公共 API | ❌ 未变 |
+
+**已知问题（Demo 层，不在本 commit 修复）**：
+
+- `didClose` 未触发：Demo `InterstitialAdManager.onShow` 在展示后立即 `load()` → `destroy()` 清空 adapter delegate → 用户关闭广告时 `intersititialAdDidClose:` 无法到达。**非 SDK 缺陷**，建议 Demo 把预加载从 `onShow` 改到 `onClosed`。
+
+**红线遵守**：未 push / 未 tag / 未发布 / 未改公共 API / 未重引入 AnyThinkiOS / 未调私有 API / 未 Hook / 未升级版本 / 未提交 project.pbxproj 环境差异 / Demo 测试配置。
+
+---
+
+## Phase 5A.13（已完成）— AnyThink 弱链接方案正式纳入
 
 ### Step 1.3：正式化与 TK 真机冒烟验收（本次 commit）
 
