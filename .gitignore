@@ -124,3 +124,7 @@ research/local_dist/flame_sdk_ios/
 research/local_dist/single_binary/
 research/local_dist/single_binary_mainline/
 research/local_specs/flame-specs/
+
+# Phase 5A.13 Step 1.2B 弱链接 PoC 实验目录（含本地 xcframework 副本 + 临时 podspec）
+research/local_dist_tb/
+research/exp_b_tb_no_anythink/

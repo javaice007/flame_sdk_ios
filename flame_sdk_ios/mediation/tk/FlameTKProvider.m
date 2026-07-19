@@ -51,6 +51,19 @@ static NSString * const kFlamePlatformTK = @"tk";
     //   1. 开启日志 + 集成环境检测
     //   2. startWithAppID:appKey:error:
     //   3. 成功/失败回调
+
+    // 弱链接守卫（Phase 5A.13 Step 1.2B）：binary 对 AnyThinkSDK 是 LC_LOAD_WEAK_DYLIB，
+    // TB App 不携带 AnyThinkSDK.framework 时，ATAPI/ATAdManager 类引用为 nil。
+    // pt=tk 必须要求 AnyThinkSDK 真实存在；缺失则明确失败回调，不允许崩溃或 silent fallback。
+    if (NSClassFromString(@"ATAPI") == nil) {
+        [FlameLogger e:@"FlameTKProvider: AnyThinkSDK (ATAPI) 未加载 — TK 平台需要 AnyThinkiOS 依赖。请检查 Podfile 是否包含 flame_sdk_ios（而非 flame_sdk_ios_tb）。"];
+        if (callback && [callback respondsToSelector:@selector(fail:desc:)]) {
+            [callback fail:@"TK_PLATFORM_REQUIRES_ANYTHINK"
+                     desc:@"TK platform requires AnyThinkiOS dependency (ATAPI class not loaded). Ensure Podfile uses flame_sdk_ios for TK integration."];
+        }
+        return;
+    }
+
     if ([FlameAdapterManager isInitialized]) {
         [FlameLogger w:@"FlameSdk is already initialized."];
         if (callback && [callback respondsToSelector:@selector(success)]) {

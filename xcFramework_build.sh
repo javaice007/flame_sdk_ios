@@ -106,6 +106,76 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/${FRAMEWORK_NAME}-*
 rm -rf "${OUTPUT_DIR}"
 
 # =========================
+# AnyThinkSDK 弱链接（Phase 5A.13 Step 1.2B）
+# ----------------------------
+# 根本问题：single-binary 同时内置 TK/TB 胶水，binary 对 AnyThinkSDK 有 LC_LOAD_DYLIB 硬依赖。
+# 即使 pt=tb 永不调用 TK 代码，TB App 启动时 dyld 仍会加载 AnyThinkSDK.framework，
+# 触发其内部 ADX 完整性检测弹窗（"AnyThink Adx SDK 重要组件缺失"）。
+#
+# 解决：在 SDK 自身构建期，把对 AnyThinkSDK 的链接从 -framework（强）改为 -weak_framework（弱），
+# 生成 LC_LOAD_WEAK_DYLIB 而非 LC_LOAD_DYLIB。
+#   - TK podspec：通过 s.dependency 'AnyThinkiOS' 带入 AnyThinkSDK.framework → TK App 仍能强加载
+#   - TB podspec：不依赖 AnyThinkiOS → TB App 不携带 AnyThinkSDK.framework → dyld 跳过弱链接，正常运行
+# 弱链接后 AnyThink 类引用在 framework 缺失时返回 nil，TK Provider 入口已做 NSClassFromString 守卫（见 FlameTKProvider.m）。
+#
+# 设计要求（Phase 5A.13 Step 1.2B 收口）：
+#   - 幂等：重复运行不会重复替换（已是 -weak_framework 时跳过）
+#   - fail-fast：xcconfig 既不含 -framework 也不含 -weak_framework 时直接退出（Pods 结构异常）
+#   - 后置 otool 自动断言：见脚本末尾"AnyThinkSDK 弱链接产物断言"
+# =========================
+echo "🧩 single-binary: AnyThinkSDK 改为弱链接（-weak_framework）"
+PODS_XCCONFIG_DIR="./Pods/Target Support Files/Pods-flame_sdk_ios"
+if [ ! -d "$PODS_XCCONFIG_DIR" ]; then
+  echo "❌ Pods xcconfig 目录不存在：$PODS_XCCONFIG_DIR（pod install 失败？）"
+  exit 1
+fi
+WEAK_PATCHED_COUNT=0      # 本次实际从 -framework 改为 -weak_framework 的文件数
+WEAK_ALREADY_COUNT=0      # 已经是 -weak_framework 的文件数（幂等跳过）
+WEAK_MISSING_COUNT=0      # 既无 -framework 也无 -weak_framework 的文件数（异常）
+for XC in "$PODS_XCCONFIG_DIR"/*.xcconfig; do
+  [ -f "$XC" ] || continue
+  # 必须是 Pods-flame_sdk_ios 主 target 的 xcconfig（debug/release），跳过 ack/modulemap 等
+  base=$(basename "$XC")
+  case "$base" in
+    Pods-flame_sdk_ios.debug.xcconfig|Pods-flame_sdk_ios.release.xcconfig) ;;
+    *) continue ;;
+  esac
+  # 幂等：若已是 -weak_framework AnyThinkSDK，直接跳过
+  if grep -qE -- '-weak_framework[[:space:]]+"?AnyThinkSDK"?' "$XC"; then
+    WEAK_ALREADY_COUNT=$((WEAK_ALREADY_COUNT + 1))
+    echo "   ⏭️  $(basename "$XC")：已是 -weak_framework AnyThinkSDK（幂等跳过）"
+    continue
+  fi
+  # 正常路径：把 -framework "AnyThinkSDK" / -framework AnyThinkSDK 替换为 -weak_framework AnyThinkSDK
+  if grep -qE -- '-framework[[:space:]]+"?AnyThinkSDK"?' "$XC"; then
+    sed -i '' -E 's/-framework[[:space:]]+"?AnyThinkSDK"?/-weak_framework AnyThinkSDK/g' "$XC"
+    # 替换后再校验一次（fail-fast：替换失败立即退出）
+    if ! grep -qE -- '-weak_framework[[:space:]]+"?AnyThinkSDK"?' "$XC"; then
+      echo "❌ 替换后校验失败：$(basename "$XC") 仍未变成 -weak_framework AnyThinkSDK"
+      exit 1
+    fi
+    # 再次确认没有残留 -framework "AnyThinkSDK"（避免 sed 正则未全覆盖）
+    if grep -qE -- '-framework[[:space:]]+"?AnyThinkSDK"?' "$XC"; then
+      echo "❌ 替换后仍残留 -framework AnyThinkSDK：$(basename "$XC")"
+      grep -nE -- '-framework[[:space:]]+"?AnyThinkSDK"?' "$XC" | sed 's/^/      /'
+      exit 1
+    fi
+    WEAK_PATCHED_COUNT=$((WEAK_PATCHED_COUNT + 1))
+    echo "   ✏️  patched $(basename "$XC")"
+    continue
+  fi
+  # 既不是 -framework 也不是 -weak_framework：Pods 结构异常，fail-fast
+  WEAK_MISSING_COUNT=$((WEAK_MISSING_COUNT + 1))
+  echo "❌ xcconfig 既不含 -framework AnyThinkSDK 也不含 -weak_framework AnyThinkSDK：$(basename "$XC")"
+  echo "   （CocoaPods 生成的 OTHER_LDFLAGS 应该包含 -framework \"AnyThinkSDK\"，结构异常请检查 Podfile）"
+done
+# fail-fast：核心 target xcconfig 任一缺失 AnyThinkSDK 链接条目都说明 Pods 出问题
+if [ "${WEAK_MISSING_COUNT}" -gt 0 ]; then
+  exit 1
+fi
+echo "   ✅ AnyThinkSDK 弱链接 patch 完成（本次替换 ${WEAK_PATCHED_COUNT}，幂等跳过 ${WEAK_ALREADY_COUNT}）"
+
+# =========================
 # ToBid 静态归档隔离（关键步骤）
 # ----------------------------
 # 根本问题：ToBid-iOS-RC 内的 WindMillSDK / WindSDK / WindFoundation 都是 static archive
@@ -122,7 +192,6 @@ rm -rf "${OUTPUT_DIR}"
 #      构建结束后恢复原名。
 # =========================
 echo "🧩 single-binary: 隔离 ToBid 静态归档（防止 -ObjC 自动加载 WindMill 全部符号）"
-PODS_XCCONFIG_DIR="./Pods/Target Support Files/Pods-flame_sdk_ios"
 PATCHED_COUNT=0
 if [ -d "$PODS_XCCONFIG_DIR" ]; then
   for XC in "$PODS_XCCONFIG_DIR"/*.xcconfig; do
@@ -301,11 +370,13 @@ if [ -n "$CHECK_BINARY" ]; then
 
   # 5) 污染检测：三方广告源 SDK 静态符号（应全 0）
   echo "   --- 污染检测（应全部为 0）---"
-  POLL_ADCS=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ|_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob")
+  # 注意：grep -c 在 0 匹配时返回 exit 1，在 set -e 下会中止脚本。
+  # 用 `|| true` 让管道 exit 0，再统一用 ${VAR:-0} 兜底（grep -c 输出本身已是数字 0）。
+  POLL_ADCS=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AdGain|_OBJC_CLASS_\\\$_BU|_OBJC_CLASS_\\\$_CSJ|_OBJC_CLASS_\\\$_BaiduMob|_OBJC_CLASS_\\\$_GDTMob|_OBJC_CLASS_\\\$_KSAd|_OBJC_CLASS_\\\$_FSUnion|_OBJC_CLASS_\\\$_Sigmob" || true)
   POLL_ADCS=${POLL_ADCS:-0}
-  POLL_WIND=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds|_OBJC_CLASS_\\\$_WindMillSDK|_OBJC_CLASS_\\\$_WindFoundation|_OBJC_CLASS_\\\$_WindSDK")
+  POLL_WIND=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "WindMillSDK|WindMillAds|_OBJC_CLASS_\\\$_WindMillSDK|_OBJC_CLASS_\\\$_WindFoundation|_OBJC_CLASS_\\\$_WindSDK" || true)
   POLL_WIND=${POLL_WIND:-0}
-  POLL_AT=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT")
+  POLL_AT=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_AT" || true)
   POLL_AT=${POLL_AT:-0}
   if [ "${POLL_ADCS}" -eq 0 ]; then
     echo "   ✅ 无三方广告源 SDK 静态符号（AdGain/BU/CSJ/Baidu/GDT/KS/FS/Sigmob）"
@@ -321,10 +392,24 @@ if [ -n "$CHECK_BINARY" ]; then
 
   # 6) otool -L 动态依赖
   echo "   --- （参考）otool -L 动态依赖 ---"
-  if otool -L "$CHECK_BINARY" 2>/dev/null | grep -q "AnyThinkSDK"; then
-    echo "   ✅ AnyThinkSDK 动态依赖（MH_DYLIB 预期行为，podspec 公共依赖提供）"
+  # AnyThinkSDK 弱链接产物断言（Phase 5A.13 Step 1.2B 收口）
+  # 要求：otool -l 必须 LC_LOAD_WEAK_DYLIB（不能是 LC_LOAD_DYLIB）；otool -L 必须显示 weak 标记。
+  # 若此处失败，说明 xcconfig patch 未生效，TB App 仍会被 dyld 强加载 AnyThinkSDK → 弹窗回归。
+  if otool -L "$CHECK_BINARY" 2>/dev/null | grep -qE 'AnyThinkSDK\.framework/AnyThinkSDK.*weak'; then
+    echo "   ✅ AnyThinkSDK 动态依赖（otool -L 显示 weak 标记）"
   else
-    echo "   ⚠️  未发现 AnyThinkSDK 动态依赖（AnyThink 符号将依赖 dynamic_lookup 兜底）"
+    echo "❌ AnyThinkSDK 未呈现弱链接（otool -L 缺少 weak 标记）"
+    otool -L "$CHECK_BINARY" 2>/dev/null | grep -E "AnyThinkSDK" | sed 's/^/      /'
+    echo "   → TB App 会被 dyld 强加载 AnyThinkSDK → 弹窗回归，构建中止"
+    exit 1
+  fi
+  # load command 层面再次确认（LC_LOAD_WEAK_DYLIB 而非 LC_LOAD_DYLIB）
+  if otool -l "$CHECK_BINARY" 2>/dev/null | awk '/cmd LC_LOAD_WEAK_DYLIB/{found=weak=1} weak&&/AnyThinkSDK/{print; exit}' | grep -q "AnyThinkSDK"; then
+    echo "   ✅ AnyThinkSDK LC_LOAD_WEAK_DYLIB（load command 层面确认）"
+  else
+    echo "❌ AnyThinkSDK load command 不是 LC_LOAD_WEAK_DYLIB"
+    otool -l "$CHECK_BINARY" 2>/dev/null | grep -B 1 "AnyThinkSDK" | sed 's/^/      /'
+    exit 1
   fi
   if otool -L "$CHECK_BINARY" 2>/dev/null | grep -qE "WindMill|WindSDK|WindFoundation"; then
     echo "   ⚠️  发现 WindMill/WindSDK/WindFoundation 动态依赖（疑似未隔离干净）"
