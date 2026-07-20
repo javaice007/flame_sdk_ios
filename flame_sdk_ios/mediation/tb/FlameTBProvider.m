@@ -15,6 +15,7 @@
 #import "TbInterstitialAdapter.h"
 #import "TbSplashAdapter.h"
 #import "TbBannerAdapter.h"
+#import "TbNativeAdapter.h"
 #import "FlameRewardAd.h"
 #import "FlameSplashAd.h"
 #import "FlameInterstitialAd.h"
@@ -117,10 +118,15 @@ static NSString * const kFlamePlatformTB = @"tb";
     return adapter;
 }
 
+#pragma mark - FlameNativeAdapterProtocol 创建（Phase 5A.18B）
+
 - (id<FlameNativeAdapterProtocol>)createNativeAdapterWithViewController:(UIViewController *)viewController
                                                           placementId:(NSString *)placementId
                                                                 listener:(id<FlameNativeListener>)listener {
-    return nil;
+    TbNativeAdapter *adapter = [[TbNativeAdapter alloc] initWithViewController:viewController
+                                                                  atPlacementId:placementId
+                                                                       listener:listener];
+    return adapter;
 }
 
 @end

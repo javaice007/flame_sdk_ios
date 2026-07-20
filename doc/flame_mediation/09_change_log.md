@@ -7,7 +7,57 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.18A：TK Native Template 与 ToBid Native Express 映射调研（本次 docs commit）
+### Phase 5A.18B：TB Native Template Adapter 实现与静态验证（本次 feature commit）
+
+**变更类型**：SDK 内部新增 Adapter + Provider 工厂接入 + Demo 错误处理增强。**Flame 公共 API 零改动，Demo 调用方式零改动。**
+
+**范围（严格）**：
+- ✅ Native Template / Native Express：完整实现（WindMillNativeAdsManager → feedADMode=NativeExpress → refreshData: + 异步 renderSuccess）
+- ⚠️ Native SelfRender：明确降级为"未实现"（`[TB_NATIVE_SELF_RENDER_NOT_IMPLEMENTED]`，原因"SDK 桥接尚未接入"非"ToBid 不支持"——ToBid 底层 SelfRender 路径完整）
+
+**核心改动**：
+
+1. **`flame_sdk_ios/adapter/tb/TbNativeAdapter.h` + `.m`（新增）**：
+   - 实现 `<FlameNativeAdapterProtocol>` + `<WindMillNativeAdsManagerDelegate>` + `<WindMillNativeAdViewDelegate>`
+   - Express load：`WindMillAdRequest` + `WindMillNativeAdsManager(initWithRequest:)` + `loadAdDataWithCount:1`
+   - Manager success：stale/destroyed 守卫 → 选第一个 ready 广告 → **feedADMode==NativeExpress 保护**（不匹配返回 `ERROR_CODE_INVALID_AD_PLACEMENT` "未返回模板渲染广告"）→ 异步主线程 `onAdLoaded`
+   - showInContainer：创建 `WindMillNativeAdView` + `refreshData:` 触发异步模板渲染（不把 refreshData 成功当渲染成功）
+   - renderSuccess：按模板真实高度（`bounds.size.height`）设 `nativeAdView.frame`，addSubview 到 container；不强行拉伸；不在此时触发 onAdShow
+   - renderFail：清理 view + `onAdError("ToBid Native 模板渲染失败")`
+   - 曝光/点击/dislike 来自 ToBid 真实回调（`_shown` 防重复首次曝光）
+   - destroy：`_destroyed = YES` + `_generation += 1` + cleanupCurrentAd + 状态全置 NO
+   - 三重守卫：generation（异步块）+ destroyed（delegate 回调）+ stale（manager/view 指针比对，与现有 TB Adapter 一致）
+   - SelfRender 降级：日志 `[TB_NATIVE_SELF_RENDER_NOT_IMPLEMENTED]` + `ERROR_CODE_UNSUPPORTED_PLATFORM`（14003）+ 异步主线程一次回调，generation 守卫；showInContainer 安全 no-op
+   - 统一日志 `[TB_NATIVE_DIAG]`（load/manager success-failure/select ad/feedADMode/showInContainer/render start-success-failure/exposure/click/close/destroy/stale callback）
+2. **`flame_sdk_ios/mediation/tb/FlameTBProvider.m`**：import `TbNativeAdapter.h`；Native 工厂 `return nil` → 返回 `[[TbNativeAdapter alloc] initWithViewController:atPlacementId:listener:]`
+3. **Demo `Sources/Ad/NativeAdManager.swift`（独立 commit）**：onError 加 `NonRetryableErrorCodes.isNonRetryable(code)` 短路（14003/14004/14002），不进入 5 次重试循环；新增嵌套 `NonRetryableErrorCodes` 枚举（**不判 pt=tk/tb、不 import 三方 SDK**）
+
+**复用错误码**：`ERROR_CODE_UNSUPPORTED_PLATFORM`（14003）/ `ERROR_CODE_INVALID_AD_PLACEMENT`（14004）/ `ERROR_CODE_INVALID_PARAM`（14002）/ `ERROR_CODE_NETWORK_ERROR`（15000），不新增公共枚举。
+
+**符号验证**：
+- `TbNativeAdapter` 符号：两 slice 各 2 ✅
+- `TB_NATIVE_DIAG` ASCII：两 slice 各 34 ✅
+- `TB_NATIVE_SELF_RENDER_NOT_IMPLEMENTED` UTF-16：两 slice 各 1 ✅
+- ToBid selector refs 编译进 binary：`nativeAdsManagerSuccessToLoad`=3 / `nativeExpressAdViewRenderSuccess`=2 / `getAllNativeAds`=2 / `feedADMode`=5 / `loadAdDataWithCount`=2 ✅
+- AnyThink LC_LOAD_WEAK_DYLIB 无回归；TbBannerAdapter / TbSplash / TbInterstitial / TbReward 符号无回归 ✅
+
+**构建**：XCFramework 双 Archive SUCCEEDED；TB Demo 6 pods BUILD SUCCEEDED；TK Demo 临时切 28 pods BUILD SUCCEEDED（AtNativeAdapter 不变，已恢复 TB）。
+
+**能力矩阵**：
+| 能力 | TK | TB |
+|---|---|---|
+| Native Template/Express | ✅ 支持 | 🚧 Adapter 已实现（静态构建通过），GDT Native 真机填充待 5A.18C |
+| Native SelfRender | ✅ 支持 | ⚠️ 明确降级（14003 + 日志，"SDK 桥接未实现"非"ToBid 不支持"） |
+
+**后台要求**：ToBid Native 聚合位（不能复用 Banner 位），渲染模式配置为模板（返回 feedADMode=NativeExpress），下挂 GDT/CSJ 模板原生；Flame pMap 复用 `native` 字段。
+
+**红线遵守**：未修改 FlameNativeAd/FlameNativeListener/FlameNativeRenderType/FlameNativeAdapterProtocol（公共 API）/ AtNativeAdapter / FlameTKProvider / podspec；未增加广告源；未升级 ToBid/GDT；未 push/tag/release。Demo 改动为独立 commit，不提交测试 placementId / Pods / Podfile.lock / project.pbxproj 环境差异 / 用户其他本地修改。
+
+详见 `doc/flame_mediation/phase-5a.18b-tb-native-template-implementation-report.md`。
+
+---
+
+### Phase 5A.18A：TK Native Template 与 ToBid Native Express 映射调研（docs commit `7494748`）
 
 **变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
 
