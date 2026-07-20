@@ -109,7 +109,8 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 - Phase 5A.15 完成 TB 开屏接入（本地 commit `0d13dd5`，未发布）：新增 `TbSplashAdapter`，复用已验证模式（stale callback 守卫 + `[TB_SPLASH_DIAG]` 日志）+ Splash 特化（`loadAd` / `showAdInWindow:withBottomView:` / `finishOnceWithReason:` 幂等）。
 - Phase 5A.15.1 验收补齐（本地 docs commit，未发布）：**Splash 三次独立冷启动通过**（R1 倒计时关闭 + R2/R3 skip/close 幂等，finishOnce 二次拦截均生效）；**Reward 完整展示回归通过**（两轮闭环 load/show/didVisible/didClose/next-load，presenter/vcWindow 非空）；**TK 干净编译回归通过**（28 pods + BUILD SUCCEEDED + AnyThinkSDK 进入 App + Flame binary 保持 LC_LOAD_WEAK_DYLIB）。
 - Phase 5A.16A 广告源审计（本地 docs commit `3b5326d`，未发布）：审计 ToBid 第三方广告源交付包，Banner 候选 6 家（CSJ/GDT/GroMore/Mintegral/MS/Octopus），推荐 CSJ 作首批。详见 `doc/flame_mediation/phase-5a.16a-tb-ad-network-integration-audit.md`。
-- Phase 5A.16B CSJ 依赖接入（本地 build commit，未发布）：`flame_sdk_ios_tb.podspec` 加 `ToBid-iOS-RC/CSJAdapter 5.5.6`（CSJ/Pangle，服务后续 Banner）。TB clean pod install 5 pods，真机 BUILD SUCCEEDED，CSJ Adapter 符号进 App；AnyThink weak-link 无回归；TK clean build 28 pods 不受影响。**Banner Adapter 尚未实现**（Phase 5A.16C）。
+- Phase 5A.16B CSJ 依赖接入（本地 build commit，未发布）：`flame_sdk_ios_tb.podspec` 加 `ToBid-iOS-RC/CSJAdapter 5.5.6`（CSJ/Pangle，服务后续 Banner）。TB clean pod install 5 pods，真机 BUILD SUCCEEDED，CSJ Adapter 符号进 App；AnyThink weak-link 无回归；TK clean build 28 pods 不受影响。
+- Phase 5A.16C Banner Adapter 实现（本地 feat commit，未发布）：新增 `TbBannerAdapter`（Express 模式完整 + SelfRender 占位），接入 FlameTBProvider Banner 工厂。复用 AtBannerAdapter Express 模式 + WindMillBannerView 特化（`loadAdData` / `expectSize:` / `isAdValid` / strong 持有 + retrieveAdView 返回 / auto-refresh 由 ToBid 后台控制 / 首次失败不内部重试与 TK 一致）。XCFramework 构建成功，TbBannerAdapter + TB_BANNER_DIAG 两 slice 命中，TB 真机 BUILD SUCCEEDED，TK 28 pods 无回归。**CSJ Banner 真实填充待 Phase 5A.16D**（需后台 + pMap + Demo Info.plist SKAdNetwork）。
 
 ## 广告类型
 
@@ -118,7 +119,7 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 | 激励视频 | ✅ | ✅ |
 | 开屏广告 | ✅ | ✅（Phase 5A.15.1，三次独立冷启动 + skip/close 幂等 + Reward 完整回归 + TK 编译回归） |
 | 插屏广告 | ✅ | ✅（Phase 5A.14.1，真机 R1/R2 完整关闭闭环验证） |
-| 横幅广告 | ✅ | ⏳ 待接入 |
+| 横幅广告 | ✅ | 🚧 Adapter 已实现（Phase 5A.16C，构建通过）；CSJ 真实填充待 Phase 5A.16D |
 | 原生广告 | ✅ | ⏳ 待接入 |
 
 ## 注意事项

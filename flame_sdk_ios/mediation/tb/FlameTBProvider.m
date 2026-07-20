@@ -14,6 +14,7 @@
 #import "TbRewardAdapter.h"
 #import "TbInterstitialAdapter.h"
 #import "TbSplashAdapter.h"
+#import "TbBannerAdapter.h"
 #import "FlameRewardAd.h"
 #import "FlameSplashAd.h"
 #import "FlameInterstitialAd.h"
@@ -105,10 +106,15 @@ static NSString * const kFlamePlatformTB = @"tb";
     return adapter;
 }
 
+#pragma mark - FlameBannerAdapterProtocol 创建（Phase 5A.16C）
+
 - (id<FlameBannerAdapterProtocol>)createBannerAdapterWithPlacementId:(NSString *)placementId
                                                           renderType:(FlameBannerRenderType)renderType
                                                             listener:(id<FlameBannerListener>)listener {
-    return nil;
+    TbBannerAdapter *adapter = [[TbBannerAdapter alloc] initWithPlacementId:placementId
+                                                                 renderType:renderType
+                                                                   listener:listener];
+    return adapter;
 }
 
 - (id<FlameNativeAdapterProtocol>)createNativeAdapterWithViewController:(UIViewController *)viewController

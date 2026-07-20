@@ -7,7 +7,50 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.16B：CSJ/Pangle 广告源最小依赖接入（本次 SDK build commit）
+### Phase 5A.16C：ToBid Banner Adapter 实现（本次 SDK feat commit）
+
+**变更类型**：新增广告类型适配器（非破坏性，SDK 公共 API + Demo 代码零改动）
+
+**核心改动**：
+
+| 文件 | 改动 | 目的 |
+|------|------|------|
+| `flame_sdk_ios/adapter/tb/TbBannerAdapter.{h,m}`（新增） | 实现 `FlameBannerAdapterProtocol` + `WindMillBannerViewDelegate`（10 方法，Express 完整 + SelfRender 占位） | TB 横幅（普通 Banner）接入 |
+| `flame_sdk_ios/mediation/tb/FlameTBProvider.m`（修改） | Banner 工厂：占位 `return nil` → 创建 adapter | 打通 Router → Provider → Adapter 链路 |
+
+**实现要点**（参考 AtBannerAdapter Express + WindMillBannerView 特化）：
+- `loadAdData`（WindMill Banner 专用加载方法，非 Reward/Interstitial/Splash 的 loadAd）
+- `initWithRequest:expectSize:`（camelCase，非 snake_case）
+- `isAdValid` 作为 ready 判断（WindMill 无 isAdReady）
+- `retrieveAdView` 返回 strong 持有的 WindMillBannerView（Demo 自己 addSubview + AutoLayout）
+- auto-refresh 由 ToBid 后台控制（Adapter 不加 Timer）
+- 首次失败不内部重试（与 TK AtBannerAdapter 一致；Demo RetryScheduler 负责）
+- destroy 靠 `delegate=nil + removeFromSuperview + bannerView=nil`（WindMill 无 destroy 方法）
+- stale callback 守卫（每个回调判断 `bannerAdView == self.bannerView`）
+- 10 个 `WindMillBannerViewDelegate` 方法全实现（selector label 按头文件原样）
+- `[TB_BANNER_DIAG]` 诊断日志全覆盖
+- SelfRender 模式占位（本阶段不实现，红线 #11）
+- project.pbxproj 零改动（PBXFileSystemSynchronizedRootGroup 自动同步）
+
+**验证**：
+
+| 项 | 结果 |
+|---|---|
+| XCFramework 构建 | ✅ BUILD EXIT 0，binary 324K→344K（+20K），两 slice 符号齐全 |
+| AnyThinkSDK weak link 断言 | ✅ 无回归（两 slice LC_LOAD_WEAK_DYLIB） |
+| TB 真机（iphoneos）BUILD | ✅ SUCCEEDED |
+| TB 模拟器 BUILD | ❌ FAILED（pre-existing Flame xcframework 缺 arm64 sim slice，与 Banner 无关） |
+| TbBannerAdapter 符号进 Flame framework | ✅ 两 slice |
+| WindMillBannerView + BUNativeExpressBannerView 进 App dylib | ✅（CSJ Banner 链路完整） |
+| TK clean pod install 回归 | ✅ 28 pods（不引入 ToBid CSJAdapter），BUILD SUCCEEDED |
+| CSJ Banner 真实填充 | ❌ 未验证（Phase 5A.16D，需后台 + pMap + Demo Info.plist SKAdNetwork） |
+| Demo 代码改动 | ❌ 零改动 |
+
+**红线遵守**：未 push / 未 tag / 未发布 / 未改 Flame 对外 Banner API / 未加 TB 专属公共 Banner 类 / 未让 Demo import WindMillBannerView 或判断 pt / 未改 AtBannerAdapter / 未改 FlameTKProvider / 未改 Reward/Interstitial/Splash / 未处理 SelfRenderBanner / 未重引入 AnyThinkiOS / 未升级 ToBid 5.5.6 / 未升级 Ads-CN 7.6.0.4 / 未调私有 API / 未 Hook / 未写死 320×50 / 未新增 auto-refresh Timer / Adapter 未内部重试 / 未提交 project.pbxproj 环境差异 / Demo 代码零改动 / 测试 placementId / Pods / Podfile.lock。
+
+---
+
+### Phase 5A.16B：CSJ/Pangle 广告源最小依赖接入（commit `7f5acf0`）
 
 **变更类型**：TB podspec 依赖新增（非破坏性，SDK 业务代码零改动）
 
