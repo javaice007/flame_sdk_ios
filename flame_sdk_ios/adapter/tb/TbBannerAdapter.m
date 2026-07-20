@@ -16,6 +16,10 @@
     BOOL _isLoading;
     /// 是否已成功加载过一次（用于区分首次 load 与 refresh）
     BOOL _loaded;
+    /// 是否已销毁（用于异步 unsupported 回调 generation 守卫，Phase 5A.17B）
+    BOOL _destroyed;
+    /// 本次 SelfRender 生命周期是否已报告 unsupported（防止重复回调，Phase 5A.17B）
+    BOOL _selfRenderUnsupportedReported;
 }
 
 - (instancetype)initWithPlacementId:(NSString *)placementId
@@ -48,12 +52,37 @@
         viewController:(UIViewController *)viewController {
     (void)userCustomData;   // WindMill 的 WindMillAdRequest 无 userCustomData 字段（banner 不用）
 
-    // SelfRender 模式：本阶段不实现（红线 #11），明确错误返回
+    // Phase 5A.17B：SelfRender 模式安全降级（方案 E）
+    // ToBid 5.5.6 无与 Flame SelfRender Banner 对等的客户端 Banner Native Mix API，
+    // 不强行用独立 Native 广告位模拟（会改变广告位类型/后台/链路/生命周期/客户语义）。
+    // 明确返回 unsupported capability，不创建任何 ToBid 对象，不发起请求，不重复回调。
     if (self.renderType == FlameBannerRenderTypeSelfRender) {
-        [FlameLogger w:[NSString stringWithFormat:@"[TB_BANNER_DIAG] load: SelfRender not supported in Phase 5A.16C (use Express)"]];
-        if (self.listener && [self.listener respondsToSelector:@selector(onAdError:desc:)]) {
-            [self.listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM desc:@"ToBid Banner SelfRender not implemented yet"];
+        _isLoading = NO;
+        _loaded = NO;
+
+        // 每次 SelfRender load 生命周期只打印一次主诊断日志（防止 retrieve/bind 反复刷屏）
+        if (!_selfRenderUnsupportedReported) {
+            _selfRenderUnsupportedReported = YES;
+            [FlameLogger w:[NSString stringWithFormat:
+                @"[TB_SELF_RENDER_UNSUPPORTED] platform=tb | mediation=ToBid | "
+                "mediationSdkVersion=5.5.6 | adFormat=banner | renderMode=self_render | "
+                "capability=unsupported | action=skip_request | fallback=none | "
+                "expressBannerAffected=false | message=\"当前聚合平台暂不支持开发者自渲染横幅广告\""]];
         }
+
+        // 异步派发到主线程回调一次 onAdError（避免 load 方法内同步回调导致业务方状态未就绪）
+        // 用 weak-self + _destroyed 守卫：destroy 后迟到的 block 不再回调业务
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf->_destroyed) {
+                return;
+            }
+            if (strongSelf.listener && [strongSelf.listener respondsToSelector:@selector(onAdError:desc:)]) {
+                [strongSelf.listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
+                                         desc:@"当前聚合平台暂不支持开发者自渲染横幅广告"];
+            }
+        });
         return;
     }
 
@@ -127,9 +156,8 @@
 }
 
 - (UIView *)retrieveAdView {
-    // SelfRender 模式不适用（与 AtBannerAdapter 一致）
+    // Phase 5A.17B：SelfRender 模式安全返回 nil（unsupported 降级，不创建假 View）
     if (self.renderType == FlameBannerRenderTypeSelfRender) {
-        [FlameLogger i:@"[TB_BANNER_DIAG] retrieveAdView: SelfRender mode, use retrieveMaterials + bindMaterialAtIndex:slots: instead"];
         return nil;
     }
     if (!self.bannerView || !self.bannerView.isAdValid) {
@@ -142,21 +170,23 @@
     return self.bannerView;
 }
 
-#pragma mark - SelfRender 占位（Phase 5A.16C 不实现，红线 #11）
+#pragma mark - SelfRender 占位（Phase 5A.17B：方案 E 兼容降级，明确 no-op）
 
 - (NSArray<FlameBannerAdMaterial *> *)retrieveMaterials {
-    // SelfRender 专用，Express 模式返回空数组（与 AtBannerAdapter Express 行为一致）
+    // SelfRender 在 TB 明确不支持（unsupported capability），返回空数组；
+    // 不创建假物料，不返回 WindMillNativeAd。Express 模式同样返回空数组（与 AtBannerAdapter Express 一致）。
     return @[];
 }
 
 - (void)bindMaterialAtIndex:(NSInteger)index slots:(FlameBannerAdRenderSlots *)slots {
-    // SelfRender 专用，Express 模式 no-op + log
-    [FlameLogger i:@"[TB_BANNER_DIAG] bindMaterialAtIndex: Express mode no-op (SelfRender not implemented in Phase 5A.16C)"];
+    // SelfRender 在 TB 明确不支持：安全 no-op，不修改 RenderSlots，不添加 UIView，
+    // 不注册点击，不触发曝光，不重复错误回调。Express 模式同样 no-op。
+    (void)index;
+    (void)slots;
 }
 
 - (void)unbindMaterial {
-    // SelfRender 专用，Express 模式 no-op
-    [FlameLogger i:@"[TB_BANNER_DIAG] unbindMaterial: Express mode no-op"];
+    // 幂等 no-op（SelfRender unsupported 或 Express 模式均安全）
 }
 
 - (void)remove {
@@ -167,6 +197,8 @@
 - (void)destroy {
     [FlameLogger i:[NSString stringWithFormat:@"[TB_BANNER_DIAG] destroy: adapter=%p banner=%p hasSuperview=%d",
         self, self.bannerView, (self.bannerView.superview != nil)]];
+    // Phase 5A.17B：标记已销毁，阻断迟到的异步 unsupported 回调 block
+    _destroyed = YES;
     // 清理 WindMillBannerView（ToBid 无 destroy 方法，按官方文档：delegate=nil + removeFromSuperview + 释放强引用）
     if (self.bannerView) {
         self.bannerView.delegate = nil;

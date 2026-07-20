@@ -7,7 +7,52 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.17A：TK SelfRender Banner 现状审计与 ToBid Native 映射调研（本次 docs commit）
+### Phase 5A.17B：TB SelfRender Banner 兼容降级（本次 feature commit）
+
+**变更类型**：SDK 内部 Adapter 行为升级（`TbBannerAdapter` SelfRender 分支）+ Demo 错误处理增强。**Flame 公共 API 零改动。**
+
+**决策**：撤销 5A.17A 原方案 B（用 ToBid Native 桥接模拟 SelfRender，会改变广告位类型/后台/链路/生命周期/客户语义），采用**方案 E**——公共 API 兼容保留，TB SelfRender 明确降级为 unsupported capability。
+
+**核心改动**：
+
+1. **`flame_sdk_ios/adapter/tb/TbBannerAdapter.m`**（SelfRender 分支升级）：
+   - 新增 `_destroyed` / `_selfRenderUnsupportedReported` ivar
+   - `load` SelfRender 分支：不创建任何 ToBid 对象（无 `WindMillBannerView` / 无 `WindMillNativeAdsManager`），不发起请求；异步派发到主线程回调一次 `onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM desc:@"当前聚合平台暂不支持开发者自渲染横幅广告"`；用 `__weak self` + `_destroyed` 守卫阻断 destroy 后迟到回调
+   - 统一诊断日志 `[TB_SELF_RENDER_UNSUPPORTED]`（platform/mediation/sdkVersion/adFormat/renderMode/capability/action/fallback/expressBannerAffected/message），每次生命周期只打印一次（`_selfRenderUnsupportedReported`）
+   - `retrieveAdView` SelfRender 返回 nil；`retrieveMaterials` 返回空数组；`bind/unbind` 安全 no-op；`destroy` 设置 `_destroyed = YES`
+2. **`flame_sdk_ios/adapter/tb/TbBannerAdapter.h`**：头注释从"5A.16C 占位"更新为"5A.17B 方案 E 降级说明"
+3. **Demo `Sources/Ad/SelfRenderBannerManager.swift`**（独立 commit）：
+   - `onError` 加 `NonRetryableErrorCodes.isNonRetryable(code)` 短路（14003/14004/14002），不进入 5 次重试循环
+   - 新增嵌套 `NonRetryableErrorCodes` 枚举（基于 Flame 公开错误码，**不判 pt=tk/tb、不 import 三方 SDK**）
+
+**复用错误码**：`ERROR_CODE_UNSUPPORTED_PLATFORM`（14003，"不支持的聚合平台"），不新增公共枚举。
+
+**隔离保证**：普通 Express Banner 分支（L93-180）代码未改，SelfRender 降级状态不污染 bannerView/placementId/loading/ready/listener/destroy/auto-refresh。
+
+**符号验证**（Python UTF-16 检查，因字符串含中文字符嵌入 `__TEXT/__ustring` 段）：
+- `TB_SELF_RENDER_UNSUPPORTED` UTF-16：两 slice 各 1 ✅
+- `当前聚合平台` UTF-16：两 slice 各 2（日志 + 错误描述）✅
+- `TbNativeSelfRenderController` 符号：0（未创建）✅
+- `WindMillNativeAdsManager` 直接使用：0（未调用）✅
+- `TbBannerAdapter` / `TB_BANNER_DIAG` / `TB_REWARD_DIAG` / `TB_SPLASH_DIAG` / `TK_PLATFORM_REQUIRES_ANYTHINK` / AnyThink LC_LOAD_WEAK_DYLIB：全部无回归 ✅
+
+**构建**：XCFramework 双 Archive SUCCEEDED；TB Demo 6 pods BUILD SUCCEEDED；TK Demo 临时切 28 pods BUILD SUCCEEDED（AtBannerAdapter 不变，已恢复 Demo 到 TB）。
+
+**能力矩阵更新**：
+| 能力 | TK | TB |
+|---|---|---|
+| 普通 Express Banner | 支持 | 支持（GDT 真机填充已验证） |
+| 客户端 SelfRender Banner | 支持（AnyThink Banner Native Mix） | 暂不支持，兼容降级（14003 + 日志 + 不重试） |
+
+**红线遵守**：未修改 AtBannerAdapter / Flame 公共协议 / FlameErrorCode 公共枚举 / podspec / FlameTBProvider；未增加广告源；未升级版本；未 push/tag/release。Demo 改动为独立 commit，不提交测试 placementId / Pods / Podfile.lock / project.pbxproj 环境差异。
+
+**后续升级条件**：仅当 ToBid 提供与 Flame RenderSlots/物料模型对等的**客户端** Banner Native Mix API（类似 `ATNativeBannerView`），才重新评估 TB SelfRender 实现。后台"原生渲染横幅"配置能力不构成升级触发条件。
+
+详见 `doc/flame_mediation/phase-5a.17b-tb-self-render-unsupported-bridge.md`。
+
+---
+
+### Phase 5A.17A：TK SelfRender Banner 现状审计与 ToBid Native 映射调研（docs commit `aaa09e3`）
 
 **变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
 

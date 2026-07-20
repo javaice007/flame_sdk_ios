@@ -15,9 +15,11 @@
 // - 自动刷新由 ToBid SDK/后台负责，Adapter 不新增 Timer（红线 #26/#27）
 // - 首次 load 失败不内部重试（与 TK AtBannerAdapter 一致；Demo BannerAdManager.RetryScheduler 负责）
 //
-// 本阶段只实现 Express 模式（renderType == FlameBannerRenderTypeExpress）。
-// SelfRender 模式（retrieveMaterials / bindMaterialAtIndex / unbindMaterial）返回空 / no-op + log，
-// 不实现 ToBid 自渲染逻辑（Phase 5A.16C 范围外，红线 #11）。
+// Express 模式：renderType == FlameBannerRenderTypeExpress，完整实现（WindMillBannerView → GDT/CSJ 填充）。
+// SelfRender 模式：renderType == FlameBannerRenderTypeSelfRender，Phase 5A.17B 方案 E 明确降级为 unsupported
+// （ToBid 5.5.6 无对等的客户端 Banner Native Mix API；不强行用独立 Native 广告位模拟）。
+// SelfRender 行为：load 返回 ERROR_CODE_UNSUPPORTED_PLATFORM + 统一日志 [TB_SELF_RENDER_UNSUPPORTED]，
+// retrieveAdView/retrieveMaterials 返回 nil/空，bind/unbind/destroy 安全 no-op，destroy 后迟到回调被守卫阻断。
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import "FlameBannerAdapterProtocol.h"

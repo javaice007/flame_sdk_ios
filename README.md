@@ -112,7 +112,9 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 - Phase 5A.16B CSJ 依赖接入（本地 build commit，未发布）：`flame_sdk_ios_tb.podspec` 加 `ToBid-iOS-RC/CSJAdapter 5.5.6`（CSJ/Pangle，服务后续 Banner）。TB clean pod install 5 pods，真机 BUILD SUCCEEDED，CSJ Adapter 符号进 App；AnyThink weak-link 无回归；TK clean build 28 pods 不受影响。
 - Phase 5A.16C Banner Adapter 实现（本地 feat commit，未发布）：新增 `TbBannerAdapter`（Express 模式完整 + SelfRender 占位），接入 FlameTBProvider Banner 工厂。复用 AtBannerAdapter Express 模式 + WindMillBannerView 特化（`loadAdData` / `expectSize:` / `isAdValid` / strong 持有 + retrieveAdView 返回 / auto-refresh 由 ToBid 后台控制 / 首次失败不内部重试与 TK 一致）。XCFramework 构建成功，TbBannerAdapter + TB_BANNER_DIAG 两 slice 命中，TB 真机 BUILD SUCCEEDED，TK 28 pods 无回归。
 - Phase 5A.16D CSJ Banner 真机验证（进行中，commit `39bc191`）：链路验证通过（两层 placementId 映射、CSJ networkId=13 选中、BUAdSDK 7.6.0.4 初始化、CSJ 请求发出、no-fill 错误链路完整 CSJ→ToBid→Adapter→Demo、Adapter 不重试+Demo RetryScheduler）。**尺寸已排除根因**（402×50 与 320×50 均返回 800110）；ToBid 官方测试位当前 no-fill，成功路径待平台方确认。
-- Phase 5A.16E 腾讯 GDT Adapter 接入（本地 build commit `5414cf5` + 真机验证 commit，未发布）：`flame_sdk_ios_tb.podspec` 加 `ToBid-iOS-RC/GDTAdapter 5.5.6`（GDTMobSDK 4.15.90），TB 同时含 CSJ+GDT。TB 6 pods BUILD SUCCEEDED，TK 28 pods 不受影响。**GDT Banner 真机真实填充成功**：用户配置腾讯广告位 `q71507861622` + ToBid 聚合位 + Flame pMap 后，完整链路验证通过（load→GDT source→didLoadSuccess→retrieveAdView→addSubview→exposure→onAdShow），`WindMillBannerView.adSize` 实际返回 402×50 全宽。**TK/TB 坐标审计**：container/adView/子 View 几何完全一致（`{0,741,402,50}`），TabBar `{0,791,402,83}`，intersectionHeight=0，无重叠无裁切，视觉差异仅为素材模板排版不同，布局无需改动。自动刷新/点击落地页/destroy re-enter 未专项触发，不影响首次成功展示链路结论。详见 `doc/flame_mediation/phase-5a.16e-gdt-banner-integration-report.md` §14-§15。
+- Phase 5A.16E 腾讯 GDT Adapter 接入（本地 build commit `5414cf5` + 真机验证 commit `dac831a`，未发布）：`flame_sdk_ios_tb.podspec` 加 `ToBid-iOS-RC/GDTAdapter 5.5.6`（GDTMobSDK 4.15.90），TB 同时含 CSJ+GDT。TB 6 pods BUILD SUCCEEDED，TK 28 pods 不受影响。**GDT Banner 真机真实填充成功**：用户配置腾讯广告位 + ToBid 聚合位 + Flame pMap 后，完整链路验证通过（load→GDT source→didLoadSuccess→retrieveAdView→addSubview→exposure→onAdShow），`WindMillBannerView.adSize` 实际返回 402×50 全宽。**TK/TB 坐标审计**：container/adView/子 View 几何完全一致（`{0,741,402,50}`），TabBar `{0,791,402,83}`，intersectionHeight=0，无重叠无裁切，视觉差异仅为素材模板排版不同，布局无需改动。详见 `doc/flame_mediation/phase-5a.16e-gdt-banner-integration-report.md` §14-§15。
+- Phase 5A.17A TK SelfRender Banner 调研（本地 docs commit `aaa09e3`，未发布）：审计确认 TK SelfRender 本质是 AnyThink Banner 「Native Mix」（非纯 Native），Flame 公共 API 平台无关，ToBid 5.5.6 Native 自渲染栈完整但**无对等的客户端 Banner Native Mix 类**。原方案 B（用 ToBid Native 桥接模拟）**已撤销**——强行用独立 Native 广告位模拟会改变广告位类型/后台/链路/生命周期/客户语义。**修订为方案 E**。详见 `doc/flame_mediation/phase-5a.17a-self-render-banner-research.md`。
+- Phase 5A.17B TB SelfRender 兼容降级（本地 feature commit，未发布）：方案 E 实施——Flame 公共 API 全部保留，TB SelfRender 明确返回 `ERROR_CODE_UNSUPPORTED_PLATFORM`（14003）+ 统一日志 `[TB_SELF_RENDER_UNSUPPORTED]` + 安全降级（不创建任何 ToBid 对象、不发起请求、异步派发一次回调 + `_destroyed` 守卫）。Demo `SelfRenderBannerManager` 新增 `NonRetryableErrorCodes`（14003/14004/14002）**平台无关**短路，避免重试风暴（不判 pt、不 import 三方 SDK）。XCFramework 双 slice 构建成功，TB 6 pods + TK 28 pods BUILD SUCCEEDED，普通 Express Banner 完全隔离不受影响。后续升级条件：仅当 ToBid 提供对等的客户端 Banner Native Mix API 才重新评估。详见 `doc/flame_mediation/phase-5a.17b-tb-self-render-unsupported-bridge.md`。
 
 ## 广告类型
 
@@ -121,7 +123,8 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 | 激励视频 | ✅ | ✅ |
 | 开屏广告 | ✅ | ✅（Phase 5A.15.1，三次独立冷启动 + skip/close 幂等 + Reward 完整回归 + TK 编译回归） |
 | 插屏广告 | ✅ | ✅（Phase 5A.14.1，真机 R1/R2 完整关闭闭环验证） |
-| 横幅广告 | ✅ | 🚧 Adapter 已实现（Phase 5A.16C，构建通过）；CSJ 真实填充待 Phase 5A.16D |
+| 横幅广告（Express） | ✅ | ✅（Phase 5A.16E，GDT 真机真实填充 + TK/TB 坐标审计通过，402×50 全宽无重叠） |
+| 横幅广告（SelfRender） | ✅（AnyThink Banner Native Mix） | ⚠️ **暂不支持，兼容降级**（Phase 5A.17B 方案 E：返回 `ERROR_CODE_UNSUPPORTED_PLATFORM` + `[TB_SELF_RENDER_UNSUPPORTED]` 日志，不崩溃不重试；普通 Express Banner 不受影响） |
 | 原生广告 | ✅ | ⏳ 待接入 |
 
 ## 注意事项
