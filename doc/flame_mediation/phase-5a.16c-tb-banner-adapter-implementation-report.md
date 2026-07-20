@@ -362,6 +362,8 @@ viewController 为空 → `onAdError:ERROR_CODE_INVALID_PARAM desc:@"viewControl
 
 ## 20. iphoneos BUILD（§23.1）
 
+> **口径修正（Phase 5A.16D §5）**：iphoneos 设备目标 BUILD SUCCEEDED **尚未等同于 Banner 真机运行验证**。本节仅证明编译/链接通过，真实 CSJ Banner 填充/展示/刷新/点击/销毁闭环留待 Phase 5A.16D 真机实测。
+
 ```
 xcodebuild -workspace ... -configuration Debug -sdk iphoneos CODE_SIGNING_ALLOWED=NO build
 ```
@@ -582,11 +584,11 @@ Phase 5A.16D 验证内容：load → fill → addSubview → exposure → refres
 | 公共 API 是否变化 | ❌ 未变（FlameBannerListener / FlameBannerAd / FlameBannerAdapterProtocol 零改动） |
 | Demo 调用方式是否变化 | ❌ 未变（Demo 代码零改动） |
 | 单一 XCFramework | ✅ 保持 |
-| AnyThink 隔离 | ✅ 无回归（LC_LOAD_WEAK_DYLIB，无 AnyThink 泄漏） |
+| AnyThink 隔离 | ✅ 静态依赖隔离 + LC_LOAD_WEAK_DYLIB 无回归；运行时无 ADX 弹窗将在 Phase 5A.16D 真机验证 |
 | **TbBannerAdapter 是否实现** | ✅ 实现（Express 模式完整，SelfRender 占位） |
 | FlameTBProvider Banner 工厂接入 | ✅ |
 | XCFramework 构建 | ✅ 两 slice 符号 + diag 齐全 |
-| TB iphoneos BUILD | ✅ SUCCEEDED |
+| TB iphoneos BUILD | ✅ SUCCEEDED（编译/链接通过；不等同于 Banner 真机运行验证，见 §20 口径修正） |
 | TK 编译回归 | ✅ 28 pods BUILD SUCCEEDED（无 CSJAdapter 泄漏） |
 | 模拟器构建 | ⚠️ pre-existing Flame slice 限制（与 Banner 无关） |
 | CSJ Banner 真机填充 | ❌ 未验证（Phase 5A.16D） |

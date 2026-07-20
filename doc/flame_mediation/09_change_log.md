@@ -7,7 +7,33 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.16C：ToBid Banner Adapter 实现（本次 SDK feat commit）
+### Phase 5A.16D：CSJ Banner 真机填充验证（进行中 — 首次请求与 no-fill 阻塞）
+
+**变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
+
+**状态**：链路与 Adapter 实现全部验证正确，但 CSJ 后台返回 no-fill。成功路径未验证。
+
+**已验证（真机日志 2026-07-20 11:48）**：
+- 两层 placementId 映射：Flame `q<REDACTED>` → pMap → ToBid 聚合 `7316148691848522`（不是同一层级）
+- CSJ 渠道选中：ToBid `networkId=13`（WindMillAdnCSJ）
+- WindMillCSJAdapter + BUAdSDK 7.6.0.4 初始化成功
+- CSJ Banner 请求真实发出（`AdDidLoadStart networkId:13`）
+- no-fill 错误链路完整：CSJ `nativeExpressBannerAdView:didLoadFailWithError:` → ToBid `800110/20001` → TbBannerAdapter `didFailToLoad` → Flame `onAdError` → Demo
+- Adapter 不内部重试（destroy 后转 Demo）；Demo RetryScheduler 2s/4s 退避重试（1/5、2/5）
+- 原 Splash/Interstitial/Reward 无回归
+- 无 AnyThink 弹窗 / 无 dyld/selector 崩溃
+
+**未验证（成功路径）**：load success / retrieveAdView / addSubview / adSize / 曝光 / 自动刷新 / 点击 / destroy / re-enter
+
+**阻塞**：ToBid 官方测试位 `7316148691848522`（穿山甲_横幅广告_模版渲染，App ID 16990）当前 no-fill（800110/20001）。**尺寸已排除根因**：402×50 和 320×50 两次 Run 均返回相同错误。测试位属于 ToBid 官方（network placementId `948459823` 是官方测试位内部穿山甲 code ID），不需用户核查自己的后台。已整理诊断清单（App ID/placementId/networkId/SDK 版本/load_id/时间/错误码）等反馈 ToBid 技术支持确认测试位状态和要求尺寸。
+
+**观察项**：BUAdSDK 内部 SQLite 迁移警告（duplicate column / db_save_error），未致崩溃或阻断请求，尚未取得官方结论。
+
+**红线遵守**：未修改 TbBannerAdapter / 未增加 Adapter 重试 / 未修改公共 API / 未接入其他广告源 / 未 push / 未 tag / 未发布 / 暂未创建最终 commit（等 fill 后统一）。
+
+---
+
+### Phase 5A.16C：ToBid Banner Adapter 实现（commit `e5ff1ad`）
 
 **变更类型**：新增广告类型适配器（非破坏性，SDK 公共 API + Demo 代码零改动）
 
