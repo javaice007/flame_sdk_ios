@@ -71,12 +71,32 @@ Pod::Spec.new do |s|
   #   - SigmobAd-iOS（独立 Sigmob，会与 ToBid-iOS-RC 内置 WindSDK 冲突）
   # 注意：ToBid-iOS-RC 自身内置的 Sigmob/WindSDK 不属于 TK 私有 adapter，保留。
 
-  # ========= 差异化广告源依赖（TB 专属，当前为空）=========
-  # 当前 TB Reward 阶段使用 ToBid-iOS-RC 默认 ToBidSDK 子规范（已含 WindMill 核心）。
-  # 后续 Phase 5A.13+ 接 TB Splash/Interstitial/Banner/Native 时，按需增加：
-  #   s.dependency 'ToBid-iOS-RC/CSJAdapter', '...'
-  #   s.dependency 'ToBid-iOS-RC/GDTAdapter', '...'
-  #   ...（ToBid-iOS-RC 的 21 个 Adapter 子规范）
+  # ========= 差异化广告源依赖（TB 专属）=========
+  # 当前 TB Reward/Splash/Interstitial 阶段使用 ToBid-iOS-RC 默认 ToBidSDK 子规范（已含 WindMill 核心）。
+  # 后续按需增加 ToBid-iOS-RC/<Network>Adapter 子规范（共 21 个可选 Adapter）。
+
+  # --- Phase 5A.16B：CSJ/Pangle（穿山甲）广告源 ---
+  # 用途：TB 第一批第三方广告源，主要服务后续 Banner 最小闭环（Sigmob 自身无 Banner 填充）。
+  # 集成方式：依赖 ToBid 官方 CSJAdapter 子规范，由 ToBid-iOS-RC 5.5.6 统一管理底层 CSJ SDK 版本。
+  # 实际依赖链（已从官方 podspec 确认）：
+  #   ToBid-iOS-RC/CSJAdapter 5.5.6
+  #     → vendored WindMillCSJAdapter.xcframework
+  #     → Ads-CN/BUAdSDK 7.6.0.4（仅 BUAdSDK subspec：BUAdSDK.xcframework + CSJAdSDK.bundle）
+  #     → ToBid-iOS-RC/ToBidSDK（已有）
+  #   不拉取：BUAdLive-Framework / BUTTSDKFramework / CSJMediation
+  #   （BUAdLive 陷阱仅影响 TK 侧 AnyThinkMediation 默认 Ads-CN；TB 经 CSJAdapter 显式选 BUAdSDK subspec 不受影响）
+  # 不在 Flame podspec 中重复声明底层 Ads-CN/BUAdSDK/CSJMediation（由 ToBid 官方 subspec 管理，单一来源）。
+  # 版本：CSJAdapter 与 ToBid-iOS-RC 锁定同版本 5.5.6；CSJ SDK 版本由 Ads-CN/BUAdSDK subspec pin 为 7.6.0.4。
+  s.dependency 'ToBid-iOS-RC/CSJAdapter', '5.5.6'
+
+  # --- 后续批次（Phase 5A.16C+，按需启用，本阶段不接入）---
+  #   s.dependency 'ToBid-iOS-RC/GDTAdapter', '5.5.6'
+  #   s.dependency 'ToBid-iOS-RC/MSAdAdapter', '5.5.6'
+  #   s.dependency 'ToBid-iOS-RC/OctopusAdapter', '5.5.6'
+  #   # Mintegral（注意 WindMillMTGAdapter.xcframework 仅 ios-arm64，缺 simulator slice）
+  #   # s.dependency 'ToBid-iOS-RC/MintegralAdapter', '5.5.6'
+  #   # GroMore（与 CSJ 二选一，会重复带入 Ads-CN/BUAdSDK）
+  #   # s.dependency 'ToBid-iOS-RC/GromoreAdapterLite', '5.5.6'
 
   # ========= xcconfig（与 TK podspec 完全一致）=========
   s.pod_target_xcconfig = {

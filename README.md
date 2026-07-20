@@ -108,6 +108,8 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 - Phase 5A.14.1 修正验收口径（本地 docs commit，未发布）：修正 Demo 预加载时机后，R1/R2 真机完整关闭闭环（load/show/visible/**didClose**/next-load），R3 load success；Reward 仅加载回归通过。
 - Phase 5A.15 完成 TB 开屏接入（本地 commit `0d13dd5`，未发布）：新增 `TbSplashAdapter`，复用已验证模式（stale callback 守卫 + `[TB_SPLASH_DIAG]` 日志）+ Splash 特化（`loadAd` / `showAdInWindow:withBottomView:` / `finishOnceWithReason:` 幂等）。
 - Phase 5A.15.1 验收补齐（本地 docs commit，未发布）：**Splash 三次独立冷启动通过**（R1 倒计时关闭 + R2/R3 skip/close 幂等，finishOnce 二次拦截均生效）；**Reward 完整展示回归通过**（两轮闭环 load/show/didVisible/didClose/next-load，presenter/vcWindow 非空）；**TK 干净编译回归通过**（28 pods + BUILD SUCCEEDED + AnyThinkSDK 进入 App + Flame binary 保持 LC_LOAD_WEAK_DYLIB）。
+- Phase 5A.16A 广告源审计（本地 docs commit `3b5326d`，未发布）：审计 ToBid 第三方广告源交付包，Banner 候选 6 家（CSJ/GDT/GroMore/Mintegral/MS/Octopus），推荐 CSJ 作首批。详见 `doc/flame_mediation/phase-5a.16a-tb-ad-network-integration-audit.md`。
+- Phase 5A.16B CSJ 依赖接入（本地 build commit，未发布）：`flame_sdk_ios_tb.podspec` 加 `ToBid-iOS-RC/CSJAdapter 5.5.6`（CSJ/Pangle，服务后续 Banner）。TB clean pod install 5 pods，真机 BUILD SUCCEEDED，CSJ Adapter 符号进 App；AnyThink weak-link 无回归；TK clean build 28 pods 不受影响。**Banner Adapter 尚未实现**（Phase 5A.16C）。
 
 ## 广告类型
 

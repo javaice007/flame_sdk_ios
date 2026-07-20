@@ -5,7 +5,63 @@
 
 ---
 
-## Phase 5A.15（进行中）— TB 开屏广告接入
+## Phase 5A.16（进行中）— TB 第三方广告源接入
+
+### Phase 5A.16B：CSJ/Pangle 广告源最小依赖接入（本次 SDK build commit）
+
+**变更类型**：TB podspec 依赖新增（非破坏性，SDK 业务代码零改动）
+
+**核心改动**：
+
+| 文件 | 改动 | 目的 |
+|------|------|------|
+| `flame_sdk_ios_tb.podspec`（修改） | +1 依赖 `s.dependency 'ToBid-iOS-RC/CSJAdapter', '5.5.6'` | 引入 CSJ/Pangle（穿山甲）广告源，服务后续 Banner 最小闭环（Sigmob 自身无 Banner 填充） |
+
+**实现要点**：
+- 仅增加 CSJ，不增加其他网络（GDT/MS/Octopus/Baidu/KS/Mintegral/GroMore/BidResult 均不接入）
+- 不在 Flame podspec 重复声明底层 Ads-CN/BUAdSDK/CSJMediation（由 ToBid 官方 CSJAdapter subspec 管理，单一来源）
+- 不创建 TbBannerAdapter / 不修改 Banner 工厂 / 不修改 Banner 公共协议
+- 不修改 Reward/Interstitial/Splash Adapter
+
+**官方依赖链**（从 ToBid-iOS-RC 5.5.6 podspec 确认）：
+```
+ToBid-iOS-RC/CSJAdapter 5.5.6
+  → vendored WindMillCSJAdapter.xcframework
+  → Ads-CN/BUAdSDK 7.6.0.4（BUAdSDK.xcframework + CSJAdSDK.bundle）
+  → ToBid-iOS-RC/ToBidSDK
+```
+**不拉取** BUAdLive-Framework / BUTTSDKFramework / CSJMediation（CSJAdapter 显式选 `Ads-CN/BUAdSDK` subspec，绕过 Ads-CN 默认 subspec 的 BUAdLive 陷阱）。
+
+**验证**：
+
+| 项 | 结果 |
+|---|---|
+| TB clean pod install | ✅ 5 pods（4→5，+Ads-CN/BUAdSDK 7.6.0.4） |
+| TB 真机（iphoneos）BUILD | ✅ SUCCEEDED |
+| TB 模拟器 BUILD | ❌ FAILED（pre-existing：Flame xcframework 缺 arm64 simulator slice，与 CSJ 无关；CSJ SDK 支持 arm64 sim） |
+| CSJ Adapter 符号进 App | ✅ BUNativeExpressBannerView / WindMillCSJAdapter / WindMillBannerView 均在 debug dylib |
+| AnyThink 弱链接无回归 | ✅ LC_LOAD_WEAK_DYLIB 保持 |
+| AnyThink/TK adapter/SigmobAd-iOS 泄漏 | ✅ 全部 ABSENT |
+| TK clean pod install 回归 | ✅ 28 pods（不拉 ToBid CSJAdapter），BUILD SUCCEEDED |
+| TB App 启动冒烟 | ✅ 通过（pt=tb/无 AnyThink 弹窗/无 dyld/无 selector/无 duplicate class/CSJ 未触发符合预期/主页面正常） |
+| 原 Splash/Interstitial/Reward 回归 | ✅ 通过（Splash skip+close 幂等 / Interstitial 完整 close-loop / Reward 两轮闭环 cachedVC=0x0 时动态 presenter 修复生效） |
+| Banner Adapter | ❌ 未实现（Phase 5A.16C） |
+
+**体积**：Pods 138M→553M（+415M，含双 slice）；App ~130M。
+
+**SKAdNetwork**：CSJ 10+ 个 ID 待 Phase 5A.16C/D 加 Demo Info.plist（本阶段不修改 Demo）。
+
+**红线遵守**：未 push / 未 tag / 未发布 / 未创建 TbBannerAdapter / 未修改 Banner 工厂 / 未修改 Banner 公共协议 / 未修改 Reward/Interstitial/Splash / 未升级 ToBid 5.5.6 / 未升级 CSJ SDK / 未改版本号 / 未改远程 flame-specs / 未把第三方 SDK 打进 flame_sdk_ios.xcframework / 未手工声明 Ads-CN/BUAdSDK/BUAdLive/CSJMediation / 未提交 Pods/Podfile.lock/xcworkspace/project.pbxproj 环境差异 / Demo 代码零改动。
+
+---
+
+### Phase 5A.16A：ToBid 第三方广告源交付包审计（commit `3b5326d`，仅文档）
+
+只读审计 + 集成方案设计。审计 `doc/tobid_doc` 9 个广告源（CSJ/GDT/Baidu/KS/Mintegral/MS/Octopus/GroMore + bidResult），Banner 候选 6 家（CSJ/GDT/GroMore/Mintegral/MS/Octopus），Baidu/KS/Sigmob 不支持 Banner。详见 `phase-5a.16a-tb-ad-network-integration-audit.md`。
+
+---
+
+## Phase 5A.15（完成）— TB 开屏广告接入
 
 ### Phase 5A.15.1：验收补齐 + 文档收口（本次 SDK docs commit）
 
