@@ -7,6 +7,35 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.18A：TK Native Template 与 ToBid Native Express 映射调研（本次 docs commit）
+
+**变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
+
+**核心结论（方案 A — 完全无损映射，仅适用于 Native Template / Native Express）**：
+
+> **范围限定**：方案 A 仅适用于 Native Template / Native Express。**Native SelfRender**：ToBid 底层支持（WindMillNativeAdsManager 自渲染路径完整），但当前 Flame SDK 的 ToBid Native SelfRender 桥接尚未接入，5A.18B 明确降级为"未实现"（非"平台不支持"）。
+
+1. **Flame 已有完整 Native 公共 API**：`<FlameNativeAd>` + `<FlameNativeListener>` + `FlameNativeRenderType`（SelfRender=1 / Express=2）+ `createNativeAdWithViewController:placementId:listener:`（`FlameSdk.h:123`）。关键：Native 用 `showInContainer:(UIView *)container`——Demo 传空容器，**SDK 内部把渲染好的 View 加进去**（与 Banner 的 `retrieveAdView` 不同）。`flame_sdk_ios/ads/nativate/FlameNativeAd.h:47-103`。
+2. **TK Native Template 本质**：AnyThink 统一 `ATNativeAD*` API（`ATAdManager loadADWithPlacementID` + `getNativeAdOfferWithPlacementID`），运行时按 `nativeMaterial.isExpressAd` 分支（`AtNativeAdapter.m:153`）——Template 模式 View **由 AnyThink 完整渲染**（`rendererWithConfiguration:selfRenderView:nil`），SelfRender 模式用 SDK 内部 `AtNativeSelfRenderView`。双模式数据驱动，非类驱动。
+3. **Demo 零 AnyThink import、零自建 UI**：`NativeAdManager.swift` / `NativeAdTestView.swift` / `NativeAdCell.swift` 只调 `ad.show(inContainer: container)` 传空 UIView 容器，SDK 完成 addSubview。无 UILabel/UIImageView 自建。
+4. **ToBid 5.5.6 Native Express 完整支持**：`WindMillNativeAdsManager → WindMillNativeAd(feedADMode=NativeExpress=5) → WindMillNativeAdView.refreshData:` 触发异步模板渲染，等 `nativeExpressAdViewRenderSuccess:` 后 `frame.size.height` 动态更新（`WindMillSDK.h:2143` 注释）。**Template 模式物料属性全 nil**（`:2033`），ToBid 完整渲染 View，开发者只需 addSubview + resize 容器。单一 `WindMillNativeAdView` 类按 feedADMode 分支（无单独 NativeExpressAdView 类）。
+5. **GDTAdapter 5.5.6 已含模板原生支持**：`WindMillGDTAdapter.NativeExpressAdsManager`（nm 符号 `loadAd(placementId:adSize:parameter:)`）+ `FeedAdLoaderListener`（符合 `GDTNativeExpressAdDelegete`）+ `NativeAdData.feedAd(UIView)` init + `GDTNativeExpressAdView : UIView`（GDTMobSDK Header）。**单一 `ToBid-iOS-RC/GDTAdapter` subspec 同时覆盖 Banner + Native SelfRender + Native Express**，无需新增 subspec。
+6. **FlameTBProvider Native 工厂当前 `return nil`**（`FlameTBProvider.m:120-124`）—— 这是 5A.18B 的**唯一缺口**，改为返回新增 `TbNativeAdapter` 即可。
+
+**方案 A 判断（仅 Native Template/Express）**：Flame 公共 API 零修改、Demo 零修改、Provider 协议零修改、podspec 零修改。只需：
+- 新增 `TbNativeAdapter.{h,m}`（Template 模式完整 + SelfRender 明确降级为"未实现"）
+- 改 `FlameTBProvider.m` Native 工厂 `return nil` → 返回 `TbNativeAdapter` 实例
+
+**TK/TB 语义映射（仅 Template/Express）**：Flame Native 公共语义（create/load/show/destroy/click/exposure/video）可无损映射到 ToBid Native Express。详见报告 §10 映射表。
+
+**后台要求**：TB 需在 ToBid 新建 **Native 聚合位**（不能复用 Banner 位），下挂 GDT/CSJ 模板原生广告源；Flame pMap **复用现有 `native` 字段**（不需要新增）；Demo 配 `TB.native = "q..."`。
+
+**红线遵守**：未新增 TbNativeAdapter / 未修改 FlameTBProvider / 未修改公共 API / 未修改 Demo / 未修改 podspec / 未增加广告源 / 未升级 ToBid/GDT / 未配置测试 placementId / 未修改后台 / 未 push / 未 tag / 未 release。
+
+详见 `doc/flame_mediation/phase-5a.18a-native-template-research.md`。
+
+---
+
 ### Phase 5A.17B：TB SelfRender Banner 兼容降级（本次 feature commit）
 
 **变更类型**：SDK 内部 Adapter 行为升级（`TbBannerAdapter` SelfRender 分支）+ Demo 错误处理增强。**Flame 公共 API 零改动。**
