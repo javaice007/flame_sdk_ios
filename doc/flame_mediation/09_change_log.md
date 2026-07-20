@@ -7,7 +7,45 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.16E：腾讯优量汇 GDT Adapter 接入（本次 SDK build commit）
+### Phase 5A.16E.2：GDT Banner 真机验证 + TK/TB 坐标审计（本次 test commit）
+
+**变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
+
+**核心结论**：
+
+1. **GDT Banner 真机真实填充成功**：用户配置腾讯广告位 `q71507861622` + ToBid 聚合位 `1261219727399929` + Flame pMap 后，完整链路验证通过：
+   ```
+   load → ToBid 选 GDT 源（networkId=16）→ WindMillGDTAdapter 初始化
+   → GDTUnifiedBannerView 加载 → bannerAdViewLoadSuccess:（didLoadSuccess）
+   → TbBannerAdapter 设 frame=adSize → onAdLoaded
+   → Demo 延迟 100ms retrieveAdView → addSubview + 4 边约束
+   → bannerAdViewWillExpose: → onAdShow
+   ```
+2. **真实返回尺寸**：`WindMillBannerView.adSize` = **402×50 全宽**（非此前误判的 320×50），GDT 内部子 View `GDTUnifiedBannerView` 也填满 402×50，无侧边距。
+3. **TK/TB 坐标审计**：临时注入只读诊断工具 `BannerLayoutDiag`（TK/TB 共用同一逻辑），在 retrieve/addSubview/layoutIfNeeded/on_expose 4 个时机采样。最终态（on_expose）：
+   - screenFrame 两边均 `{0,0,402,874}`
+   - containerFrameInWindow 两边均 `{0,741,402,50}`
+   - adViewFrameInWindow 两边均 `{0,741,402,50}`
+   - 内部子 View bounds 两边均 `{0,0,402,50}`
+   - tabBarFrameInWindow 两边均 `{0,791,402,83}`
+   - **intersectionHeight 两边均 0**（Container 底边 791 == TabBar 顶边 791，零重叠）
+   - 唯一差异：adViewClips（TK=true / TB=false），子 View 未越界，无视觉影响
+4. **判断结论**：TK/TB 底部 Express Banner 几何布局完全一致，无重叠、无裁切。当前布局（`.overlay` + `.frame(height:50)` + `.padding(.bottom,49)` + 4 边约束）对 TK/TB 均正确，**不做任何修改**。视觉差异仅为素材模板排版不同（如 GDT 双行密排 vs TK 单行疏排），非布局缺陷。
+
+**历史判断纠偏**（真机坐标证据优先于截图推断）：
+- ❌ 撤销 "TB Banner 只有 320×50，两侧留白" → 实际 402×50 全宽
+- ❌ 撤销 "TB Banner 与 TabBar 重叠" → 实际 intersectionHeight=0
+- ❌ 撤销 "需要修改底部布局 / safeAreaInset / bottom padding" → 几何无问题，不需要改
+
+**未专项验证（可选，不阻塞结论）**：自动刷新（`bannerAdViewDidAutoRefresh:`）、点击落地页（`bannerAdViewDidClicked:`→`willOpenFullScreen`）、destroy 后 re-enter。
+
+**红线遵守**：未修改 TbBannerAdapter / 未修改 AtBannerAdapter / 未修改 Flame 公共 API / 未改 Demo 业务布局 / 未加 TK/TB 布局分支 / 未拉伸广告素材 / 临时诊断工具已从 Demo 移除（不提交）/ 未 push / 未 tag / 未发布。
+
+详见 `doc/flame_mediation/phase-5a.16e-gdt-banner-integration-report.md` §14（真机验证）+ §15（坐标审计）。
+
+---
+
+### Phase 5A.16E：腾讯优量汇 GDT Adapter 接入（SDK build commit `5414cf5`）
 
 **变更类型**：TB podspec 依赖新增（非破坏性，SDK 业务代码零改动，Demo 代码零改动）
 
