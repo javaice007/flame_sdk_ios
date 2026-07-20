@@ -7,6 +7,32 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.17A：TK SelfRender Banner 现状审计与 ToBid Native 映射调研（本次 docs commit）
+
+**变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
+
+**核心事实（5A.17A 调研结论，全部保留）**：
+
+1. **TK SelfRender 本质**：AnyThink Banner 「Native Mix」——不是纯 Native。证据：`AtBannerAdapter.m:247-251` 调 `retrieveBannerViewForPlacementID:config:nativeMixBannerViewBlock:`，返回 `ATBannerView` 容器 + 异步回调 `ATNativeBannerView`（含 `nativeAdMaterial`、资产 view、`registerClickableViewArray:`、`showAd`）。底层广告位类型是 Banner。
+2. **Flame 公共 API 平台无关**：`FlameBannerAdMaterial` + `FlameBannerAdRenderSlots` + `FlameBannerListener`，Demo 零 AnyThink 依赖。
+3. **ToBid 5.5.6 Native 自渲染栈完整**：`WindMillNativeAdsManager`→`WindMillNativeAd`→`WindMillNativeAdView`（refreshData/setClickableViews/unregisterDataObject，feedADMode!=NativeExpress 即自渲染）。
+4. **ToBid 无客户端 Banner Native Mix 类**：只有普通 `WindMillBannerView`，无 `ATNativeBannerView` 对等 API。
+5. **GDTAdapter 5.5.6 已含 Native 支持**：`WindMillGDTAdapter.NativeAdAdapter` 符号证据确凿，单一 subspec 覆盖 Banner+Native。
+
+**最终判断（Phase 5A.17B 已修订）**：~~原方案 B（用 ToBid Native 桥接模拟 SelfRender）~~ → **方案 E**（公共 API 兼容保留，TB SelfRender 明确降级为不支持）。
+
+**撤销方案 B 的原因**：强行用独立 Native 广告位模拟 Banner Native Mix 会改变广告位类型、后台配置模型、请求链路、曝光/点击绑定、View 生命周期、客户现有 Banner 语义。ToBid 后台"原生渲染横幅"是把 Native 广告源混入 Banner 聚合位的后台能力，不等同于 Flame SelfRender Banner 所需的"返回物料 + RenderSlots + 客户端自定义布局"。
+
+**方案 E（采用）**：Flame 公共 API 全部保留；TB 收到 SelfRender 请求时不创建任何 ToBid 对象、不发起请求，通过现有 Listener 返回一次 unsupported capability 错误（复用 `ERROR_CODE_UNSUPPORTED_PLATFORM`）+ 统一日志 `[TB_SELF_RENDER_UNSUPPORTED]` + 安全降级 + 防重试风暴；普通 Express Banner 与 TK SelfRender 不受影响。
+
+**后续升级条件**：仅当 ToBid 未来提供与 Flame RenderSlots/物料模型对等的**客户端 Banner Native Mix API**（类似 `ATNativeBannerView`），才重新评估 TB SelfRender 实现。后台"原生渲染横幅"配置能力不构成升级触发条件。
+
+**红线遵守**：未修改 TbBannerAdapter / 未修改 AtBannerAdapter / 未修改 Flame 公共协议 / 未修改 Demo / 未修改后台 / 未增加广告源 / 未修改 podspec / 未升级 ToBid/GDT / 未创建试验性 UI / 未 push / 未 tag / 未 release。
+
+详见 `doc/flame_mediation/phase-5a.17a-self-render-banner-research.md`（顶部「Phase 5A.17B 决策修订」+ §21E/§25E）。
+
+---
+
 ### Phase 5A.16E.2：GDT Banner 真机验证 + TK/TB 坐标审计（本次 test commit）
 
 **变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
