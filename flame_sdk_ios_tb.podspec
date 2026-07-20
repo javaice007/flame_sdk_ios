@@ -89,8 +89,19 @@ Pod::Spec.new do |s|
   # 版本：CSJAdapter 与 ToBid-iOS-RC 锁定同版本 5.5.6；CSJ SDK 版本由 Ads-CN/BUAdSDK subspec pin 为 7.6.0.4。
   s.dependency 'ToBid-iOS-RC/CSJAdapter', '5.5.6'
 
-  # --- 后续批次（Phase 5A.16C+，按需启用，本阶段不接入）---
-  #   s.dependency 'ToBid-iOS-RC/GDTAdapter', '5.5.6'
+  # --- Phase 5A.16E：腾讯优量汇（GDT）广告源 ---
+  # 用途：CSJ 官方测试位 no-fill 后，接入腾讯 GDT 作为用户自有 Banner 广告源验证。
+  # 集成方式：依赖 ToBid 官方 GDTAdapter 子规范，由 ToBid-iOS-RC 5.5.6 统一管理底层 GDT SDK 版本。
+  # 实际依赖链（已从官方 podspec 确认）：
+  #   ToBid-iOS-RC/GDTAdapter 5.5.6
+  #     → vendored WindMillGDTAdapter.xcframework
+  #     → GDTMobSDK 4.15.90
+  #     → ToBid-iOS-RC/ToBidSDK（已有）
+  # GDTMobSDK 4.15.90 与 TK 侧 AnyThinkMediationGDTAdapter 同版本，TK/TB 单独安装时各自解析无冲突。
+  # 不在 Flame podspec 中重复声明底层 GDTMobSDK（由 ToBid 官方 subspec 管理，单一来源）。
+  s.dependency 'ToBid-iOS-RC/GDTAdapter', '5.5.6'
+
+  # --- 后续批次（Phase 5A.16F+，按需启用，本阶段不接入）---
   #   s.dependency 'ToBid-iOS-RC/MSAdAdapter', '5.5.6'
   #   s.dependency 'ToBid-iOS-RC/OctopusAdapter', '5.5.6'
   #   # Mintegral（注意 WindMillMTGAdapter.xcframework 仅 ios-arm64，缺 simulator slice）

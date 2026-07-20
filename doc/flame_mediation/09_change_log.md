@@ -7,7 +7,41 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.16D：CSJ Banner 真机填充验证（进行中 — 首次请求与 no-fill 阻塞）
+### Phase 5A.16E：腾讯优量汇 GDT Adapter 接入（本次 SDK build commit）
+
+**变更类型**：TB podspec 依赖新增（非破坏性，SDK 业务代码零改动，Demo 代码零改动）
+
+**起因**：Phase 5A.16D CSJ 官方测试位 no-fill（800110/20001），接入腾讯 GDT 作为用户自有 Banner 广告源。
+
+**核心改动**：
+
+| 文件 | 改动 | 目的 |
+|------|------|------|
+| `flame_sdk_ios_tb.podspec`（修改） | +1 依赖 `s.dependency 'ToBid-iOS-RC/GDTAdapter', '5.5.6'` | 引入腾讯优量汇（GDT）广告源，服务 Banner 验证（CSJ 测试位 no-fill 后的备选） |
+
+**实现要点**：
+- TB 包同时含 CSJ + GDT（不删除 CSJAdapter）
+- GDTAdapter subspec 拉取 `GDTMobSDK 4.15.90` + `WindMillGDTAdapter.xcframework`
+- GDTMobSDK 4.15.90 与 TK AnyThinkMediationGDTAdapter 同版本，无冲突
+- 不修改 TbBannerAdapter（ToBid 自动选广告源，TbBannerAdapter 不感知 CSJ/GDT）
+- 不修改 Flame Banner 公共 API / Demo / flame_sdk_ios.podspec (TK)
+
+**验证**：
+
+| 项 | 结果 |
+|---|---|
+| TB clean pod install | ✅ 6 pods（5→6，+GDTMobSDK 4.15.90） |
+| TB iphoneos BUILD | ✅ SUCCEEDED |
+| GDT artifacts（WindMillGDTAdapter + GDTMobSDK + Tquic + PrivacyInfo） | ✅ 齐备 |
+| AnyThink 泄漏 | ✅ 无（AnyThinkiOS ABSENT） |
+| TK clean pod install 回归 | ✅ 28 pods（不引入 ToBid GDTAdapter），BUILD SUCCEEDED |
+| GDT Banner 真实填充 | ❌ 待用户后台配置（腾讯广告位 + ToBid 聚合位 + Flame pMap） |
+
+**红线遵守**：未修改 TbBannerAdapter / 未修改 Flame Banner 公共 API / 未修改 Demo / 未修改 TK podspec / 未删除 CSJAdapter / 未接入其他广告源 / 未升级 ToBid 5.5.6 / 未 push / 未 tag / 未发布 / 未提交 Demo 临时配置 / project.pbxproj。
+
+---
+
+### Phase 5A.16D：CSJ Banner 真机填充验证（commit `39bc191`，进行中 — no-fill 阻塞）
 
 **变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
 
