@@ -7,6 +7,55 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.20：1.0.0-alpha.2 预发布准备（本次 release commit）
+
+**变更类型**：版本号统一 + podspec 发布态精简 + 单版本快照文档。**业务代码零修改，公共 API 零修改，Demo 业务调用零修改。**
+
+**版本固定**：
+- `flame_sdk_ios` = `1.0.0-alpha.2`
+- `flame_sdk_ios_tb` = `1.0.0-alpha.2`
+- 预期 Git Tag = `1.0.0-alpha.2`（本阶段**不创建**，等待用户确认）
+- 版本性质：预发布验证版（真实环境验证完成后再发布 1.0.0）
+
+**核心改动**：
+
+1. **podspec 发布态精简**（`flame_sdk_ios.podspec` + `flame_sdk_ios_tb.podspec`）：
+   - 删除所有 Phase 5A.xx 阶段编号、研发历史注释、本地实验路径
+   - 删除"本轮""后续阶段""以后再接入"等过程性描述
+   - TK：删除"TB 客户也依赖 AnyThink"过期描述，明确 AnyThink 仅由 TK podspec 带入
+   - TB：删除"差异化广告源当前为空"过期描述，最终 8 个 Adapter 全部声明
+   - 长期保留：单二进制共用、module_name 一致、两个 Pod 互斥、AnyThink 弱链接、Mintegral simulator 限制、-ObjC 必要性
+
+2. **版本号统一**：`1.0.0-alpha.4-local` → `1.0.0-alpha.2`（两个 podspec）；历史阶段报告中的旧版本记录保留（属于历史事实，不替换）
+
+3. **新增 `docs/releases/1.0.0-alpha.2.md`**：单版本完整快照表
+   - 版本信息 / 本版本更新 / 广告类型（含 Banner SelfRender TB 暂不支持）/ 14 个广告源对照 / 构建产物 / 宿主配置 / 已知限制
+   - 验证状态口径统一：已真机完整验证 / 已取得真实物料 / 依赖、链接、运行时可用性已验证 / 待真实业务环境验证 / 暂不支持 / 未专项验证
+
+4. **新增 `docs/releases/README.md`**：版本索引（1.0.0-alpha.2 + 历史版本说明）
+
+5. **更新 `README.md`**：当前预发布版本改为 1.0.0-alpha.2，指向版本快照文档；不重复放完整广告源大表
+
+6. **重新构建 XCFramework**：
+   - 大小 860 KB
+   - device slice SHA-256：`ca5aa99aa02ffa4ef8ac8f8fbd7d1f8bbb17fd59133151e231211db86838ebeb`
+   - AnyThink LC_LOAD_WEAK_DYLIB 保留
+
+**验证**：
+- ✅ 两个 podspec `pod spec lint --quick` 全部 PASSED（语法 + 依赖解析）
+- ⚠️ `pod lib lint`（完整编译）失败：失败原因是 lint App scheme 在当前环境没有 simulator destination（与 podspec 内容无关，不是 Mintegral slice 缺失导致），按 spec §10 流程"不擅自绕过"汇报
+- ✅ TB Demo iphoneos BUILD SUCCEEDED（Pods 14 个，含 8 Adapter）
+- ✅ TK Demo iphoneos BUILD SUCCEEDED（Pods 33 个，ToBid 污染 0）
+- ✅ 用户已确认 Native Express + sigmob SelfRender 真机正常
+
+**未决项**（spec §1 + §13 停止点）：
+- 5A.18D-B1 修复后的 SelfRender 竞态真机定向回归（快速退出/re-enter/无旧图闪回）等待用户确认是否补测
+- 不 push / 不 tag / 不 release（等待用户确认）
+
+详见 `docs/releases/1.0.0-alpha.2.md`。
+
+---
+
 ### Phase 5A.18D-B1：TB Native SelfRender 图片生命周期加固（本次 fix commit）
 
 **变更类型**：SDK 内部 SelfRender View 异步图片回调加固。**Flame 公共 API 零修改，Demo 业务调用零修改，TbNativeAdapter 主流程零修改。**
