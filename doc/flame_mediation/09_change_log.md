@@ -7,6 +7,51 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.19：ToBid 5.5.6 选定广告源全量接入（本次 feature commit）
+
+**变更类型**：TB podspec 依赖扩展（接入完整包选定的 8 个广告源）。**Flame 公共 API 零修改，Demo 业务代码零修改，Native 实现零修改。**
+
+**触发**：Phase 5A.18D 已完成 Native 模板/自渲染双路径真机验证；本阶段以用户下载的 ToBid 5.5.6 完整集成包 + 接入代码为依据，正式接入用户选定的全部广告源。
+
+**数据来源**：
+- 完整包目录：`doc/tobid_doc/sdk集成下载说明/tobid-sdk-ios-cn/AdNetworks/`（9 个目录）
+- 引用代码：`doc/tobid_doc/sdk集成下载说明/接入代码/Cocoapod引用代码.txt`（声明 8 个 adapter，未声明 BidResult）
+
+**核心改动**：
+
+1. **`flame_sdk_ios_tb.podspec`** 新增 5 个 Adapter 依赖（保留已有 3 个，共 8 个，全部 5.5.6）：
+   - 新增：BaiduAdapter / KSAdapter / OctopusAdapter / MSAdAdapter / GromoreAdapter
+   - 保留：CSJAdapter / GDTAdapter / MintegralAdapter
+   - 不接入：BidResultAdapter（引用代码未声明，最小依赖原则）
+
+2. **新增 `doc/flame_mediation/tobid-5.5.6-selected-adnetworks-host-config.md`**：宿主 App 配置说明
+   - 22 个 SKAdNetwork ID（Sigmob 1 + 穿山甲 2 + Mintegral 19）
+   - ATT 弹窗 + ATS 配置 + 条件权限
+   - 客户集成责任清单
+
+**依赖冲突审计**：
+- CSJ + GroMore 共享 BUAdSDK 7.6.0.4，无 duplicate class 风险
+- Mintegral WindMillMTGAdapter.xcframework 缺 simulator slice（ToBid 5.5.6 podspec 自带 EXCLUDED_ARCHS[sdk=iphonesimulator*]=arm64，未额外添加）
+- 当前 CocoaPods 实际解析出的相关第三方 SDK 均检测到 `PrivacyInfo.xcprivacy`；宿主 App 仍需根据最终数据采集行为完成隐私清单合并、ATT、SKAdNetwork 和用途说明配置
+
+**验证**：
+- pod install：12 pods（flame_sdk_ios_tb + ToBid-iOS-RC + 7 底层 SDK + OpenSSL + FunlinkSDK），无污染
+- XCFramework 双 Archive SUCCEEDED（840 KB）
+- TB Demo iphoneos BUILD SUCCEEDED（App 116 MB 未压缩）
+- TK 回归：临时切 TK Podfile，28 pods，无 ToBid 污染，BUILD SUCCEEDED
+- Podfile.lock 验证：8 adapter 全 5.5.6，无 5.3.4 残留，无 AnyThink，无海外 SDK
+
+**包体审计**（Pods 目录，不等于 App Store 下载大小）：
+- Pods 总计 1.1 GB（含双 slice + 源码）
+- 真机 App 未压缩 116 MB，Frameworks 48 MB
+- 最大依赖：Ads-CN 464 MB（CSJ+GroMore+BUTTSDK）、ToBid-iOS-RC 155 MB
+
+**未验证项**：Baidu、KS、MS、Octopus、Mintegral、GroMore 共 6 个广告源的真实填充待业务环境验证（本轮仅验证依赖解析、链接、运行时可用性）；BidResultAdapter 当前不属于正式依赖范围（完整包有目录但引用代码未声明，未来如接入独立竞价结果解析、竞价诊断或相关专用 API，再根据实际调用证据补充）。
+
+详见 `doc/flame_mediation/phase-5a.19-tobid-selected-adnetworks-integration.md`。
+
+---
+
 ### Phase 5A.18D-C：TbNativeSelfRenderView 布局修复（对齐官方 ToBid demo 模式）
 
 **变更类型**：SDK 内部 SelfRender View 重写（复用 WindMill 提供的 mainImageView/mediaView/logoView/dislikeButton）。**Flame 公共 API 零修改，Demo 业务调用零修改。**

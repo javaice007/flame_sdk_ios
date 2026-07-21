@@ -72,58 +72,64 @@ Pod::Spec.new do |s|
   # 注意：ToBid-iOS-RC 自身内置的 Sigmob/WindSDK 不属于 TK 私有 adapter，保留。
 
   # ========= 差异化广告源依赖（TB 专属）=========
-  # 当前 TB Reward/Splash/Interstitial 阶段使用 ToBid-iOS-RC 默认 ToBidSDK 子规范（已含 WindMill 核心）。
-  # 后续按需增加 ToBid-iOS-RC/<Network>Adapter 子规范（共 21 个可选 Adapter）。
+  # Phase 5A.19：以用户下载的 ToBid 5.5.6 完整集成包 + 接入代码/Cocoapod引用代码.txt 为依据，
+  # 全量接入用户选定的 8 个广告源（完整包有 9 个目录，其中 bidResult 引用代码未声明，作为辅助插件不主动接入）。
+  #
+  # 所有 Adapter 与 ToBid-iOS-RC 锁定同版本 5.5.6，底层三方 SDK 版本由 ToBid 官方 subspec 统一管理（单一来源）。
+  # 不在 Flame podspec 中重复声明底层三方 SDK（如 Ads-CN/GDTMobSDK/KSAdSDK 等）。
+  #
+  # 引用代码原样：
+  #   pod 'ToBid-iOS-RC/CSJAdapter',     '5.5.6'   # 穿山甲
+  #   pod 'ToBid-iOS-RC/GDTAdapter',     '5.5.6'   # 腾讯广告
+  #   pod 'ToBid-iOS-RC/BaiduAdapter',   '5.5.6'   # 百度联盟
+  #   pod 'ToBid-iOS-RC/KSAdapter',      '5.5.6'   # 快手
+  #   pod 'ToBid-iOS-RC/MintegralAdapter','5.5.6'  # Mintegral（国内版）
+  #   pod 'ToBid-iOS-RC/OctopusAdapter', '5.5.6'   # 章鱼
+  #   pod 'ToBid-iOS-RC/MSAdAdapter',    '5.5.6'   # 美数
+  #   pod 'ToBid-iOS-RC/GromoreAdapter', '5.5.6'   # Gromore
 
-  # --- Phase 5A.16B：CSJ/Pangle（穿山甲）广告源 ---
-  # 用途：TB 第一批第三方广告源，主要服务后续 Banner 最小闭环（Sigmob 自身无 Banner 填充）。
-  # 集成方式：依赖 ToBid 官方 CSJAdapter 子规范，由 ToBid-iOS-RC 5.5.6 统一管理底层 CSJ SDK 版本。
-  # 实际依赖链（已从官方 podspec 确认）：
-  #   ToBid-iOS-RC/CSJAdapter 5.5.6
-  #     → vendored WindMillCSJAdapter.xcframework
-  #     → Ads-CN/BUAdSDK 7.6.0.4（仅 BUAdSDK subspec：BUAdSDK.xcframework + CSJAdSDK.bundle）
-  #     → ToBid-iOS-RC/ToBidSDK（已有）
-  #   不拉取：BUAdLive-Framework / BUTTSDKFramework / CSJMediation
-  #   （BUAdLive 陷阱仅影响 TK 侧 AnyThinkMediation 默认 Ads-CN；TB 经 CSJAdapter 显式选 BUAdSDK subspec 不受影响）
-  # 不在 Flame podspec 中重复声明底层 Ads-CN/BUAdSDK/CSJMediation（由 ToBid 官方 subspec 管理，单一来源）。
-  # 版本：CSJAdapter 与 ToBid-iOS-RC 锁定同版本 5.5.6；CSJ SDK 版本由 Ads-CN/BUAdSDK subspec pin 为 7.6.0.4。
+  # --- 穿山甲（CSJ/Pangle） ---
+  # 依赖链：WindMillCSJAdapter.xcframework → Ads-CN/BUAdSDK 7.6.0.4
   s.dependency 'ToBid-iOS-RC/CSJAdapter', '5.5.6'
 
-  # --- Phase 5A.16E：腾讯优量汇（GDT）广告源 ---
-  # 用途：CSJ 官方测试位 no-fill 后，接入腾讯 GDT 作为用户自有 Banner 广告源验证。
-  # 集成方式：依赖 ToBid 官方 GDTAdapter 子规范，由 ToBid-iOS-RC 5.5.6 统一管理底层 GDT SDK 版本。
-  # 实际依赖链（已从官方 podspec 确认）：
-  #   ToBid-iOS-RC/GDTAdapter 5.5.6
-  #     → vendored WindMillGDTAdapter.xcframework
-  #     → GDTMobSDK 4.15.90
-  #     → ToBid-iOS-RC/ToBidSDK（已有）
-  # GDTMobSDK 4.15.90 与 TK 侧 AnyThinkMediationGDTAdapter 同版本，TK/TB 单独安装时各自解析无冲突。
-  # 不在 Flame podspec 中重复声明底层 GDTMobSDK（由 ToBid 官方 subspec 管理，单一来源）。
+  # --- 腾讯优量汇（GDT） ---
+  # 依赖链：WindMillGDTAdapter.xcframework + Tquic.xcframework → GDTMobSDK 4.15.90
   s.dependency 'ToBid-iOS-RC/GDTAdapter', '5.5.6'
 
-  # --- Phase 5A.18C：Mintegral（汇量科技）广告源 ---
-  # 用途：CSJ 官方测试位 no-fill（800110）后，接入 Mintegral 作为跨广告源 Native Template 验证。
-  # 集成方式：依赖 ToBid 官方 MintegralAdapter 子规范，由 ToBid-iOS-RC 5.5.6 统一管理底层 Mintegral SDK 版本。
-  # 实际依赖链（已从官方 podspec 确认）：
-  #   ToBid-iOS-RC/MintegralAdapter 5.5.6
-  #     → vendored WindMillMTGAdapter.xcframework
-  #     → MintegralAdSDK 7.7.6（8 个 subspec：BidNativeAd/BidRewardVideoAd/BidNativeAdvancedAd/
-  #       BidBannerAd/BidSplashAd/NewInterstitialAd/BidNewInterstitialAd + 基础）
-  #     → ToBid-iOS-RC/ToBidSDK（已有）
+  # --- 百度联盟 ---
+  # 依赖链：WindMillBaiduAdapter.xcframework + BaiduMobAdSDK.framework + baidumobadsdk.bundle → BaiduMobAdSDK 10.050
+  s.dependency 'ToBid-iOS-RC/BaiduAdapter', '5.5.6'
+
+  # --- 快手 ---
+  # 依赖链：WindMillKSAdapter.xcframework + KSAdSDK.xcframework → KSAdSDK 5.4.10.1
+  s.dependency 'ToBid-iOS-RC/KSAdapter', '5.5.6'
+
+  # --- Mintegral（汇量科技，国内版） ---
+  # 依赖链：WindMillMTGAdapter.xcframework + 8 个 MTGSDK*.xcframework → MintegralAdSDK 7.7.6（7 个 Bid/NewInterstitial 子模块）
   # ⚠️ 已知限制：WindMillMTGAdapter.xcframework 仅含 ios-arm64 slice（缺 simulator slice），
-  #    TB Demo 的 iphonesimulator 构建会失败；iphoneos 真机构建不受影响。
-  #    底层 MintegralAdSDK 7.7.6 的 8 个 MTGSDK*.xcframework 均含双 slice（arm64 + arm64_x86_64-simulator），
-  #    缺 slice 的只有 ToBid 的 WindMillMTGAdapter 桥接层。
-  #    本轮真机验证为主，不使用 EXCLUDED_ARCHS 掩盖 simulator 限制。
-  # 不在 Flame podspec 中重复声明底层 MintegralAdSDK（由 ToBid 官方 subspec 管理，单一来源）。
-  # 版本：MintegralAdapter 与 ToBid-iOS-RC 锁定同版本 5.5.6；Mintegral SDK 版本由 MintegralAdSDK subspec pin 为 7.7.6。
+  #    且 ToBid-iOS-RC 5.5.6 podspec 本身声明 EXCLUDED_ARCHS[sdk=iphonesimulator*]=arm64（全局）。
+  #    含义：simulator 只能跑 x86_64（Intel 模拟器），Apple Silicon 模拟器需 Rosetta。
+  #    真机 iphoneos arm64 不受影响。我们不主动添加额外 EXCLUDED_ARCHS。
   s.dependency 'ToBid-iOS-RC/MintegralAdapter', '5.5.6'
 
-  # --- 后续批次（Phase 5A.16F+，按需启用，本阶段不接入）---
-  #   s.dependency 'ToBid-iOS-RC/MSAdAdapter', '5.5.6'
-  #   s.dependency 'ToBid-iOS-RC/OctopusAdapter', '5.5.6'
-  #   # GroMore（与 CSJ 二选一，会重复带入 Ads-CN/BUAdSDK）
-  #   # s.dependency 'ToBid-iOS-RC/GromoreAdapterLite', '5.5.6'
+  # --- 章鱼 ---
+  # 依赖链：WindMillOctopusAdapter.xcframework + OctAdSDK.xcframework + OctCore.xcframework + bundles → OctopusSDK 2.6.4.29
+  s.dependency 'ToBid-iOS-RC/OctopusAdapter', '5.5.6'
+
+  # --- 美数 ---
+  # 依赖链：WindMillMSAdAdapter.xcframework + MSAdSDK.xcframework + MSAdMotion.xcframework + MSAdSDK.bundle → MSMobAdSDK/MS 2.7.18.1
+  s.dependency 'ToBid-iOS-RC/MSAdAdapter', '5.5.6'
+
+  # --- GroMore（穿山甲 Mediation） ---
+  # 依赖链：WindMillGroMoreAdapter.xcframework + CSJMediation.xcframework → Ads-CN/BUAdSDK 7.6.0.4 + Ads-CN/CSJMediation 7.6.0.4
+  # 与 CSJAdapter 共享同一 BUAdSDK 7.6.0.4（CocoaPods 自动合并，无 duplicate）。
+  # CSJMediation 是独立组件，不与 BUAdSDK 冲突。
+  s.dependency 'ToBid-iOS-RC/GromoreAdapter', '5.5.6'
+
+  # --- 未接入说明 ---
+  # BidResultAdapter：完整包有 bidResult 目录，但 Cocoopod引用代码.txt 未声明。
+  #   作为竞价结果辅助插件，非独立广告网络；引用代码没要求时不主动接入（最小依赖原则）。
+  #   客户若需要 Server-to-Server 竞价回传，可自行添加 'ToBid-iOS-RC/BidResultAdapter', '5.5.6'。
 
   # ========= xcconfig（与 TK podspec 完全一致）=========
   s.pod_target_xcconfig = {

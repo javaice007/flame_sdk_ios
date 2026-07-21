@@ -50,10 +50,23 @@ TK 和 ToBid 两条线共用同一个二进制包，通过不同 podspec 区分�
 | 聚合平台 | TopOn (AnyThink) | ToBid (WindMill) |
 | TK 广告源依赖 | ✅ 含（AnyThinkMediation* / AdGain / FSUnion）| ❌ 不含 |
 | Sigmob 适配器 | ✅ 自动带出 | ❌ 不含 |
-| 广告类型 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 | 激励视频（其他待接入）|
+| 第三方广告源 | AnyThinkMediation 全家桶 | ToBid 5.5.6 完整包选定 8 个广告源（CSJ/GDT/Baidu/KS/Mintegral/Octopus/MS/Gromore）|
+| 广告类型 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 |
 | module name | `flame_sdk_ios` | `flame_sdk_ios`（一致）|
 
 两条线可以独立接入、独立验证、独立演进。`flame_sdk_ios` 与 `flame_sdk_ios_tb` **互斥**，不能同时接入。
+
+**ToBid 8 个广告源（Phase 5A.19 接入，全部 5.5.6）**：
+- 穿山甲（CSJ）+ GroMore（共享 BUAdSDK 7.6.0.4）
+- 腾讯优量汇（GDT 4.15.90）
+- 百度联盟（10.050）
+- 快手（KS 5.4.10.1）
+- Mintegral 国内版（7.7.6）
+- 章鱼（Octopus 2.6.4.29）
+- 美数（MS 2.7.18.1）
+- Sigmob（ToBid Core 内置）
+
+宿主 App 需要自行配置 SKAdNetwork / ATT / ATS，详见 `doc/flame_mediation/tobid-5.5.6-selected-adnetworks-host-config.md`。
 
 ## 客户接入方式
 
