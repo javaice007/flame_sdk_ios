@@ -7,6 +7,55 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.18D-B1：TB Native SelfRender 图片生命周期加固（本次 fix commit）
+
+**变更类型**：SDK 内部 SelfRender View 异步图片回调加固。**Flame 公共 API 零修改，Demo 业务调用零修改，TbNativeAdapter 主流程零修改。**
+
+**触发**：Phase 5A.18D-B 验收报告（commit `17df710`）发现一个代码缺口——`TbNativeSelfRenderView.loadImageWithURL:` 的 icon 图片下载回调只做 error/data 校验，未校验 generation/cleanedUp/View 身份。本阶段定向修复该缺口，不扩大到视频/多图片模式重构。
+
+**核心改动**（仅 `flame_sdk_ios/adapter/tb/TbNativeSelfRenderView.{h,m}`）：
+
+1. **新增 3 个生命周期字段**：
+   - `BOOL _cleanedUp`：cleanup 后置 YES，init 置 NO
+   - `NSUInteger _imageGeneration`：每次 init/applyMaterial/cleanup 时 +1
+   - `NSString *_currentIconURL`：当前请求 URL，回调时校验一致性
+
+2. **`loadImageWithURL:` 回调新增 8 重校验**（spec §四完整要求）：
+   - self 存在 / cleanedUp==NO / generation 一致 / imageView 仍是当前 self.iconImageView / URL 与 self.currentIconURL 一致 / data 有效 / image 可解码 / task 未过期
+
+3. **`cleanup` 流程加固**：先 `cleanedUp=YES` + `imageGeneration+=1` + `currentIconURL=nil`，再取消 task 和移除子控件。即使 dispatch_async 队列里的迟到回调到达，第 2 重校验直接 return。
+
+4. **`applyMaterial` 入口 imageGeneration+=1**：新物料加载前递增，区分新旧请求。
+
+**竞态测试**（spec §7.1 静态代码路径推演，未引第三方测试）：
+- 场景 A（cleanup 中途返回）：cleanedUp==YES 短路 ✅
+- 场景 B（A→B 物料切换）：generation 不匹配 ✅
+- 场景 C（destroy 后返回）：cleanedUp==YES 短路 ✅
+- 场景 D（re-enter 新 View）：新实例独立 generation ✅
+
+**关键事实**：
+- 本 View 只用 NSURLSession 加载 icon；主图（mainImageView/mediaView）由 WindMill 内部加载，不归本 View 管。
+- 加固范围仅限 icon 路径，main/group/media 不受本修复影响（也不需要）。
+
+**构建验证**：
+- ✅ XCFramework 双 Archive SUCCEEDED（840 KB）
+- ✅ TB Demo iphoneos BUILD SUCCEEDED
+- ✅ TK Demo iphoneos BUILD SUCCEEDED（回归，未引入 ToBid 污染）
+- ✅ AnyThink weak-link 保留
+
+**红线遵守**：
+- 未改公共 API / FlameNativeAd / FlameTKProvider / AtNativeAdapter / Demo 业务调用
+- 未改 TbNativeAdapter（spec §六要求，仅改 SelfRenderView）
+- 未改 Splash/Reward/Interstitial/Banner Adapter
+- 未改 podspec / 版本号
+- 未 push / tag / release
+
+**未验证项**：
+- 真机定向回归（Express + sigmob SelfRender 快速 destroy/re-enter）待用户 Run
+- 视频模式 / SmallImage / PortraitImage / GroupImage 布局继续标记未专项真机验证（本阶段不要求）
+
+---
+
 ### Phase 5A.19：ToBid 5.5.6 选定广告源全量接入（本次 feature commit）
 
 **变更类型**：TB podspec 依赖扩展（接入完整包选定的 8 个广告源）。**Flame 公共 API 零修改，Demo 业务代码零修改，Native 实现零修改。**

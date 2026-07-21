@@ -63,6 +63,33 @@
 // 图片下载任务（可取消）
 @property (nonatomic, strong) NSMutableArray<NSURLSessionDataTask *> *imageTasks;
 
+// =============================================================================
+// Phase 5A.18D-B1：异步图片回调生命周期加固
+// =============================================================================
+// 缺口背景：原实现 loadImageWithURL: 回调只做 error/data 校验，没校验
+//   - View 是否已 cleanup（destroyed/re-enter 场景）
+//   - 该 view 实例是否仍是当前 icon 容器
+//   - 该请求 generation 是否仍是最新
+// 即使 cleanup 取消了 task，NSURLSession cancel 后仍会回调（error=cancelled），
+// dispatch_async 到主线程后才执行——若无校验，可能在已 cleanup 的 view 上
+// 触发 setNeedsLayout 或更新到已被复用的 imageView。
+//
+// 加固策略（参考 spec §四）：
+//   - _cleanedUp：cleanup 时置 YES，init 时置 NO（用于快速短路）
+//   - _imageGeneration：每次 init/cleanup 时 +1，请求时捕获 requestGeneration
+//   - _currentIconURL：当前正在请求的 icon URL，回调时校验一致性
+//   - completion 内同时校验：self / cleanedUp / generation / imageView 身份 / URL 一致
+// =============================================================================
+
+/// 是否已 cleanup（YES 时所有迟到图片回调直接丢弃）
+@property (nonatomic, assign) BOOL cleanedUp;
+
+/// 图片请求 generation（每次 init 或 cleanup 时 +1）
+@property (nonatomic, assign) NSUInteger imageGeneration;
+
+/// 当前 icon 请求 URL（用于回调一致性校验，防止 URL 复用冲突）
+@property (nonatomic, copy, nullable) NSString *currentIconURL;
+
 @end
 
 @implementation TbNativeSelfRenderView
@@ -79,6 +106,9 @@
         _isVideoAd = nativeAd.isVideoAd;
         _imageTasks = [NSMutableArray array];
         _groupImageViews = [NSMutableArray array];
+        // 5A.18D-B1：生命周期字段初始值
+        _cleanedUp = NO;
+        _imageGeneration = 1;  // 起始非 0，便于 dispatch_async 捕获时区分"未初始化"
         [self setupSubviews];
         [self applyMaterial];
     }
@@ -154,10 +184,14 @@
     }
 
     // icon（WindMill 不提供，自建 + NSURLSession 下载）
+    // 5A.18D-B1：每次 applyMaterial 前先递增 generation（用于回调时区分新旧请求）
+    self.imageGeneration += 1;
     if (ad.iconUrl.length > 0) {
+        self.currentIconURL = [ad.iconUrl copy];  // 记录当前 URL，回调时校验
         [self loadImageWithURL:ad.iconUrl imageView:self.iconImageView];
         self.iconImageView.hidden = NO;
     } else {
+        self.currentIconURL = nil;
         self.iconImageView.hidden = YES;
     }
 
@@ -400,21 +434,58 @@
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) return;
 
+    // 5A.18D-B1：捕获请求时 generation / URL / imageView 身份
+    // 所有捕获都用 weak（避免延长 view 生命周期），主线程回调时再做强校验
+    NSUInteger requestGeneration = self.imageGeneration;
+    NSString *requestURLString = [urlString copy];
+    __weak UIImageView *weakImageView = imageView;
+    __weak typeof(self) weakSelf = self;
+
     NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url
                                                               completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        // NSURLSession cancel 后仍会调本回调（error=NSURLErrorCancelled），
+        // dispatch_async 到主线程后必须做完整校验，不能假定 cancel 就不回调
         dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            UIImageView *strongImageView = weakImageView;
+
+            // 完整 8 重校验（spec §四）：
+            // 1. self 存在
+            if (!strongSelf) {
+                return;
+            }
+            // 2. View 未 cleanup（destroyed/re-enter 场景）
+            if (strongSelf.cleanedUp) {
+                return;
+            }
+            // 3. generation 一致（新物料请求已发出，本回调过期）
+            if (requestGeneration != strongSelf.imageGeneration) {
+                return;
+            }
+            // 4. 目标 imageView 仍是当前 self.iconImageView（防止 view 复用）
+            if (strongImageView != strongSelf.iconImageView) {
+                return;
+            }
+            // 5. 当前 URL 仍与本请求 URL 一致（防止 URL 复用冲突）
+            NSString *currentURL = strongSelf.currentIconURL;
+            if (!currentURL || ![currentURL isEqualToString:requestURLString]) {
+                return;
+            }
+
+            // 校验通过，处理结果
             if (error || !data) {
-                [FlameLogger d:[NSString stringWithFormat:@"[TB_NATIVE_DIAG] icon load fail: %@ err=%@",
+                [FlameLogger d:[NSString stringWithFormat:
+                    @"[TB_NATIVE_DIAG] icon load fail: %@ err=%@",
                     urlString, error.localizedDescription]];
-                imageView.hidden = YES;
+                strongImageView.hidden = YES;
                 return;
             }
             UIImage *image = [UIImage imageWithData:data];
             if (image) {
-                imageView.image = image;
-                [self setNeedsLayout];  // 触发重新布局（icon 加载完后高度可能变化）
+                strongImageView.image = image;
+                [strongSelf setNeedsLayout];  // 触发重新布局（icon 加载完后高度可能变化）
             } else {
-                imageView.hidden = YES;
+                strongImageView.hidden = YES;
             }
         });
     }];
@@ -425,6 +496,12 @@
 #pragma mark - cleanup
 
 - (void)cleanup {
+    // 5A.18D-B1：先标记 cleanedUp + 递增 generation，确保 dispatch_async 队列里的
+    // 迟到回调即使后续到达也会被 loadImageWithURL 回调里的 8 重校验直接丢弃
+    self.cleanedUp = YES;
+    self.imageGeneration += 1;
+    self.currentIconURL = nil;
+
     // 取消进行中的图片下载（仅 icon）
     for (NSURLSessionDataTask *task in self.imageTasks) {
         [task cancel];
@@ -450,6 +527,8 @@
     self.nativeAd = nil;
     self.nativeAdView = nil;
     self.onLayoutChanged = nil;
+    // cleanedUp / imageGeneration 不重置：cleanup 后 view 不再复用，
+    // 保持 cleanedUp=YES / generation 已 +1 即可阻断所有迟到回调
 }
 
 @end

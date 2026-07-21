@@ -264,8 +264,14 @@
 - **前后台切换** 无重复曝光
 - **无旧图回调**（异步图片竞争）
 
-### 代码缺口（spec §十三要求，当前实现不完整）
-- **`loadImageWithURL:` 缺 generation/destroyed 校验**：icon 图片下载完成回调内只做 error/data 校验，未比对 `_generation` 或 self 是否已 destroy。虽然 `cleanup` 会取消进行中的 task，但极端竞态下仍可能在 destroy 后触发 `setNeedsLayout`。**不影响主流程，但不符合 spec §十三"generation 校验 + 当前 View 身份校验 + destroy 后不更新"严格要求**。
+### 代码缺口（spec §十三要求）
+- ~~**`loadImageWithURL:` 缺 generation/destroyed 校验**~~ → **已于 Phase 5A.18D-B1 修复**（见下）
+
+**Phase 5A.18D-B1 修复内容**（commit `12c77e4`）：
+- `TbNativeSelfRenderView` 新增 3 个生命周期字段：`_cleanedUp` / `_imageGeneration` / `_currentIconURL`
+- `loadImageWithURL:` 回调新增 8 重校验：self 存在 / cleanedUp==NO / generation 一致 / imageView 身份 / URL 一致 / data 有效 / image 可解码 / task 未过期
+- `cleanup` 先 `cleanedUp=YES` + `imageGeneration+=1` + `currentIconURL=nil`，再取消 task
+- 静态代码路径推演覆盖 spec §7.1 的 4 个竞态场景（cleanup 中途返回 / A→B 物料切换 / destroy 后返回 / re-enter）
 
 ### 功能未真机验证
 - **视频 mediaView**（spec §七 视频模式）：代码已实现 reparent mediaView 路径，但无真机 feedADMode=14/15/16 物料验证
@@ -276,4 +282,4 @@
 
 ## 17. /compact
 
-Phase 5A.18D-B 验收补齐：3 个 commit（43c964a/d14b8e3/92e418d）已完成 TB Native 物料驱动双渲染对齐，Express + SelfRender 双真机链路通过。fallback warning、14003/14004 移除、回调映射、destroy 生命周期均符合 spec。已知缺口：NSURLSession icon 回调缺 generation 校验（不影响主流程）；视频/SmallImage/PortraitImage/GroupImage 布局代码已实现但未真机验证。
+Phase 5A.18D-B 验收补齐：3 个 commit（43c964a/d14b8e3/92e418d）已完成 TB Native 物料驱动双渲染对齐，Express + SelfRender 双真机链路通过。fallback warning、14003/14004 移除、回调映射、destroy 生命周期均符合 spec。Phase 5A.18D-B1 已修复 icon NSURLSession 回调的生命周期缺口（generation/cleanedUp/URL/View 身份校验）。仍未验证：视频/SmallImage/PortraitImage/GroupImage 布局（代码已实现）。
