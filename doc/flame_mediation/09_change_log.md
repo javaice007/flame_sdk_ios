@@ -7,6 +7,58 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.18D-C：TbNativeSelfRenderView 布局修复（对齐官方 ToBid demo 模式）
+
+**变更类型**：SDK 内部 SelfRender View 重写（复用 WindMill 提供的 mainImageView/mediaView/logoView/dislikeButton）。**Flame 公共 API 零修改，Demo 业务调用零修改。**
+
+**触发**：用户真机反馈"能出来了 但是布局不对"（GDT feedADMode=3 LargeImage 自渲染首次展示，卡片下方大片黑色空白，clickableViews=3）。
+
+**根因（三层）**：
+1. **架构错误**：旧实现自建 mainImageView + NSURLSession 下载主图，与 WindMillNativeAdView 自带的 mainImageView 冲突（WindMill 内部已加载，开发者下载是冗余）。
+2. **高度不回写**：SelfRenderView.layoutSubviews 改了自身 frame.height，但 nativeAdView 仍是 initialFrame `{402, 874}`，导致卡片下方空白。
+3. **clickableViews 过滤**：旧 `image != nil` 过滤导致图片未加载完的 view 被排除。
+
+**核心改动（对齐官方 ToBid demo `NativeAdView.swift` / `NativeAdStyle.swift`）**：
+
+1. **`TbNativeSelfRenderView.h`**：
+   - init 签名加 `nativeAdView:` 参数（用于借用 WindMill 提供的 view）
+   - 新增 `onLayoutChanged` block（高度变化回调给 Adapter）
+
+2. **`TbNativeSelfRenderView.m`**：
+   - **移除自建 mainImageView + NSURLSession 下载主图**
+   - **新增 `reparentMediaViewsFromNativeAdView`**：把 WindMill 的 `mainImageView` / `mediaView` / `imageViewList` / `logoView` / `dislikeButton` reparent 到本 view 下
+   - **布局规范对齐 `NativeAdStyle.swift`**：icon 50×50 / 主图 16:9（LargeImage/Video）/ 组图 width×0.3 / 竖图 3:4 / cta sizeToFit+28×12 / logo 30×15 / dislike 24×24 右上
+   - **`clickableViews` 去掉 `image != nil` 过滤**：WindMill view 由 SDK 内部负责延迟响应点击
+   - **layoutSubviews 末尾调 `onLayoutChanged(height)`**：通知 Adapter 回写 nativeAdView 高度
+   - `cleanup` 不释放 WindMill 的 view（归 nativeAdView 管）
+
+3. **`TbNativeAdapter.m` setupSelfRenderInContainer**：
+   - **refreshData 前置**（让 WindMill 先准备 mainImageView/mediaView/logoView/dislikeButton）
+   - **设置 onLayoutChanged block**：收到高度后回写 `_nativeAdView.frame.size.height`
+   - **首次同步 + 兜底回写**：setupSelfRenderInContainer 末尾再读一次 selfRenderView.frame.height 兜底
+   - 诊断日志增强：`hasMainImage` / `hasMediaView` / `hasDislike` / `realHeight`
+
+**Reparent 安全性**：
+- 不改变 view 所有权（view 归属仍属 nativeAdView）
+- 官方 demo 同样使用此模式（`TBNativeAdView.swift:70 adView.addSubview(titleLabel)`）
+- cleanup 时不主动 removeFromSuperview WindMill 的 view
+
+**符号验证**：
+- `-initWithNativeAd:nativeAdView:containerSize:` 两 slice ✅
+- `-onLayoutChanged` + `_onLayoutChanged` ivar ✅
+- `-reparentMediaViewsFromNativeAdView` ✅
+- `-mediaHeightForWidth:` ✅
+- 新诊断字符串（selfRender setup / reparentMediaViews）✅
+- WindMill selector 引用（mainImageView/mediaView/logoView/dislikeButton/imageViewList）✅
+
+**构建**：XCFramework 双 Archive SUCCEEDED（384K）；TB Demo 7 pods BUILD SUCCEEDED。
+
+**未验证项（待用户真机 Run）**：GDT LargeImage 自渲染布局正确性（卡片紧贴顶部、无黑色空白、主图 16:9、clickableViews≥5）；视频 mediaView；组图三图横排。
+
+详见 `doc/flame_mediation/phase-5a.18d-c-tb-native-layout-fix.md`。
+
+---
+
 ### Phase 5A.18D-B：TB Native 物料驱动双渲染对齐实现（本次 feature commit）
 
 **变更类型**：SDK 内部新增 SelfRender View + 改造 TbNativeAdapter 为物料驱动（与 TK 行为对齐）。**Flame 公共 API 零修改，Demo 业务调用零修改。**

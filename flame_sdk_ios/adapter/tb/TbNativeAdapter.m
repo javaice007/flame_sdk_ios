@@ -225,35 +225,63 @@
     }
 }
 
-/// Phase 5A.18D-B：SelfRender 自渲染路径
+/// Phase 5A.18D-C：SelfRender 自渲染路径（对齐官方 ToBid demo 模式）
 - (void)setupSelfRenderInContainer:(UIView *)container viewWidth:(CGFloat)viewWidth {
-    // 创建 TbNativeSelfRenderView（从 _nativeAd 读物料，manual frame 布局）
-    _selfRenderView = [[TbNativeSelfRenderView alloc] initWithNativeAd:_nativeAd
-                                                          containerSize:CGSizeMake(viewWidth, 0)];
-    // 挂为 nativeAdView 的子 view（SelfRenderView 内部布局完成时会更新自身 frame.size.height）
-    [self->_nativeAdView addSubview:self->_selfRenderView];
-
-    // 绑定物料到 nativeAdView（必须，触发内部可点击/曝光状态）
+    // 1. 先 refreshData 让 WindMill 准备 mainImageView/mediaView/logoView/dislikeButton
+    //    （必须在创建 SelfRenderView 之前，让它能正确借用 WindMill 的 view）
     [self->_nativeAdView refreshData:self->_nativeAd];
 
-    // 注册 clickableViews（SelfRenderView 提供实际可见的可点击控件）
+    // 2. 创建 TbNativeSelfRenderView（借用 WindMill 提供的 mainImageView/mediaView/logoView/dislikeButton）
+    self->_selfRenderView = [[TbNativeSelfRenderView alloc] initWithNativeAd:self->_nativeAd
+                                                              nativeAdView:self->_nativeAdView
+                                                              containerSize:CGSizeMake(viewWidth, 0)];
+
+    // 3. 设置高度变化回调（icon 异步加载完成后，layoutSubviews 重算高度，回写 nativeAdView.frame.height）
+    __weak typeof(self) weakSelf = self;
+    self->_selfRenderView.onLayoutChanged = ^(CGFloat height) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || strongSelf->_destroyed) return;
+        if (height > 0 && strongSelf->_nativeAdView) {
+            CGRect f = strongSelf->_nativeAdView.frame;
+            if (f.size.height != height) {
+                f.size.height = height;
+                strongSelf->_nativeAdView.frame = f;
+            }
+        }
+    };
+
+    // 4. SelfRenderView 作为 nativeAdView 子 view，承载所有自渲染 UI 控件 + 借用的 WindMill view
+    [self->_nativeAdView addSubview:self->_selfRenderView];
+
+    // 5. 注册 clickableViews（SelfRenderView 自建 icon/title/desc/cta + WindMill 的 mainImageView/mediaView/dislikeButton）
     NSArray<UIView *> *clickables = [self->_selfRenderView clickableViews];
-    // 追加 SDK 提供的 dislikeButton / logoView（若存在）
-    if (self->_nativeAdView.dislikeButton) {
-        clickables = [clickables arrayByAddingObject:self->_nativeAdView.dislikeButton];
-    }
     [self->_nativeAdView setClickableViews:clickables];
 
-    [FlameLogger i:[NSString stringWithFormat:
-        @"[TB_NATIVE_DIAG] selfRender setup: selfRenderView=%p clickableViews=%lu",
-        self->_selfRenderView, (unsigned long)clickables.count]];
-
-    // 将 nativeAdView 加进 Demo 容器（曝光由 nativeAdViewWillExpose: 回调触发，不在此时）
+    // 6. 将 nativeAdView 加进 Demo 容器（曝光由 nativeAdViewWillExpose: 回调触发，不在此时）
     [container addSubview:self->_nativeAdView];
 
-    // 触发一次 layout（SelfRenderView 的 layoutSubviews 会按物料计算真实高度）
+    // 7. 触发首帧布局（SelfRenderView.layoutSubviews 算出真实高度，并通过 onLayoutChanged 回写）
     [self->_nativeAdView setNeedsLayout];
     [self->_nativeAdView layoutIfNeeded];
+
+    // 8. 兜底回写一次 nativeAdView 高度（首次同步）
+    CGFloat realHeight = self->_selfRenderView.frame.size.height;
+    if (realHeight > 0) {
+        CGRect f = self->_nativeAdView.frame;
+        if (f.size.height != realHeight) {
+            f.size.height = realHeight;
+            self->_nativeAdView.frame = f;
+        }
+    }
+
+    [FlameLogger i:[NSString stringWithFormat:
+        @"[TB_NATIVE_DIAG] selfRender setup: selfRenderView=%p nativeAdView=%p "
+        "clickableViews=%lu realHeight=%.1f hasMainImage=%d hasMediaView=%d hasDislike=%d",
+        self->_selfRenderView, self->_nativeAdView, (unsigned long)clickables.count,
+        realHeight,
+        (self->_nativeAdView.mainImageView != nil),
+        (self->_nativeAdView.mediaView != nil),
+        (self->_nativeAdView.dislikeButton != nil)]];
 }
 
 - (void)remove {
