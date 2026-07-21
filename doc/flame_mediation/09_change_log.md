@@ -7,7 +7,58 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.18D-A：TK Native 双渲染模式真实行为与 TB 对齐方案调研（本次 docs commit，等确认）
+### Phase 5A.18D-B：TB Native 物料驱动双渲染对齐实现（本次 feature commit）
+
+**变更类型**：SDK 内部新增 SelfRender View + 改造 TbNativeAdapter 为物料驱动（与 TK 行为对齐）。**Flame 公共 API 零修改，Demo 业务调用零修改。**
+
+**核心改动**：
+
+1. **新增 `flame_sdk_ios/adapter/tb/TbNativeSelfRenderView.{h,m}`**：镜像 TK `AtNativeSelfRenderView`，从 `WindMillNativeAd` 读 title/desc/iconUrl/imageUrlList/callToAction/rating；manual frame 布局（参考 TK）；NSURLSession 异步下载图片（不引入第三方库）；提供 `clickableViews` + `cleanup`。支持的 feedADMode：SmallImage/LargeImage/GroupImage/PortraitImage。
+2. **改造 `flame_sdk_ios/adapter/tb/TbNativeAdapter.m`**：
+   - **移除 load 阶段 SelfRender 拦截 + 14003**（所有 renderType 统一请求 WindMillNativeAdsManager）
+   - **移除 Express 下 feedADMode 严格校验**（switch 接受所有已知 feedADMode：SmallImage/LargeImage/GroupImage/PortraitImage/Video 系列；仅未知报 `ERROR_CODE_INVALID_PARAM`(14002)）
+   - **isReady 移除 renderType 判断**（只看 `_nativeAd.ready && _loaded && !_destroyed`）
+   - **showInContainer 按 `_nativeAd.feedADMode` 自动分支**（NativeExpress→模板 refreshData + 等 renderSuccess；非 5→TbNativeSelfRenderView + setClickableViews）
+   - **新增 `[TB_NATIVE_RENDER_MODE_FALLBACK]` warning**（偏好与实际不一致仅日志，不影响渲染，与 TK AtNativeAdapter.m:194-198 同构）
+   - **destroy 清理 `_selfRenderView.cleanup`**
+
+**对齐行为表（与 TK 一致）**：
+| renderType hint | 实际物料 | TB 最终行为 |
+|---|---|---|
+| SelfRender | SelfRender | SelfRender |
+| SelfRender | NativeExpress | Express，+ warning |
+| Express | NativeExpress | Express |
+| Express | SelfRender | SelfRender，+ warning |
+
+**feedADMode 分类**（核对自 WindMillSDK.h:1807-1816）：
+- SmallImage(2) / LargeImage(3) / GroupImage(4) / PortraitImage(6) → SelfRender 图片（TbNativeSelfRenderView）
+- NativeExpress(5) → 模板渲染（WindMillNativeAdView.refreshData + renderSuccess）
+- Video(14/15/16) → 本阶段不自研播放器（mediaView 留后续）
+- 未知 → 14002
+
+**符号验证**：
+- `TbNativeSelfRenderView` 两 slice 各 2 ✅
+- `TB_NATIVE_SELF_RENDER_NOT_IMPLEMENTED` UTF-16 = 0（已从 Native 移除）✅
+- `TB_NATIVE_RENDER_MODE_FALLBACK` UTF-16 两 slice 各 1（新增 warning）✅
+- `TB_NATIVE_DIAG` 两 slice 各 35 ✅
+- `TB_SELF_RENDER_UNSUPPORTED` UTF-16 = 1（Banner 降级日志，未改，隔离保留）✅
+- AnyThink LC_LOAD_WEAK_DYLIB 无回归；TbBanner/Splash/Interstitial/Reward 符号无回归 ✅
+
+**构建**：XCFramework 双 Archive SUCCEEDED；TB Demo 7 pods BUILD SUCCEEDED；TK Demo 28 pods BUILD SUCCEEDED（AtNativeAdapter 不变，TbNativeSelfRenderView 不进 TK）。
+
+**Banner SelfRender 隔离**：TbBannerAdapter 未改，Banner SelfRender 14003 降级行为完全保留。
+
+**红线遵守**：未修改 Flame 公共 API / AtNativeAdapter / AtNativeSelfRenderView / FlameTKProvider / Demo 业务调用 / TbBannerAdapter / podspec；未 push/tag/release。
+
+**Mintegral Adapter 处置**：5A.18C.1 临时接入的 MintegralAdapter（`811f430`）本轮未改动，保留待用户决定（M1 保留 / M2 移除）。
+
+**未验证项（留 5A.18D-C）**：GDT feedADMode=3 LargeImage 真机自渲染展示（主图/标题/描述/CTA）；clickableViews 真实点击；`nativeAdViewWillExpose:` → `onAdShow`；dislike → `onAdClosed`；destroy/re-enter 闭环。
+
+详见 `doc/flame_mediation/phase-5a.18d-b-tb-native-dual-render-implementation.md`。
+
+---
+
+### Phase 5A.18D-A：TK Native 双渲染模式真实行为与 TB 对齐方案调研（docs commit `c586895`）
 
 **变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
 

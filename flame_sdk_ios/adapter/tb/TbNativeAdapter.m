@@ -7,6 +7,7 @@
 //
 
 #import "TbNativeAdapter.h"
+#import "TbNativeSelfRenderView.h"
 #import "FlameLogger.h"
 #import "FlameErrorCode.h"
 #import <WindMillSDK/WindMillSDK.h>
@@ -18,6 +19,8 @@
     WindMillNativeAd *_nativeAd;
     /// 当前 WindMillNativeAdView（showInContainer 后创建，refreshData 触发渲染）
     WindMillNativeAdView *_nativeAdView;
+    /// 当前 TbNativeSelfRenderView（仅 SelfRender 模式，showInContainer 后创建）
+    TbNativeSelfRenderView *_selfRenderView;
     /// showInContainer 传入的容器（weak，Demo 持有）
     __weak UIView *_container;
 
@@ -29,11 +32,11 @@
     // ---- 状态标记（参考 TbBannerAdapter / AtNativeAdapter 模式）----
     BOOL _isLoading;                    // manager 请求中
     BOOL _loaded;                       // manager 成功且已选出 nativeAd
-    BOOL _rendering;                    // refreshData 后等 render success/fail
-    BOOL _rendered;                     // 模板渲染成功
+    BOOL _rendering;                    // refreshData 后等 render success/fail（仅 Express 模板）
+    BOOL _rendered;                     // 模板渲染成功（仅 Express）
     BOOL _shown;                        // 首次曝光已触发
     BOOL _destroyed;                    // destroy 后阻断迟到回调（generation 守卫）
-    BOOL _selfRenderUnsupportedReported; // SelfRender 降级日志幂等
+    BOOL _fallbackReported;             // render mode 不一致 warning 已输出（幂等）
     NSInteger _generation;              // 异步块 generation（destroy/load 时 +1）
 }
 
@@ -73,44 +76,14 @@
     (void)userCustomData;  // WindMillAdRequest 无 userCustomData 字段（native 不用）
 
     // ============================================================
-    // Phase 5A.18B：Native SelfRender 明确降级为"未实现"
-    // （不是 ToBid 不支持，而是当前 Flame SDK 的 ToBid Native SelfRender 桥接尚未接入）
+    // Phase 5A.18D-B：renderType 仅作偏好 hint（与 TK 对齐）
+    // 请求阶段不再按 renderType 分流——所有 renderType 均统一请求 WindMillNativeAdsManager，
+    // 实际渲染模式在 showInContainer: 时由 _nativeAd.feedADMode 决定（物料驱动）。
+    // （原 5A.18B 的 SelfRender 拦截 + 14003 在 Native 链路已撤销；
+    //  Banner SelfRender 的 14003 降级行为不受影响，仍保留在 TbBannerAdapter。）
     // ============================================================
-    if (_renderType == FlameNativeRenderTypeSelfRender) {
-        _isLoading = NO;
-        _loaded = NO;
 
-        if (!_selfRenderUnsupportedReported) {
-            _selfRenderUnsupportedReported = YES;
-            [FlameLogger w:[NSString stringWithFormat:
-                @"[TB_NATIVE_SELF_RENDER_NOT_IMPLEMENTED] platform=tb | mediation=ToBid | "
-                "mediationSdkVersion=5.5.6 | adFormat=native | renderMode=self_render | "
-                "capability=sdk_not_implemented | action=skip_request | "
-                "expressNativeAffected=false | message=\"当前 SDK 的 ToBid Native 自渲染能力尚未接入\""]];
-        }
-
-        // 异步派发到主线程回调一次 onAdError（避免 load 方法内同步回调导致业务方状态未就绪）
-        // 复用 ERROR_CODE_UNSUPPORTED_PLATFORM（公共错误码 14003：不支持的聚合平台）
-        // 注：此场景语义为"SDK 桥接未实现"，但 Flame 公共错误体系未提供更贴切的码；
-        //     错误描述明确说明"尚未接入"，与 5A.17B Banner SelfRender 降级口径一致。
-        NSInteger gen = _generation;
-        __weak typeof(self) weakSelf = self;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || strongSelf->_destroyed || strongSelf->_generation != gen) {
-                return;
-            }
-            if (strongSelf.listener && [strongSelf.listener respondsToSelector:@selector(onAdError:desc:)]) {
-                [strongSelf.listener onAdError:ERROR_CODE_UNSUPPORTED_PLATFORM
-                                         desc:@"当前 SDK 的 ToBid Native 自渲染能力尚未接入"];
-            }
-        });
-        return;
-    }
-
-    // ============================================================
-    // Express 模式：参数校验（顺序与 AtBannerAdapter/AtNativeAdapter 一致）
-    // ============================================================
+    // 参数校验（顺序与 AtBannerAdapter/AtNativeAdapter 一致）
     if (_atPlacementId == nil || _atPlacementId.length == 0) {
         [FlameLogger e:[NSString stringWithFormat:@"[TB_NATIVE_DIAG] load: placementId empty, adapter=%p", self]];
         [self notifyErrorOnMainThread:ERROR_CODE_INVALID_AD_PLACEMENT
@@ -169,22 +142,14 @@
 }
 
 - (BOOL)isReady {
-    // Express 模式：需要 nativeAd 存在 + nativeAd.ready + loaded + 未 destroy
-    // （与 AtNativeAdapter 语义一致：load 成功即可 show，render 在 showInContainer 触发）
+    // Phase 5A.18D-B：renderType 不再参与判断（物料驱动，与 TK 一致）
     if (_destroyed) return NO;
-    if (_renderType != FlameNativeRenderTypeExpress) return NO;
     if (!_loaded || _nativeAd == nil) return NO;
     return _nativeAd.ready;
 }
 
 - (void)showInContainer:(UIView *)container {
-    // SelfRender 模式：安全 no-op（load 阶段已 onAdError，这里不重复回调）
-    if (_renderType == FlameNativeRenderTypeSelfRender) {
-        [FlameLogger i:@"[TB_NATIVE_DIAG] showInContainer: SelfRender mode not implemented, no-op"];
-        return;
-    }
-
-    // 前置校验
+    // 前置校验（renderType 不再拦截；所有 renderType 都可进入）
     if (_destroyed) {
         [FlameLogger w:@"[TB_NATIVE_DIAG] showInContainer: adapter destroyed"];
         return;
@@ -198,15 +163,19 @@
             @"[TB_NATIVE_DIAG] showInContainer: not ready (nativeAd=%p loaded=%d)", _nativeAd, _loaded]];
         return;
     }
-    if (_rendering || _rendered) {
-        [FlameLogger w:@"[TB_NATIVE_DIAG] showInContainer: already rendering/rendered, skip"];
+    if (_rendering || _rendered || _shown) {
+        [FlameLogger w:@"[TB_NATIVE_DIAG] showInContainer: already rendering/rendered/shown, skip"];
         return;
     }
 
     _container = container;
     _containerBoundsAtShow = container.bounds;
 
-    // 清理旧 NativeAdView（若存在）
+    // 清理旧 NativeAdView / SelfRenderView（若存在）
+    if (_selfRenderView) {
+        [_selfRenderView cleanup];
+        _selfRenderView = nil;
+    }
     if (_nativeAdView) {
         _nativeAdView.delegate = nil;
         [_nativeAdView unregisterDataObject];
@@ -214,23 +183,77 @@
         _nativeAdView = nil;
     }
 
-    // 创建 WindMillNativeAdView，初始 frame 用容器宽度 + 请求高度（模板会在 renderSuccess 后更新真实高度）
+    // ============================================================
+    // Phase 5A.18D-B：按 _nativeAd.feedADMode 自动分支（物料驱动，与 TK 一致）
+    // ============================================================
+    BOOL actualIsExpress = (_nativeAd.feedADMode == WindMillFeedADModeNativeExpress);
+
+    // 模式不一致 warning（仅日志，不影响渲染——与 TK AtNativeAdapter.m:194-198 同构）
+    BOOL preferExpress = (_renderType == FlameNativeRenderTypeExpress);
+    if (preferExpress != actualIsExpress && !_fallbackReported) {
+        _fallbackReported = YES;
+        NSString *preferred = preferExpress ? @"express" : @"self_render";
+        NSString *actual = actualIsExpress ? @"express" : @"self_render";
+        [FlameLogger w:[NSString stringWithFormat:
+            @"[TB_NATIVE_RENDER_MODE_FALLBACK] preferredRenderMode=%@ | actualFeedADMode=%u | "
+            "actualRenderMode=%@ | action=render_actual_material | "
+            "message=\"请求渲染偏好与实际物料模式不一致，已按物料能力渲染\"",
+            preferred, (unsigned int)_nativeAd.feedADMode, actual]];
+    }
+
+    // 创建 WindMillNativeAdView
     CGFloat viewWidth = _containerBoundsAtShow.size.width > 0 ? _containerBoundsAtShow.size.width : _requestedSize.width;
     CGFloat viewHeight = _requestedSize.height > 0 ? _requestedSize.height : 100;
     CGRect initialFrame = CGRectMake(0, 0, viewWidth, viewHeight);
-
     _nativeAdView = [[WindMillNativeAdView alloc] initWithFrame:initialFrame];
     _nativeAdView.delegate = self;
     _nativeAdView.viewController = self.viewController;
 
     [FlameLogger i:[NSString stringWithFormat:
-        @"[TB_NATIVE_DIAG] showInContainer: container=%p nativeAdView=%p initialFrame=%@ feedADMode=%u",
-        container, _nativeAdView, NSStringFromCGRect(initialFrame), (unsigned int)_nativeAd.feedADMode]];
+        @"[TB_NATIVE_DIAG] showInContainer: container=%p nativeAdView=%p initialFrame=%@ feedADMode=%u actualIsExpress=%d",
+        container, _nativeAdView, NSStringFromCGRect(initialFrame), (unsigned int)_nativeAd.feedADMode, actualIsExpress]];
 
-    // 绑定物料 → 触发 Native Express 异步模板渲染
-    _rendering = YES;
-    _rendered = NO;
-    [_nativeAdView refreshData:_nativeAd];
+    if (actualIsExpress) {
+        // ====== Native Express 模板渲染 ======
+        // refreshData 触发 ToBid 异步模板渲染 → 等 nativeExpressAdViewRenderSuccess: 回调
+        _rendering = YES;
+        _rendered = NO;
+        [_nativeAdView refreshData:_nativeAd];
+    } else {
+        // ====== Native SelfRender 自渲染（Phase 5A.18D-B 新增） ======
+        [self setupSelfRenderInContainer:container viewWidth:viewWidth];
+    }
+}
+
+/// Phase 5A.18D-B：SelfRender 自渲染路径
+- (void)setupSelfRenderInContainer:(UIView *)container viewWidth:(CGFloat)viewWidth {
+    // 创建 TbNativeSelfRenderView（从 _nativeAd 读物料，manual frame 布局）
+    _selfRenderView = [[TbNativeSelfRenderView alloc] initWithNativeAd:_nativeAd
+                                                          containerSize:CGSizeMake(viewWidth, 0)];
+    // 挂为 nativeAdView 的子 view（SelfRenderView 内部布局完成时会更新自身 frame.size.height）
+    [self->_nativeAdView addSubview:self->_selfRenderView];
+
+    // 绑定物料到 nativeAdView（必须，触发内部可点击/曝光状态）
+    [self->_nativeAdView refreshData:self->_nativeAd];
+
+    // 注册 clickableViews（SelfRenderView 提供实际可见的可点击控件）
+    NSArray<UIView *> *clickables = [self->_selfRenderView clickableViews];
+    // 追加 SDK 提供的 dislikeButton / logoView（若存在）
+    if (self->_nativeAdView.dislikeButton) {
+        clickables = [clickables arrayByAddingObject:self->_nativeAdView.dislikeButton];
+    }
+    [self->_nativeAdView setClickableViews:clickables];
+
+    [FlameLogger i:[NSString stringWithFormat:
+        @"[TB_NATIVE_DIAG] selfRender setup: selfRenderView=%p clickableViews=%lu",
+        self->_selfRenderView, (unsigned long)clickables.count]];
+
+    // 将 nativeAdView 加进 Demo 容器（曝光由 nativeAdViewWillExpose: 回调触发，不在此时）
+    [container addSubview:self->_nativeAdView];
+
+    // 触发一次 layout（SelfRenderView 的 layoutSubviews 会按物料计算真实高度）
+    [self->_nativeAdView setNeedsLayout];
+    [self->_nativeAdView layoutIfNeeded];
 }
 
 - (void)remove {
@@ -243,8 +266,8 @@
 
 - (void)destroy {
     [FlameLogger i:[NSString stringWithFormat:
-        @"[TB_NATIVE_DIAG] destroy: adapter=%p manager=%p nativeAd=%p nativeAdView=%p",
-        self, _manager, _nativeAd, _nativeAdView]];
+        @"[TB_NATIVE_DIAG] destroy: adapter=%p manager=%p nativeAd=%p nativeAdView=%p selfRenderView=%p",
+        self, _manager, _nativeAd, _nativeAdView, _selfRenderView]];
 
     _destroyed = YES;
     _generation += 1;  // 失效所有迟到异步块
@@ -256,6 +279,7 @@
     _rendering = NO;
     _rendered = NO;
     _shown = NO;
+    _fallbackReported = NO;
     _listener = nil;
     _viewController = nil;
     _atPlacementId = nil;
@@ -302,14 +326,29 @@
     }
 
     // ============================================================
-    // feedADMode 保护：只接受 NativeExpress（模板渲染）
+    // Phase 5A.18D-B：feedADMode 不再作为强约束（物料驱动，与 TK 一致）
+    // 接受所有已知 feedADMode（NativeExpress / SmallImage / LargeImage / GroupImage / PortraitImage / Video 系列），
+    // 实际渲染模式在 showInContainer: 时由 _nativeAd.feedADMode 自动分支。
+    // 仅对"未知 feedADMode"报错（防御性，不误判）。
     // ============================================================
-    if (selected.feedADMode != WindMillFeedADModeNativeExpress) {
-        [FlameLogger e:[NSString stringWithFormat:
-            @"[TB_NATIVE_DIAG] feedADMode mismatch: got=%u (expected NativeExpress=5)", (unsigned int)selected.feedADMode]];
-        [self notifyErrorOnMainThread:ERROR_CODE_INVALID_AD_PLACEMENT
-                                 desc:@"当前 ToBid Native 广告位未返回模板渲染广告，请检查后台渲染模式配置"];
-        return;
+    switch (selected.feedADMode) {
+        case WindMillFeedADModeNativeExpress:
+        case WindMillFeedADModeSmallImage:
+        case WindMillFeedADModeLargeImage:
+        case WindMillFeedADModeGroupImage:
+        case WindMillFeedADModePortraitImage:
+        case WindMillFeedADModeVideo:
+        case WindMillFeedADModeVideoPortrait:
+        case WindMillFeedADModeVideoLandSpace:
+            // 已知模式，接受
+            break;
+        default:
+            // 未知 feedADMode，返回 unsupported feed mode 错误（不崩溃、不误判、不强行渲染）
+            [FlameLogger e:[NSString stringWithFormat:
+                @"[TB_NATIVE_DIAG] unknown feedADMode: got=%u", (unsigned int)selected.feedADMode]];
+            [self notifyErrorOnMainThread:ERROR_CODE_INVALID_PARAM
+                                     desc:[NSString stringWithFormat:@"Unsupported native feedADMode: %u", (unsigned int)selected.feedADMode]];
+            return;
     }
 
     _nativeAd = selected;
@@ -565,6 +604,10 @@ didUpdatePlaybackTime:(double)currentTime
 
 /// 清理当前广告对象（manager + nativeAd + nativeAdView），不触发 listener 回调
 - (void)cleanupCurrentAd {
+    if (_selfRenderView) {
+        [_selfRenderView cleanup];
+        _selfRenderView = nil;
+    }
     if (_nativeAdView) {
         _nativeAdView.delegate = nil;
         [_nativeAdView unregisterDataObject];
