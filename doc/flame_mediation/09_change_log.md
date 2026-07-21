@@ -56,7 +56,7 @@
 - **1.0.0 正式版前必须在有效 CI 环境完整 lint 通过**
 
 **Git**（三仓库本地 commit）：
-- 开发仓库：`f5fee85` `fix: prepare remote distribution for 1.0.0-alpha.2`
+- 开发仓库：`4174940` `fix: prepare remote distribution for 1.0.0-alpha.2`
 - 二进制仓库：`91d51f1` `release: prepare Flame iOS SDK 1.0.0-alpha.2 binary`
 - Specs 仓库：未提交（spec §12 不发布正式版本）
 - push / tag / release：**均未执行**
