@@ -120,8 +120,11 @@
     // 创建 WindMillNativeAdsManager
     _manager = [[WindMillNativeAdsManager alloc] initWithRequest:request];
     _manager.delegate = self;
-    // adSize 设为请求尺寸（宽度驱动模板高度，参考 ToBid 官方 demo）
-    _manager.adSize = _requestedSize;
+    // adSize：宽度驱动模板渲染，height 传 0 让 WindMill 按物料自己算真实高度
+    // （参照 ToBid 官方 demo NativeAdViewModel.swift:64-66：height 默认 0，由 SDK 决定）
+    // 若 height > 0 仍传完整高度，模板广告会被强制拉伸到该高度（如屏幕高度 874），导致变形
+    // _requestedSize 仍保留原始 height 用于自渲染场景的初始 frame 兜底
+    _manager.adSize = CGSizeMake(width, 0);
 
     _isLoading = YES;
     _loaded = NO;
@@ -130,8 +133,8 @@
     _shown = NO;
 
     [FlameLogger i:[NSString stringWithFormat:
-        @"[TB_NATIVE_DIAG] load: adapter=%p manager=%p placementId=%@ adSize=%@ thread=%d",
-        self, _manager, _atPlacementId, NSStringFromCGSize(_manager.adSize), [NSThread isMainThread]]];
+        @"[TB_NATIVE_DIAG] load: adapter=%p manager=%p placementId=%@ adSize=%@ (requestedSize=%@) thread=%d",
+        self, _manager, _atPlacementId, NSStringFromCGSize(_manager.adSize), NSStringFromCGSize(_requestedSize), [NSThread isMainThread]]];
 
     // 加载广告（推荐 count=1，与 Banner 单条一致）
     [_manager loadAdDataWithCount:1];
@@ -203,7 +206,11 @@
 
     // 创建 WindMillNativeAdView
     CGFloat viewWidth = _containerBoundsAtShow.size.width > 0 ? _containerBoundsAtShow.size.width : _requestedSize.width;
-    CGFloat viewHeight = _requestedSize.height > 0 ? _requestedSize.height : 100;
+    // initialFrame 高度按渲染模式区分：
+    // - Express 模板：用一个保守的小值（100），等 renderSuccess 后 WindMill 按物料真实高度回写
+    //   若用 _requestedSize.height（如屏幕高 874），会被 ToBid 当作模板期望高度，导致拉伸变形
+    // - SelfRender 自渲染：用 _requestedSize.height 作初始值，SelfRenderView 会重新 layoutSubviews 算真实高度
+    CGFloat viewHeight = actualIsExpress ? 100 : (_requestedSize.height > 0 ? _requestedSize.height : 100);
     CGRect initialFrame = CGRectMake(0, 0, viewWidth, viewHeight);
     _nativeAdView = [[WindMillNativeAdView alloc] initWithFrame:initialFrame];
     _nativeAdView.delegate = self;
@@ -474,7 +481,10 @@
     }
 
     CGFloat renderWidth = container.bounds.size.width > 0 ? container.bounds.size.width : _requestedSize.width;
-    CGFloat renderHeight = nativeAdView.bounds.size.height > 0 ? nativeAdView.bounds.size.height : _requestedSize.height;
+    // 高度：优先用 WindMill 模板渲染后的真实 bounds.height
+    // 兜底：若 bounds.height 异常为 0，用一个保守比例（宽度的 0.75，约 3:4 卡片比例），
+    //       不用 _requestedSize.height（可能被业务设成屏幕高度 874，导致拉伸变形）
+    CGFloat renderHeight = nativeAdView.bounds.size.height > 0 ? nativeAdView.bounds.size.height : (renderWidth * 0.75);
 
     // 不拉伸模板广告：宽度用容器宽，高度用模板真实值
     nativeAdView.frame = CGRectMake(0, 0, renderWidth, renderHeight);
@@ -482,8 +492,8 @@
     [container addSubview:nativeAdView];
 
     [FlameLogger i:[NSString stringWithFormat:
-        @"[TB_NATIVE_DIAG] renderSuccess addSubview: container=%p nativeAdView=%p finalFrame=%@ requestedSize=%@",
-        container, nativeAdView, NSStringFromCGRect(nativeAdView.frame), NSStringFromCGSize(_requestedSize)]];
+        @"[TB_NATIVE_DIAG] renderSuccess addSubview: container=%p nativeAdView=%p finalFrame=%@ bounds=%@ requestedSize=%@",
+        container, nativeAdView, NSStringFromCGRect(nativeAdView.frame), NSStringFromCGRect(nativeAdView.bounds), NSStringFromCGSize(_requestedSize)]];
 
     // 不在此触发 onAdShow —— 曝光必须来自 ToBid 的 nativeAdViewWillExpose: 真实回调
 }
