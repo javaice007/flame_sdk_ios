@@ -7,7 +7,42 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
-### Phase 5A.18C.1：Mintegral Adapter 依赖接入（本次 build commit）
+### Phase 5A.18D-A：TK Native 双渲染模式真实行为与 TB 对齐方案调研（本次 docs commit，等确认）
+
+**变更类型**：仅文档（SDK 业务代码零改动，Demo 代码零改动）
+
+**核心结论（颠覆 5A.18B 的设计假设）**：
+
+1. **TK 端 `FlameNativeRenderType` 是非绑定 hint**——请求阶段完全不使用（同 placementId/extra/API），show 阶段**始终以物料 `nativeMaterial.isExpressAd` 为准**自动分支（`AtNativeAdapter.m:153 isExpressAd = materialIsExpress`），caller 的 renderType 仅作日志标签。公共头 `FlameNativeAd.h:88` 显式背书："如果后台实际返回的素材类型与设置不一致, SDK 会自动降级到素材支持的渲染方式"。
+
+2. **TK 请求/展示分离**：请求阶段 `loadADWithPlacementID:extra:delegate:` 与 renderType 无关（AnyThink 只有一个统一 native load 入口，无 ATNativeExpressAd）；展示阶段在 `showInContainer:` 内读 `offer.nativeAd.isExpressAd`，物料决定渲染模式（Express 分支 `rendererWithConfiguration:selfRenderView:nil`；SelfRender 分支构造 `AtNativeSelfRenderView`）。
+
+3. **TK SelfRender 完整实现**：`AtNativeSelfRenderView : UIView`（`adapter/tk/AtNativeSelfRenderView.{h,m}`），manual frame 布局，从 nativeMaterial 读 icon/title/mainText/ctaText/mainImage/advertiser/rating/logo 8 个字段；mediaView 由 Adapter 注入；点击/曝光/destroy 由 Adapter 负责（`registerClickableViewArray:` + `prepareWithNativePrepareInfo:` + `[offer rendererWithConfiguration:selfRenderView:nativeADView:]`）。
+
+4. **TB 当前严格分流（5A.18B）与 TK 行为不一致**：TB 把 renderType 当请求时强约束（SelfRender 直接 14003 不发请求），把 feedADMode 当展示时强约束（≠NativeExpress 直接 14004 不渲染）。**这是 5A.18C 真机验证始终走不到 showInContainer 链路的根因**——GDT 返回 feedADMode=3（自渲染 LargeImage），TB 直接 14004；而 TK 同场景会按自渲染渲染成功。
+
+5. **对齐方案 A2（推荐）**：新增 `TbNativeSelfRenderView.{h,m}`（镜像 TK 的 AtNativeSelfRenderView，从 WindMillNativeAd 读 title/desc/iconUrl/callToAction/imageUrlList/rating 自建 UI），改 TbNativeAdapter 移除严格分流按 `_nativeAd.feedADMode` 自动分支（NativeExpress→现有模板路径；非 5→TbNativeSelfRenderView 自渲染路径）。**公共 API 零修改，Demo 调用方式零修改**（可移除 `setRenderType(.express)`，行为自动正确）。GDT 真机返回的 feedADMode=3 自渲染物料即可走通。
+
+6. **5A.18B 口径修正**：
+   - "Native SelfRender 明确降级（14003）" → 应实现自渲染（方案 A2）
+   - "feedADMode 严格校验（≠5 即 14004）" → 应按物料自动分支（方案 A2）
+   - `[TB_NATIVE_SELF_RENDER_NOT_IMPLEMENTED]` 日志 → 5A.18D-B 实现后移除
+
+**方案对比**：
+| 方案 | 描述 | 与 TK 一致度 | 实现复杂度 |
+|---|---|---|---|
+| A1（最小） | 移除 load 拦截 + feedADMode 校验，但非 NativeExpress 物料 show 时仍报错 | 部分（load 一致，show 不一致） | 低 |
+| **A2（推荐）** | 新增 TbNativeSelfRenderView，按 feedADMode 自动分支完整渲染 | **完全一致** | 中（需新建 SelfRenderView） |
+| B | 保持严格分流但放宽 feedADMode | 部分 | 低 |
+| C | 维持现状，文档化差异 | 不一致 | 无 |
+
+**红线遵守**：未修改 TbNativeAdapter / Flame 公共 API / Demo / podspec / AtNativeAdapter；未 push/tag/release。
+
+详见 `doc/flame_mediation/phase-5a.18d-a-tk-native-dual-render-research.md`。
+
+---
+
+### Phase 5A.18C.1：Mintegral Adapter 依赖接入（build commit `811f430`）
 
 **变更类型**：TB podspec 依赖新增（非破坏性，SDK 业务代码零改动，Demo 代码零改动）
 
