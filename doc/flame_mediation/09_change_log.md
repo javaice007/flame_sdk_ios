@@ -7,6 +7,43 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.18C.1：Mintegral Adapter 依赖接入（本次 build commit）
+
+**变更类型**：TB podspec 依赖新增（非破坏性，SDK 业务代码零改动，Demo 代码零改动）
+
+**起因**：Phase 5A.18C Native Template 真机验证中，CSJ 官方测试位连续 no-fill（800110），需要接入第三家广告源做跨源交叉验证。
+
+**核心改动**：`flame_sdk_ios_tb.podspec` 加 `s.dependency 'ToBid-iOS-RC/MintegralAdapter', '5.5.6'`。
+
+**MintegralAdapter subspec 审计**（本地 ToBid-iOS-RC 5.5.6 podspec.json 证据）：
+- 准确 subspec 名称：`ToBid-iOS-RC/MintegralAdapter` ✅
+- 版本：5.5.6（与 ToBid-iOS-RC 锁定同版本）
+- 底层 SDK：`MintegralAdSDK 7.7.6`（8 个 subspec：BidNativeAd/BidRewardVideoAd/BidNativeAdvancedAd/BidBannerAd/BidSplashAd/NewInterstitialAd/BidNewInterstitialAd + 基础 MTGSDK）
+- vendored framework：`WindMillMTGAdapter.xcframework`
+- 最低 iOS：11.0（Flame 13.0，兼容）
+
+**已知限制**（不掩盖，如实记录）：
+- `WindMillMTGAdapter.xcframework` **仅含 `ios-arm64` slice（缺 simulator slice）**
+- 底层 MintegralAdSDK 7.7.6 的 8 个 `MTGSDK*.xcframework` 均含双 slice（arm64 + arm64_x86_64-simulator），缺 slice 的只有 ToBid 的 WindMillMTGAdapter 桥接层
+- 影响：TB Demo 的 `iphonesimulator` 构建会失败；`iphoneos` 真机构建不受影响
+- 本轮真机验证为主，**不使用 EXCLUDED_ARCHS 掩盖** simulator 限制
+
+**无冲突**：
+- MintegralAdSDK 7.7.6 与 GDTMobSDK 4.15.90 / Ads-CN 7.6.0.4 / OpenSSL 3.6.2000 无版本冲突
+- 无符号冲突（TB Demo iphoneos BUILD SUCCEEDED，无 duplicate symbols / undefined symbols）
+
+**构建验证**：
+- SDK XCFramework 双 Archive SUCCEEDED（Flame 二进制不直接链接 Mintegral，Adapter 由 ToBid 在 App 层静态归档）
+- TB Demo clean pod install 7 pods（+MintegralAdSDK 7.7.6），iphoneos BUILD SUCCEEDED
+- TK 回归：临时切 TK，28 pods BUILD SUCCEEDED，`Removing MintegralAdSDK` 确认 Mintegral 不进 TK
+- 已恢复 Demo 到 TB
+
+**红线遵守**：未修改 TbNativeAdapter / feedADMode 校验 / Flame 公共 API / Demo / TK podspec / AtNativeAdapter；未 push/tag/release。
+
+详见 `doc/flame_mediation/phase-5a.16a-tb-ad-network-integration-audit.md`（Mintegral 条目更新）。
+
+---
+
 ### Phase 5A.18B：TB Native Template Adapter 实现与静态验证（本次 feature commit）
 
 **变更类型**：SDK 内部新增 Adapter + Provider 工厂接入 + Demo 错误处理增强。**Flame 公共 API 零改动，Demo 调用方式零改动。**

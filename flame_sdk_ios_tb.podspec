@@ -101,11 +101,27 @@ Pod::Spec.new do |s|
   # 不在 Flame podspec 中重复声明底层 GDTMobSDK（由 ToBid 官方 subspec 管理，单一来源）。
   s.dependency 'ToBid-iOS-RC/GDTAdapter', '5.5.6'
 
+  # --- Phase 5A.18C：Mintegral（汇量科技）广告源 ---
+  # 用途：CSJ 官方测试位 no-fill（800110）后，接入 Mintegral 作为跨广告源 Native Template 验证。
+  # 集成方式：依赖 ToBid 官方 MintegralAdapter 子规范，由 ToBid-iOS-RC 5.5.6 统一管理底层 Mintegral SDK 版本。
+  # 实际依赖链（已从官方 podspec 确认）：
+  #   ToBid-iOS-RC/MintegralAdapter 5.5.6
+  #     → vendored WindMillMTGAdapter.xcframework
+  #     → MintegralAdSDK 7.7.6（8 个 subspec：BidNativeAd/BidRewardVideoAd/BidNativeAdvancedAd/
+  #       BidBannerAd/BidSplashAd/NewInterstitialAd/BidNewInterstitialAd + 基础）
+  #     → ToBid-iOS-RC/ToBidSDK（已有）
+  # ⚠️ 已知限制：WindMillMTGAdapter.xcframework 仅含 ios-arm64 slice（缺 simulator slice），
+  #    TB Demo 的 iphonesimulator 构建会失败；iphoneos 真机构建不受影响。
+  #    底层 MintegralAdSDK 7.7.6 的 8 个 MTGSDK*.xcframework 均含双 slice（arm64 + arm64_x86_64-simulator），
+  #    缺 slice 的只有 ToBid 的 WindMillMTGAdapter 桥接层。
+  #    本轮真机验证为主，不使用 EXCLUDED_ARCHS 掩盖 simulator 限制。
+  # 不在 Flame podspec 中重复声明底层 MintegralAdSDK（由 ToBid 官方 subspec 管理，单一来源）。
+  # 版本：MintegralAdapter 与 ToBid-iOS-RC 锁定同版本 5.5.6；Mintegral SDK 版本由 MintegralAdSDK subspec pin 为 7.7.6。
+  s.dependency 'ToBid-iOS-RC/MintegralAdapter', '5.5.6'
+
   # --- 后续批次（Phase 5A.16F+，按需启用，本阶段不接入）---
   #   s.dependency 'ToBid-iOS-RC/MSAdAdapter', '5.5.6'
   #   s.dependency 'ToBid-iOS-RC/OctopusAdapter', '5.5.6'
-  #   # Mintegral（注意 WindMillMTGAdapter.xcframework 仅 ios-arm64，缺 simulator slice）
-  #   # s.dependency 'ToBid-iOS-RC/MintegralAdapter', '5.5.6'
   #   # GroMore（与 CSJ 二选一，会重复带入 Ads-CN/BUAdSDK）
   #   # s.dependency 'ToBid-iOS-RC/GromoreAdapterLite', '5.5.6'
 
