@@ -7,6 +7,51 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.23：Flame iOS SDK 1.0.0 正式发布（本次 release commit）
+
+**变更类型**：版本号升级 + 正式版发布。**业务代码零修改，公共 API 零修改，无新增第三方依赖。**
+
+**版本**：`1.0.0`（正式稳定版）
+
+**用户授权**：
+- TK 广告已经完成真机测试，能够正常加载
+- TB 广告已经完成真机测试，能够正常加载
+- 不再重复执行全广告类型真机回归
+- 正式版本号固定为 1.0.0
+
+**核心改动**：
+1. `flame_sdk_ios.podspec` + `flame_sdk_ios_tb.podspec` 版本号 `1.0.0-alpha.2` → `1.0.0`
+2. 新增 `docs/releases/1.0.0.md`（独立完整版本快照，含 14 广告源矩阵 + 已知限制 + 验证状态口径）
+3. 更新 `docs/releases/README.md`（新增 1.0.0 条目，保留 alpha.2）
+4. 更新 `README.md`（推荐版本 1.0.0）
+5. 本 changelog 条目
+
+**二进制处理**：1.0.0 **复用 alpha.2 已验证 XCFramework**（自 alpha.2 发布后无 SDK 业务代码或二进制变化）。binary SHA-256 = `ca5aa99aa02ffa4ef8ac8f8fbd7d1f8bbb17fd59133151e231211db86838ebeb`。1.0.0 lightweight Tag 指向 `91d51f1`（与 alpha.2 同 commit）。
+
+**发布验证**（spec §十七门禁）：
+- ✅ 开发仓库正式版提交已 push
+- ✅ 二进制仓库 1.0.0 Tag 已 push（指向 `91d51f1`）
+- ✅ 真实 GitHub 1.0.0 归档包含 XCFramework（binary SHA-256 一致）
+- ✅ TK 1.0.0 真实 Specs 安装成功 + iphoneos BUILD SUCCEEDED
+- ✅ TB 1.0.0 真实 Specs 安装成功 + iphoneos BUILD SUCCEEDED
+- ✅ TK/TB module_name 均为 flame_sdk_ios
+- ✅ TK/TB 依赖隔离正确
+- ✅ alpha.2 历史未修改
+
+**完整 `pod lib lint` 风险记录**（如实，未声明通过）：
+- TK/TB quick lint、真实 Specs 安装、iphoneos 完整构建均通过
+- 当前本机完整 `pod lib lint` 受 Xcode 26.6 + iOS 26.5 Simulator destination 解析限制（CocoaPods 1.16.2 destination bug），不作为本次发布阻断（用户正式授权放行）
+- 风险：在有效 CI 环境（Intel Mac / GitHub Actions）完整 lint 应在后续补验证
+
+**未专项验证项保留**：
+- Native Video/SmallImage/GroupImage/PortraitImage 布局（代码已实现）
+- 6 个广告源真实填充（Baidu/KS/MS/Octopus/Mintegral/Gromore）待业务环境
+- TB Banner SelfRender 暂不支持（设计如此）
+
+详见 `docs/releases/1.0.0.md`。
+
+---
+
 ### Phase 5A.21：1.0.0-alpha.2 二进制分发链修复与远程发布预演（本次 fix commit）
 
 **变更类型**：修正 5A.20 podspec source 错误（开发仓库 build/ 路径 → 二进制仓库 :git+:tag 根目录路径）+ build script 同步复制到根目录 + 远程 source 模拟验证。**业务代码零修改。**

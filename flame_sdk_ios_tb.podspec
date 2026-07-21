@@ -14,7 +14,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb'
-  s.version          = '1.0.0-alpha.2'
+  s.version          = '1.0.0'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Edition (Single Binary, AnyThink weak-linked)'
   s.description      = 'Flame iOS advertising aggregation SDK, single binary with TK/TB platform glue embedded. TB ads deps edition. AnyThinkSDK weak-linked (not bundled for TB customers).'

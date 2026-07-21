@@ -4,14 +4,14 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 
 ## 版本信息
 
-- **当前预发布版本**：`1.0.0-alpha.2`（TK/TB 双线预发布验证版，真实环境确认后再发布 1.0.0）
+- **当前正式版本**：`1.0.0`（TK/TB 双线正式稳定版）
 - **TK Pod**：`flame_sdk_ios`
 - **TB Pod**：`flame_sdk_ios_tb`
 - **import（TK/TB 一致）**：`import flame_sdk_ios` / `#import <flame_sdk_ios/flame_sdk_ios.h>`
 - **两个 Pod 互斥**：不能同时接入
 - **最低支持**：iOS 13.0+
 - **开发语言**：Objective-C
-- **版本快照**：`docs/releases/1.0.0-alpha.2.md`
+- **版本快照**：`docs/releases/1.0.0.md`
 
 ## 目录结构
 
@@ -81,10 +81,10 @@ source 'https://cdn.cocoapods.org/'
 
 target 'YourApp' do
   # TK 客户
-  pod 'flame_sdk_ios', '1.0.0-alpha.2'
+  pod 'flame_sdk_ios', '1.0.0'
 
   # ToBid 客户，二选一
-  # pod 'flame_sdk_ios_tb', '1.0.0-alpha.2'
+  # pod 'flame_sdk_ios_tb', '1.0.0'
 end
 ```
 
