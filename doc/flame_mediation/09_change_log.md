@@ -7,6 +7,64 @@
 
 ## Phase 5A.16（进行中）— TB 第三方广告源接入
 
+### Phase 5A.21：1.0.0-alpha.2 二进制分发链修复与远程发布预演（本次 fix commit）
+
+**变更类型**：修正 5A.20 podspec source 错误（开发仓库 build/ 路径 → 二进制仓库 :git+:tag 根目录路径）+ build script 同步复制到根目录 + 远程 source 模拟验证。**业务代码零修改。**
+
+**触发**：Phase 5A.20 暴露 podspec 用 `:http => archive/refs/tags/...zip` + `vendored_frameworks = 'build/flame_sdk_ios.xcframework'`，但开发仓库 `build/` 被 .gitignore 排除，导致客户 install 时找不到 xcframework。
+
+**根因**：5A.20 改 podspec 时搞错了历史正式分发架构。审计二进制仓库历史 tag `1.0.0-alpha.1` 发现：
+- 历史正式结构：`s.source = { :git => 'github.com/javaice007/flame_sdk_ios.git', :tag => s.version }` + `s.vendored_frameworks = 'flame_sdk_ios.xcframework'`（根目录）
+- 二进制仓库 `flame_sdk_ios.xcframework` 直接在根目录，不排除 build/
+
+**核心改动**：
+
+1. **两个 podspec source 全部修正**（与历史 1.0.0-alpha.1 结构一致）：
+   - `:git + :tag` 格式（不是 `:http + archive zip`）
+   - `vendored_frameworks = 'flame_sdk_ios.xcframework'`（根目录，无 build/ 前缀）
+
+2. **`xcFramework_build.sh` 增强**：构建完成后复制 xcframework 到开发仓库根目录（本地 `:path =>` 模式 pod install 需要）
+
+3. **`.gitignore` 增加 `/flame_sdk_ios.xcframework`**：根目录副本不进 git（避免污染开发仓库）
+
+4. **二进制仓库**：替换为新 xcframework（SHA-256 `ca5aa99a...`，410KB arm64 + 363KB x86_64）+ 同步两个 podspec（version 1.0.0-alpha.2）
+
+**验证**（全部通过）：
+
+| 验证项 | 结果 |
+|---|---|
+| 二进制仓库 SHA-256 | `ca5aa99a...`（与开发仓库一致）|
+| `git archive` zip | 248KB，含 xcframework 根目录 |
+| zip 内 SHA-256 | `ca5aa99a...`（一致）|
+| TK 临时工程 pod install | ✅ 28 pods，含 ToBid Core，无 TB Adapter |
+| TB 临时工程 pod install | ✅ 11 pods，含 8 Adapter，无 AnyThink |
+| TK 远程 HTTP 模拟 pod install | ✅ xcframework 解压，SHA-256 一致 |
+| TB 远程 HTTP 模拟 pod install | ✅ xcframework 解压，SHA-256 一致 |
+| TK/TB SHA-256 完全一致 | ✅ 证明共用同一 xcframework |
+
+**修正 5A.20 错误口径**：
+- ~~"TK Podfile.lock ToBid 出现 0 次"~~ → TK **包含共享的 ToBid Core**（5.5.6），不含任何 TB 外部 Adapter
+- 5A.20 的"0 次"是因 Demo Podfile 用了旧版 0.1.8 + 远程 specs
+
+**pod lib lint 失败根因**（spec §9 alpha.2 门禁放行条件 6 项满足 5 项）：
+1. ✅ `pod spec lint --quick` 两 podspec PASSED
+2. ✅ 本地 TK/TB 全新 pod install 通过（28/11 pods）
+3. ✅ TK/TB iphoneos BUILD SUCCEEDED
+4. ✅ 远程 Tag 安装模拟通过（本地 HTTP）
+5. ✅ 失败原因明确：iOS 26.5 simulator runtime + Xcode 26.6 + CocoaPods 1.16.2，lint 创建的 App scheme destination 解析失败（不是 podspec 内容问题）
+6. ✅ 文档明确记录
+- **1.0.0 正式版前必须在有效 CI 环境完整 lint 通过**
+
+**Git**（三仓库本地 commit）：
+- 开发仓库：`f5fee85` `fix: prepare remote distribution for 1.0.0-alpha.2`
+- 二进制仓库：`91d51f1` `release: prepare Flame iOS SDK 1.0.0-alpha.2 binary`
+- Specs 仓库：未提交（spec §12 不发布正式版本）
+- push / tag / release：**均未执行**
+
+详见 `docs/releases/1.0.0-alpha.2.md`（已修正分发架构 + 依赖隔离口径 + lint 状态 + 远程模拟记录）。
+
+---
+
 ### Phase 5A.20：1.0.0-alpha.2 预发布准备（本次 release commit）
 
 **变更类型**：版本号统一 + podspec 发布态精简 + 单版本快照文档。**业务代码零修改，公共 API 零修改，Demo 业务调用零修改。**

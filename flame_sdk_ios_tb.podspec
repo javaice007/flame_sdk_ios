@@ -21,11 +21,9 @@ Pod::Spec.new do |s|
   s.homepage         = 'https://github.com/javaice007/flame_sdk_ios'
   s.author           = { 'flame' => 'flame@toowe.com' }
 
-  # GitHub archive zip 默认不剥除顶层版本目录，必须显式 :flatten => true
-  s.source           = {
-    :http => "https://github.com/javaice007/flame_sdk_ios/archive/refs/tags/#{s.version}.zip",
-    :flatten => true,
-  }
+  # 通过二进制分发仓库 javaice007/flame_sdk_ios 的 Tag 拉取，
+  # TK/TB 两个 podspec 共用同一 Tag 和同一份 flame_sdk_ios.xcframework。
+  s.source = { :git => 'https://github.com/javaice007/flame_sdk_ios.git', :tag => s.version.to_s }
 
   s.license = {
     :type => 'Commercial',
@@ -35,8 +33,8 @@ Pod::Spec.new do |s|
   s.ios.deployment_target = '13.0'
   s.swift_version = '5.0'
 
-  # ========= 单二进制 vendored xcframework（与 TK podspec 共用同一份）=========
-  s.vendored_frameworks = 'build/flame_sdk_ios.xcframework'
+  # ========= 单二进制 vendored xcframework（与 TK podspec 共用同一份，位于二进制仓库根目录）=========
+  s.vendored_frameworks = 'flame_sdk_ios.xcframework'
 
   # ========= 公共平台核心依赖 =========
   # binary 动态依赖 OpenSSL（otool -L 可见 @rpath/OpenSSL.framework/OpenSSL）。

@@ -432,3 +432,17 @@ fi
 
 echo ""
 echo "✅ XCFramework 构建完成（single-binary）：${XCFRAMEWORK_OUTPUT}"
+
+# ============================================================
+# 复制到开发仓库根目录（podspec vendored_frameworks 引用根目录路径）
+# ------------------------------------------------------------
+# podspec 的 s.vendored_frameworks = 'flame_sdk_ios.xcframework'（根目录，无 build/ 前缀），
+# 对应二进制分发仓库 javaice007/flame_sdk_ios 的 tag 归档结构（xcframework 在根目录）。
+# 本地开发 :path => 模式 pod install 时，CocoaPods 在仓库根目录查找 vendored_frameworks，
+# 因此构建完成后必须复制到根目录（与 build/ 下的产物同步，不替换）。
+# build/ 目录继续被 .gitignore 忽略，仅用于本地开发；根目录副本也不进 git（已加入 .gitignore）。
+# ============================================================
+ROOT_XCFRAMEWORK="flame_sdk_ios.xcframework"
+rm -rf "${ROOT_XCFRAMEWORK}"
+cp -R "${XCFRAMEWORK_OUTPUT}" "${ROOT_XCFRAMEWORK}"
+echo "📦 已复制到根目录：${ROOT_XCFRAMEWORK}（本地开发用，不进 git）"

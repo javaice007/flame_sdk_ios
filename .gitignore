@@ -12,6 +12,8 @@ xcuserdata/
 ## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
 build/
 DerivedData/
+# 根目录 xcframework（本地开发用，由 xcFramework_build.sh 复制；正式分发归二进制仓库 javaice007/flame_sdk_ios）
+/flame_sdk_ios.xcframework
 *.moved-aside
 *.pbxuser
 !default.pbxuser
