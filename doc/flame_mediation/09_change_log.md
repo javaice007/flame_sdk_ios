@@ -153,6 +153,10 @@
 
 详见 `doc/flame_mediation/phase-5a.18d-b-tb-native-dual-render-implementation.md`。
 
+**验收报告（Phase 5A.19 后补齐，docs commit）**：`doc/flame_mediation/phase-5a.18d-b-acceptance-report.md`。汇总 `43c964a`（5A.18D-B）+ `d14b8e3`（5A.18D-C 架构修复）+ `92e418d`（模板变形修复）三个 commit 的实际实现，对照 Phase 5A.18D-B spec §3-§23 逐项核验，含 Express + SelfRender 双真机证据、fallback/14003/14004/回调/destroy/TK 回归/构建 全套证据矩阵。
+
+**验收状态**：业务实现 ✅ 通过（TB Native 与 TK 行为完全一致）；已知缺口：icon NSURLSession 回调缺 generation 校验（不影响主流程）、视频/SmallImage/PortraitImage/GroupImage 布局代码已实现但未真机验证。
+
 ---
 
 ### Phase 5A.18D-A：TK Native 双渲染模式真实行为与 TB 对齐方案调研（docs commit `c586895`）
