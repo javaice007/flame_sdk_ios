@@ -4,18 +4,25 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 
 ## 当前版本
 
-`1.0.0-alpha.1`
+`1.0.1-alpha.1`
+
+> ⚠️ **1.0.0 存在严重问题**：接入即启动闪退（dyld 无法解析 WindMill 扁平命名空间符号），
+> TK/TB 双线均受影响，请勿使用 1.0.0，升级到 `1.0.1-alpha.1` 即可（只改 Podfile 版本号，代码零改动）。
 
 ## 发布形态
 
-当前采用 **1 个二进制 SDK 包 + 多个 podspec** 的发布模型：
+当前采用 **静态双线二进制** 的发布模型：
 
 | 组成 | 说明 |
 |---|---|
-| `flame_sdk_ios.xcframework` | 唯一二进制包，TK 和 ToBid 共用 |
+| `flame_sdk_ios.xcframework` | TK 线二进制包（静态 framework，链接进客户主程序）|
+| `flame_sdk_ios_tb.xcframework` | TB 线二进制包（静态 framework，链接进客户主程序）|
 | `flame_sdk_ios.podspec` | TK 客户 podspec |
 | `flame_sdk_ios_tb.podspec` | ToBid 客户 podspec |
 | `flame_sdk_ios_tk_sigmob_adapter` | TK 侧 Sigmob 适配器（TK 客户自动带出，不需手动声明）|
+
+两条线各自只含本线平台胶水（TK 产物零 WindMill 符号、TB 产物零 AnyThink 符号），
+跨平台符号全部在客户 App 链接期解析，dyld 阶段无跨库查找。
 
 ## 客户接入方式
 
@@ -25,10 +32,10 @@ source 'https://cdn.cocoapods.org/'
 
 target 'YourApp' do
   # TK 客户
-  pod 'flame_sdk_ios', '1.0.0-alpha.1'
+  pod 'flame_sdk_ios', '1.0.1-alpha.1'
 
   # ToBid 客户，二选一
-  # pod 'flame_sdk_ios_tb', '1.0.0-alpha.1'
+  # pod 'flame_sdk_ios_tb', '1.0.1-alpha.1'
 end
 ```
 
@@ -55,7 +62,7 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 | 聚合平台 | TopOn (AnyThink) | ToBid (WindMill) |
 | TK 广告源依赖 | ✅ 含（AnyThinkMediation* / AdGain / FSUnion）| ❌ 不含 |
 | Sigmob 适配器 | ✅ 自动带出 | ❌ 不含 |
-| 广告类型 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 | 激励视频（其他待接入）|
+| 广告类型 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 |
 | module name | `flame_sdk_ios` | `flame_sdk_ios`（一致）|
 
 两条线可以独立接入、独立验证、独立演进。`flame_sdk_ios` 与 `flame_sdk_ios_tb` **互斥**，不能同时接入。
