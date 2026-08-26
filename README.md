@@ -4,10 +4,12 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 
 ## 当前版本
 
-`1.0.1-alpha.1`
+`1.0.1-alpha.2`
 
 > ⚠️ **1.0.0 存在严重问题**：接入即启动闪退（dyld 无法解析 WindMill 扁平命名空间符号），
-> TK/TB 双线均受影响，请勿使用 1.0.0，升级到 `1.0.1-alpha.1` 即可（只改 Podfile 版本号，代码零改动）。
+> TK/TB 双线均受影响，请勿使用 1.0.0。
+> ⚠️ **1.0.1-alpha.1 的 TB 包已废弃**（打包缺陷无法开箱构建），TB 客户请使用 `1.0.1-alpha.2`。
+> 升级只改 Podfile 版本号，代码零改动。
 
 ## 发布形态
 
@@ -16,7 +18,7 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 | 组成 | 说明 |
 |---|---|
 | `flame_sdk_ios.xcframework` | TK 线二进制包（静态 framework，链接进客户主程序）|
-| `flame_sdk_ios_tb.xcframework` | TB 线二进制包（静态 framework，链接进客户主程序）|
+| `tb/flame_sdk_ios.xcframework` | TB 线二进制包（静态 framework，链接进客户主程序）|
 | `flame_sdk_ios.podspec` | TK 客户 podspec |
 | `flame_sdk_ios_tb.podspec` | ToBid 客户 podspec |
 | `flame_sdk_ios_tk_sigmob_adapter` | TK 侧 Sigmob 适配器（TK 客户自动带出，不需手动声明）|
@@ -32,10 +34,10 @@ source 'https://cdn.cocoapods.org/'
 
 target 'YourApp' do
   # TK 客户
-  pod 'flame_sdk_ios', '1.0.1-alpha.1'
+  pod 'flame_sdk_ios', '1.0.1-alpha.2'
 
   # ToBid 客户，二选一
-  # pod 'flame_sdk_ios_tb', '1.0.1-alpha.1'
+  # pod 'flame_sdk_ios_tb', '1.0.1-alpha.2'
 end
 ```
 

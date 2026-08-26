@@ -1,7 +1,7 @@
 # ============================================================
 # Flame iOS Ad SDK — TK 客户 podspec
 # ------------------------------------------------------------
-# 静态双线架构（release/ios-dual-line，1.0.1-alpha.1 起）：
+# 静态双线架构（release/ios-dual-line，1.0.1-alpha.2 起）：
 # flame_sdk_ios.xcframework 为【静态 framework】（ar 归档），
 # 内置 Flame core + TK 胶水（FlameTKProvider + At*Adapter），
 # 不含 TB 胶水（零 WindMill 符号引用）。
@@ -19,12 +19,12 @@
 # module_name 均为 flame_sdk_ios。
 #
 # 接入方：
-#   pod 'flame_sdk_ios', '1.0.1-alpha.1'
+#   pod 'flame_sdk_ios', '1.0.1-alpha.2'
 #   import flame_sdk_ios
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '1.0.1-alpha.1'
+  s.version          = '1.0.1-alpha.2'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TK Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TK (TopOn/AnyThink) glue embedded. AnyThink symbols resolve at app link time via AnyThinkSDK.framework.'
@@ -32,8 +32,9 @@ Pod::Spec.new do |s|
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   # 通过二进制分发仓库 javaice007/flame_sdk_ios 的 Tag 拉取。
-  # 1.0.1-alpha.1 起双线均为静态产物：本 podspec 的 flame_sdk_ios.xcframework
-  # 在 1.0.1-alpha.1 及之后 Tag 中为静态 framework（1.0.0 Tag 仍是旧的动态版）。
+  # 1.0.1-alpha.2 起双线均为静态产物：本 podspec 引用仓库根目录的
+  # flame_sdk_ios.xcframework（静态）；TB 产物在 tb/ 子目录
+  # （1.0.0 Tag 仍是旧的动态单二进制，仅供历史版本解析）。
   s.source = { :git => 'https://github.com/javaice007/flame_sdk_ios.git', :tag => s.version.to_s }
 
   s.license = {
@@ -98,8 +99,9 @@ end
 # 附录：长期有效的已知限制与依赖隔离说明
 # ----------------------------------------------------------------------------
 # 1. 与 TB 产物互斥
-#    flame_sdk_ios.xcframework（静态，TK）与 flame_sdk_ios_tb.xcframework
-#    （静态，TB）module 同名（flame_sdk_ios），不可同时接入。
+#    TK 产物（根目录 flame_sdk_ios.xcframework）与 TB 产物（tb/ 子目录
+#    flame_sdk_ios.xcframework）自 1.0.1-alpha.2 起均为静态产物
+#    （module 同名 flame_sdk_ios），不可同时接入。
 #    （历史：1.0.0 曾以 LC_LOAD_WEAK_DYLIB 弱链接 AnyThinkSDK 的动态单二进制
 #    分发，因 WindMill 扁平命名空间符号无法解析导致 TK/TB 客户启动必崩，
 #    1.0.1-alpha.1 起双线均改为静态双线产物，弱链接机制退役。）
@@ -110,9 +112,9 @@ end
 #    含义：Apple Silicon Mac simulator 需要 Rosetta；Intel simulator 与真机不受影响。
 #    Flame podspec 不额外添加 EXCLUDED_ARCHS。
 #
-# 3. 升级指引（1.0.0 → 1.0.1-alpha.1）
+# 3. 升级指引
 #    客户侧仅需改 Podfile 版本号：
-#      pod 'flame_sdk_ios', '1.0.1-alpha.1'
+#      pod 'flame_sdk_ios', '1.0.1-alpha.2'
 #    无需任何代码改动（module/import/API 均不变）；产物由动态变静态后，
 #    flame 将链接进主程序（包内不再有 flame_sdk_ios.framework 动态库）。
 # ============================================================================

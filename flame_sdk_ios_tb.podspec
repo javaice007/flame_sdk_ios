@@ -1,10 +1,16 @@
 # ============================================================
 # Flame iOS Ad SDK — TB 客户 podspec
 # ------------------------------------------------------------
-# 静态双线架构（release/ios-dual-line，1.0.1-alpha.1 起）：
-# flame_sdk_ios_tb.xcframework 为【静态 framework】（ar 归档），
-# 内置 Flame core + TB 胶水（FlameTBProvider + Tb*Adapter），
-# 不含 TK 胶水（零 AnyThink 符号引用）。
+# 静态双线架构（release/ios-dual-line，1.0.1-alpha.2 起）：
+# TB 静态产物位于二进制仓库 tb/ 子目录（flame_sdk_ios.xcframework，静态
+# framework，ar 归档），内置 Flame core + TB 胶水（FlameTBProvider +
+# Tb*Adapter），不含 TK 胶水（零 AnyThink 符号引用）。
+#
+# 外壳路径说明（1.0.1-alpha.2 修复项）：
+#   TB 产物外壳名必须与内部 framework 名（flame_sdk_ios.framework）一致，
+#   否则 CocoaPods 会生成 -framework "flame_sdk_ios_tb" 导致客户链接失败
+#   （alpha.1 缺陷：闪退已修但无法开箱构建）。与 TK 产物的同名冲突通过
+#   tb/ 子目录区分。
 #
 # 修复背景（TB 客户 1.0.0 闪退根因）：
 #   1.0.0 交付的动态 framework 用 -undefined dynamic_lookup 把 8 个
@@ -19,12 +25,12 @@
 # 二者互斥不可同时接入。module_name 均为 flame_sdk_ios。
 #
 # 接入方：
-#   pod 'flame_sdk_ios_tb', '1.0.1-alpha.1'
+#   pod 'flame_sdk_ios_tb', '1.0.1-alpha.2'
 #   import flame_sdk_ios
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb'
-  s.version          = '1.0.1-alpha.1'
+  s.version          = '1.0.1-alpha.2'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TB (ToBid) glue embedded. WindMill symbols resolve at app link time via ToBid-iOS-RC static archives.'
@@ -32,9 +38,9 @@ Pod::Spec.new do |s|
   s.author           = { 'flame' => 'flame@toowe.com' }
 
   # 通过二进制分发仓库 javaice007/flame_sdk_ios 的 Tag 拉取。
-  # 1.0.1-alpha.1 起双线均为静态产物：flame_sdk_ios_tb.xcframework（TB，本 podspec）
-  # 与 flame_sdk_ios.xcframework（TK，flame_sdk_ios podspec）在同 Tag 下均为静态
-  # framework（1.0.0 Tag 仍是旧的动态单二进制，仅供历史版本解析）。
+  # 1.0.1-alpha.2 起双线均为静态产物：TB 产物在 tb/ 子目录（本 podspec 引用），
+  # TK 产物在仓库根目录（flame_sdk_ios.podspec 引用）；1.0.0 Tag 仍是旧的动态
+  # 单二进制，仅供历史版本解析。
   s.source = { :git => 'https://github.com/javaice007/flame_sdk_ios.git', :tag => s.version.to_s }
 
   s.license = {
@@ -46,7 +52,8 @@ Pod::Spec.new do |s|
   s.swift_version = '5.0'
 
   # ========= TB 静态产物 vendored xcframework（static framework，链接进客户主程序）=========
-  s.vendored_frameworks = 'flame_sdk_ios_tb.xcframework'
+  # 位于二进制仓库 tb/ 子目录，外壳名与内部 framework 名一致（flame_sdk_ios.framework）。
+  s.vendored_frameworks = 'tb/flame_sdk_ios.xcframework'
 
   # ========= 公共平台核心依赖 =========
   # 静态归档中的 OpenSSL 符号在客户 App 链接期由 OpenSSL-Universal 动态 framework 解析。
@@ -90,8 +97,9 @@ end
 # 附录：长期有效的已知限制与依赖隔离说明
 # ----------------------------------------------------------------------------
 # 1. 与 TK 产物互斥
-#    flame_sdk_ios_tb.xcframework 与 flame_sdk_ios.xcframework 在 1.0.1-alpha.1
-#    起【均为静态产物】（module 同名 flame_sdk_ios），不可同时接入。
+#    TB 产物（tb/flame_sdk_ios.xcframework）与 TK 产物（根目录
+#    flame_sdk_ios.xcframework）自 1.0.1-alpha.2 起均为静态产物
+#    （module 同名 flame_sdk_ios），不可同时接入。
 #    （历史：1.0.0 曾以 LC_LOAD_WEAK_DYLIB 弱链接 AnyThinkSDK 的动态单二进制
 #    分发，因 WindMill 扁平命名空间符号无法解析导致 TK/TB 客户启动必崩，
 #    1.0.1-alpha.1 起双线均改为静态双线产物，弱链接机制退役。）
@@ -107,9 +115,10 @@ end
 #    AdGain / FSUnion / SigmobAd-iOS（独立 Sigmob，会与 ToBid Core WindSDK 冲突）
 #    ToBid-iOS-RC 自身内置的 Sigmob/WindSDK 不属于 TK 私有 adapter，保留。
 #
-# 4. 升级指引（1.0.0 → 1.0.1-alpha.1）
+# 4. 升级指引
 #    客户侧仅需改 Podfile 版本号：
-#      pod 'flame_sdk_ios_tb', '1.0.1-alpha.1'
+#      pod 'flame_sdk_ios_tb', '1.0.1-alpha.2'
 #    无需任何代码改动（module/import/API 均不变）；产物由动态变静态后，
 #    flame 将链接进主程序（包内不再有 flame_sdk_ios.framework 动态库）。
+#    1.0.1-alpha.1 的 TB 包存在外壳名缺陷（无法开箱构建），请直接用 alpha.2。
 # ============================================================================
