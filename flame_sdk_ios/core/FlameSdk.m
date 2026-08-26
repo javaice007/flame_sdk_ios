@@ -31,8 +31,14 @@
 //   - 只有被激活的 Provider 才会调用 initializeWithAppId（进而初始化 AnyThink / WindMill）。
 // ============================================================
 
+// 静态双线产物（release/ios-dual-line）：FLAME_BUILD_TB 排除 TK 胶水、
+// FLAME_BUILD_TK 排除 TB 胶水；默认（单二进制）两者全部编译。
+#if !FLAME_BUILD_TB
 #import "FlameTKProvider.h"
+#endif
+#if !FLAME_BUILD_TK
 #import "FlameTBProvider.h"
+#endif
 
 #import "FlameRewardAdapterProtocol.h"
 #import "FlameSplashAdapterProtocol.h"
@@ -356,16 +362,20 @@ typedef NS_ENUM(NSInteger, FlameSDKInitState) {
         // 若 dyld 未触发 +load（极端情况，如非 -ObjC 链接配置），此处作为防御性兜底：
         // 检查 Registry 是否已注册，未注册则补注册。
         FlameMediationRegistry *registry = [FlameMediationRegistry sharedRegistry];
+#if !FLAME_BUILD_TB
         if (![registry hasProviderForPlatformCode:@"tk"]) {
             FlameTKProvider *tkProvider = [[FlameTKProvider alloc] init];
             [registry registerProvider:tkProvider];
             [FlameLogger w:@"FlameSdk: FlameTKProvider 未通过 +load 注册，已防御性补注册（正常应已由 +load 注册）"];
         }
+#endif
+#if !FLAME_BUILD_TK
         if (![registry hasProviderForPlatformCode:@"tb"]) {
             FlameTBProvider *tbProvider = [[FlameTBProvider alloc] init];
             [registry registerProvider:tbProvider];
             [FlameLogger w:@"FlameSdk: FlameTBProvider 未通过 +load 注册，已防御性补注册（正常应已由 +load 注册）"];
         }
+#endif
         [FlameLogger i:@"FlameSdk: Provider 注册检查完成（默认依赖 +load 自动注册）"];
     });
 }

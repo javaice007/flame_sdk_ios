@@ -23,7 +23,12 @@
 // setDebug 平台中立：debug 开关由各 Provider 自己处理（TK 走 AnyThink，TB 走 WindMill）。
 // 广告创建工厂方法已删除，统一走 Provider 链路。
 // ============================================================
+// 静态双线产物（release/ios-dual-line）：TB 静态产物（FLAME_BUILD_TB）不编入 TK 胶水，
+// 本文件是 core 中唯一链接 AnyThink 符号的遗留入口，必须随变体隔离，
+// 否则 TB 客户 App 链接期出现 AT* 未定义符号。
+#if !FLAME_BUILD_TB
 #import <AnyThinkSDK/AnyThinkSDK.h>
+#endif
 
 
 @implementation FlameAdapterManager
@@ -64,6 +69,7 @@
         return;
     }
 
+#if !FLAME_BUILD_TB
     // 日志开关 默认开启
     [ATAPI setLogEnabled:YES];
     // 检测集成环境（仅建议在测试阶段使用）
@@ -91,6 +97,15 @@
             [initListener success];
         }
     }
+#else
+    // TB 静态产物不链接 AnyThinkSDK：历史兼容入口只保留防御语义。
+    // TB 客户的正式初始化路径是 FlameSdk initWithAppId:（Router → FlameTBProvider）。
+    [FlameLogger e:@"FlameAdapterManager.initSDKWithAppId(TK legacy entry) is not available in TB static edition; use FlameSdk initWithAppId: instead."];
+    if ([initListener respondsToSelector:@selector(fail:desc:)]) {
+        [initListener fail:@"-1"
+                     desc:@"initSDKWithAppId(TK legacy entry) is not available in TB static edition"];
+    }
+#endif
 }
 
 // 注：历史工厂方法 createRewardAdapter: / createInterstitialAdapter: /

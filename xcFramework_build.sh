@@ -23,6 +23,23 @@ set -e
 # 用法：
 #   ./xcFramework_build.sh                 # 默认 = single-binary
 #   ./xcFramework_build.sh single-binary   # 显式写法（等价默认）
+#   ./xcFramework_build.sh tb-static       # TB 静态双线产物 → build/tb-static/flame_sdk_ios.xcframework
+#   ./xcFramework_build.sh tk-static       # TK 静态双线产物 → build/tk-static/flame_sdk_ios.xcframework
+#
+# 静态双线变体（release/ios-dual-line，修复 TB 客户 1.0.0 dyld 闪退）：
+#   背景：single-binary 动态产物对 ToBid（WindMill 静态归档）使用
+#   -undefined dynamic_lookup 扁平命名空间延迟解析，TB 客户 App 启动时 dyld
+#   解析不到 8 个 WindMill 类符号（如 _OBJC_CLASS_$__TtC11WindMillSDK11WindMillAds）
+#   → 必崩。客户端无法绕过（导出符号表 / force_load 均无效），必须改产物形态。
+#   静态双线产物：
+#     - flame 以 static framework（ar 归档）交付，WindMill 符号留为未定义，
+#       由 ToBid-iOS-RC 静态归档在客户 App 链接期解析（链接期全解析，无 dyld 查找）
+#     - 按线排除另一线胶水（tb-static 排除 At*/FlameTKProvider；tk-static 排除
+#       Tb*/FlameTBProvider），保证 TB 产物零 AnyThink 符号引用（TB 客户不接
+#       AnyThinkiOS，静态链接期出现 AT* 未定义符号会直接链接失败）
+#     - source 层配套隔离：FlameAdapterManager.m 遗留 TK init（ATAPI）与
+#       FlameSdk.m 防御性补注册均按 FLAME_BUILD_TB / FLAME_BUILD_TK 宏隔离
+#     - +load 自动注册依赖 podspec 的 -ObjC（接入期 OTHER_LDFLAGS，已有）
 #
 # 不再支持的历史入口（已废弃，报错退出）：
 #   ./xcFramework_build.sh tk              # ❌ 已删除（双二进制互斥分发）
@@ -46,23 +63,221 @@ set -e
 # ============================================================
 
 # =========================
-# 变体解析（只允许 single-binary）
+# 变体解析（single-binary / tb-static / tk-static）
 # =========================
 VARIANT="${1:-single-binary}"
 
-if [ "$VARIANT" != "single-binary" ]; then
-  echo "❌ 当前分支只支持 single-binary 构建，不再支持 tk/tb/release/三包/双二进制历史入口。"
-  echo ""
-  echo "   传入参数: $VARIANT"
-  echo "   唯一合法参数: single-binary（或不传参数）"
+case "$VARIANT" in
+  single-binary|tb-static|tk-static) ;;
+  *)
+  echo "❌ 未知变体: $VARIANT（只支持 single-binary / tb-static / tk-static）"
   echo ""
   echo "   用法："
-  echo "     ./xcFramework_build.sh                 # 默认 = single-binary"
-  echo "     ./xcFramework_build.sh single-binary   # 显式写法"
+  echo "     ./xcFramework_build.sh                 # 默认 = single-binary（动态单二进制）"
+  echo "     ./xcFramework_build.sh single-binary   # 显式写法（等价默认）"
+  echo "     ./xcFramework_build.sh tb-static       # TB 静态双线产物（1.0.1-alpha.1 起 TB 线发布形态）"
+  echo "     ./xcFramework_build.sh tk-static       # TK 静态双线产物（待真机验证后启用）"
   echo ""
-  echo "   历史入口已废弃（如需回退，见 backup/phase-5a-dual-binary-stable 分支）："
-  echo "     tk / tb / core / core-named / tk-plugin / tb-plugin / release / nosdk / dual"
+  echo "   历史入口已废弃（tk/tb/core/core-named/tk-plugin/tb-plugin/release/nosdk/dual）。"
   exit 1
+  ;;
+esac
+
+# ============================================================
+# 静态双线变体（tb-static / tk-static）独立流程，构建完成后 exit。
+# 与 single-binary 流程互不干扰；single-binary 原有 xcconfig patch
+# （AnyThinkSDK 弱链接 / ToBid 归档隔离 / dynamic_lookup）在静态产物下
+# 均不适用（static framework 无 load command、无链接步骤），全部跳过。
+# ============================================================
+if [ "$VARIANT" = "tb-static" ] || [ "$VARIANT" = "tk-static" ]; then
+  echo "=========================================="
+  echo "  📦 构建 Flame SDK 静态双线 — ${VARIANT}"
+  echo "=========================================="
+
+  if [ "$VARIANT" = "tb-static" ]; then
+    LINE_MACRO="FLAME_BUILD_TB=1"
+    # 排除 TK 线胶水：adapter/tk/At*Adapter、AtNativeSelfRenderView、mediation/tk/FlameTKProvider
+    EXCLUDE_PATTERN="At*.* FlameTKProvider.*"
+    STATIC_SUBDIR="tb-static"
+    # 外壳名必须与内部 framework 名一致（flame_sdk_ios.framework）：
+    # CocoaPods 按 xcframework 外壳名生成 -framework 链接 flag，外壳叫
+    # flame_sdk_ios_tb 而内部是 flame_sdk_ios.framework 时，客户工程会生成
+    # -framework "flame_sdk_ios_tb" → ld: framework not found（1.0.1-alpha.1
+    # TB 包即此缺陷，真机已验证闪退修复但无法开箱构建）。
+    # 与 TK 产物的同名冲突通过目录区分：dist 仓库放 tb/ 子目录，TB podspec
+    # 引用 'tb/flame_sdk_ios.xcframework'。
+    XCFRAMEWORK_NAME="flame_sdk_ios.xcframework"
+    OTHER_LINE_SYMBOLS='FlameTKProvider|AtRewardAdapter|AtSplashAdapter|AtInterstitialAdapter|AtBannerAdapter|AtNativeAdapter|AtNativeSelfRenderView|ATAPI'
+    OTHER_LINE_LABEL="TK/AnyThink"
+    EXPECT_GLUE_SYMBOLS="FlameTBProvider TbRewardAdapter TbSplashAdapter TbInterstitialAdapter TbBannerAdapter TbNativeAdapter TbNativeSelfRenderView"
+  else
+    LINE_MACRO="FLAME_BUILD_TK=1"
+    # 排除 TB 线胶水：adapter/tb/Tb*Adapter、TbNativeSelfRenderView、mediation/tb/FlameTBProvider
+    EXCLUDE_PATTERN="Tb*.* FlameTBProvider.*"
+    STATIC_SUBDIR="tk-static"
+    XCFRAMEWORK_NAME="flame_sdk_ios.xcframework"
+    OTHER_LINE_SYMBOLS='FlameTBProvider|TbRewardAdapter|TbSplashAdapter|TbInterstitialAdapter|TbBannerAdapter|TbNativeAdapter|TbNativeSelfRenderView|WindMill'
+    OTHER_LINE_LABEL="TB/WindMill"
+    EXPECT_GLUE_SYMBOLS="FlameTKProvider AtRewardAdapter AtSplashAdapter AtInterstitialAdapter AtBannerAdapter AtNativeAdapter AtNativeSelfRenderView"
+  fi
+
+  OUTPUT_DIR="./build/${STATIC_SUBDIR}"
+  DERIVED_DATA="${OUTPUT_DIR}/ddata"
+  XCFRAMEWORK_OUTPUT="${OUTPUT_DIR}/${XCFRAMEWORK_NAME}"
+
+  # 干净 pod install（静态双线与 single-binary 共用同一依赖环境：
+  # 两线胶水的头文件都在 Pods 里，编译期按需 import；libtool 打归档不链接任何 pod）
+  echo "🧹 清理旧 Pods 安装..."
+  pod deintegrate >/dev/null 2>&1 || true
+  rm -rf Pods Podfile.lock
+
+  echo "📦 pod install（${VARIANT}：OpenSSL + AnyThinkiOS + ToBid-iOS-RC，仅编译期用）..."
+  pod install
+
+  rm -rf ~/Library/Developer/Xcode/DerivedData/flame_sdk_ios-*
+  rm -rf "${OUTPUT_DIR}"
+
+  # =========================
+  # 构建（staticlib 用 build 而非 archive：静态 framework 不需要签名/嵌入，
+  # 直接从 Build/Products 取 .framework 即可，规避 archive 对 staticlib 的兼容问题）
+  # =========================
+  echo "📦 构建 ${VARIANT} 真机切片（${LINE_MACRO}，MACH_O_TYPE=staticlib）..."
+  xcodebuild build \
+    -workspace flame_sdk_ios.xcworkspace \
+    -scheme flame_sdk_ios \
+    -configuration Release \
+    -destination "generic/platform=iOS" \
+    -derivedDataPath "${DERIVED_DATA}" \
+    IPHONEOS_DEPLOYMENT_TARGET="13.0" \
+    MACH_O_TYPE="staticlib" \
+    BUILD_LIBRARY_FOR_DISTRIBUTION="YES" \
+    CODE_SIGNING_ALLOWED="NO" \
+    GCC_PREPROCESSOR_DEFINITIONS="\$(inherited) COCOAPODS=1 ${LINE_MACRO}" \
+    EXCLUDED_SOURCE_FILE_NAMES="${EXCLUDE_PATTERN}"
+
+  echo "📦 构建 ${VARIANT} 模拟器切片（x86_64，与现有分发口径一致）..."
+  xcodebuild build \
+    -workspace flame_sdk_ios.xcworkspace \
+    -scheme flame_sdk_ios \
+    -configuration Release \
+    -destination "generic/platform=iOS Simulator" \
+    -derivedDataPath "${DERIVED_DATA}" \
+    ARCHS="x86_64" \
+    IPHONEOS_DEPLOYMENT_TARGET="13.0" \
+    MACH_O_TYPE="staticlib" \
+    BUILD_LIBRARY_FOR_DISTRIBUTION="YES" \
+    CODE_SIGNING_ALLOWED="NO" \
+    GCC_PREPROCESSOR_DEFINITIONS="\$(inherited) COCOAPODS=1 ${LINE_MACRO}" \
+    EXCLUDED_SOURCE_FILE_NAMES="${EXCLUDE_PATTERN}"
+
+  DEVICE_FW="${DERIVED_DATA}/Build/Products/Release-iphoneos/flame_sdk_ios.framework"
+  SIM_FW="${DERIVED_DATA}/Build/Products/Release-iphonesimulator/flame_sdk_ios.framework"
+  for FW in "${DEVICE_FW}" "${SIM_FW}"; do
+    if [ ! -d "$FW" ]; then
+      echo "❌ 构建产物缺失：$FW"
+      exit 1
+    fi
+  done
+
+  echo "🛠️ 合并 XCFramework（static framework slices）..."
+  xcodebuild -create-xcframework \
+    -framework "${DEVICE_FW}" \
+    -framework "${SIM_FW}" \
+    -output "${XCFRAMEWORK_OUTPUT}"
+
+  # 删除 .framework 内部不该存在的文件（.sh 会导致 codesign 失败，.podspec 是冗余文件）
+  find "${XCFRAMEWORK_OUTPUT}" -type f \( -name "*.sh" -o -name "*.podspec" \) -delete
+
+  # =========================
+  # 符号校验（静态双线专属断言，任一失败即构建中止）
+  # =========================
+  CHECK_BINARY=$(find "${XCFRAMEWORK_OUTPUT}" -path "*ios-arm64*/flame_sdk_ios" -type f | head -1)
+  if [ -z "$CHECK_BINARY" ]; then
+    echo "❌ 未找到 ios-arm64 切片二进制"
+    exit 1
+  fi
+  echo ""
+  echo "🔍 符号校验（${VARIANT}）..."
+  echo "   二进制体积: $(du -h "$CHECK_BINARY" | cut -f1)"
+
+  # 1) 必须是静态归档（ar archive），不再是 MH_DYLIB
+  if file "$CHECK_BINARY" | grep -q "current ar archive"; then
+    echo "   ✅ 产物为静态归档（current ar archive）"
+  else
+    echo "❌ 产物不是静态归档：$(file "$CHECK_BINARY")"
+    echo "   → MACH_O_TYPE=staticlib 未生效，静态双线发布中止"
+    exit 1
+  fi
+
+  # 2) Flame core 符号齐全
+  for sym in FlameSdk FlameLogger FlameMediationRouter FlameMediationRegistry FlameAdapterManager FlameConfigManager; do
+    cnt=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}" || true)
+    if [ "${cnt:-0}" -gt 0 ]; then
+      echo "   ✅ ${sym}"
+    else
+      echo "❌ Flame core 符号缺失：${sym}"
+      exit 1
+    fi
+  done
+
+  # 3) 本线胶水符号齐全
+  for sym in ${EXPECT_GLUE_SYMBOLS}; do
+    cnt=$(nm -gU "$CHECK_BINARY" 2>/dev/null | grep -cE "_OBJC_CLASS_\\\$_${sym}" || true)
+    if [ "${cnt:-0}" -gt 0 ]; then
+      echo "   ✅ ${sym}"
+    else
+      echo "❌ 本线胶水符号缺失：${sym}"
+      exit 1
+    fi
+  done
+
+  # 4) 隔离断言：另一线符号（含其平台 SDK 引用）在归档里必须为 0（定义与未定义都算）
+  #    这是静态双线能发布的关键：TB 产物含任何 AT* 引用都会让 TB 客户链接失败，反之亦然。
+  POLL_OTHER=$(nm -a "$CHECK_BINARY" 2>/dev/null | grep -cE "${OTHER_LINE_SYMBOLS}" || true)
+  if [ "${POLL_OTHER:-0}" -eq 0 ]; then
+    echo "   ✅ 零 ${OTHER_LINE_LABEL} 符号污染（定义+未定义均无）"
+  else
+    echo "❌ 发现 ${OTHER_LINE_LABEL} 符号污染 ${POLL_OTHER} 处（EXCLUDED_SOURCE_FILE_NAMES 未生效？）"
+    nm -a "$CHECK_BINARY" 2>/dev/null | grep -E "${OTHER_LINE_SYMBOLS}" | head -20 | sed 's/^/      /'
+    exit 1
+  fi
+
+  # 5) 跨线符号（本线平台 SDK 的未定义引用，接入期由对应 pod 解析）
+  if [ "$VARIANT" = "tb-static" ]; then
+    UNDEF_WIND=$(nm -u "$CHECK_BINARY" 2>/dev/null | grep -cE "WindMill|WindSDK|WindFoundation" || true)
+    echo "   （参考）WindMill 未定义符号: ${UNDEF_WIND:-0} 个（客户 App 链接期由 ToBid-iOS-RC 归档解析）"
+    UNDEF_OPENSSL=$(nm -u "$CHECK_BINARY" 2>/dev/null | grep -cE "SSL_|EVP_|AES_" || true)
+    echo "   （参考）OpenSSL 未定义符号: ${UNDEF_OPENSSL:-0} 个（由 OpenSSL-Universal 动态 framework 解析）"
+  else
+    UNDEF_AT=$(nm -u "$CHECK_BINARY" 2>/dev/null | grep -cE "ATAPI|ATSDK|ATAdManager" || true)
+    echo "   （参考）AnyThink 未定义符号: ${UNDEF_AT:-0} 个（客户 App 链接期由 AnyThinkSDK.framework 解析）"
+  fi
+
+  # 6) module / headers 完整性（接入方 import flame_sdk_ios 依赖）
+  MODULE_MAP=$(find "${XCFRAMEWORK_OUTPUT}" -name "module.modulemap" | head -1)
+  if [ -n "$MODULE_MAP" ]; then
+    echo "   ✅ Modules/module.modulemap 存在"
+  else
+    echo "❌ module.modulemap 缺失（import flame_sdk_ios 会失败）"
+    exit 1
+  fi
+
+  echo ""
+  echo "✅ XCFramework 构建完成（${VARIANT}）：${XCFRAMEWORK_OUTPUT}"
+
+  # 静态双线产物均复制到开发仓库根目录（podspec vendored_frameworks 引用
+  # 根目录相对路径，本地 :path 集成需要；不进 git，与历史根目录副本同理）。
+  # TK → 根目录 flame_sdk_ios.xcframework；TB → tb/ 子目录（同名文件靠目录区分）。
+  ROOT_XCFW_PATH="flame_sdk_ios.xcframework"
+  if [ "$VARIANT" = "tb-static" ]; then
+    ROOT_XCFW_PATH="tb/flame_sdk_ios.xcframework"
+  fi
+  rm -rf "${ROOT_XCFW_PATH}"
+  mkdir -p "$(dirname "${ROOT_XCFW_PATH}")"
+  cp -R "${XCFRAMEWORK_OUTPUT}" "${ROOT_XCFW_PATH}"
+  echo "📦 已复制到开发仓库：${ROOT_XCFW_PATH}（本地开发用，不进 git）"
+
+  exit 0
 fi
 
 echo "=========================================="

@@ -4,14 +4,16 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 
 ## 版本信息
 
-- **当前正式版本**：`1.0.0`（TK/TB 双线正式稳定版）
+- **当前发布版本**：`1.0.1-alpha.2`（TK/TB 双线静态产物修复版）
+- ⚠️ **1.0.0 已知严重问题**：公开 Pod 1.0.0（动态单二进制）接入即启动闪退（dyld 无法解析 WindMill 扁平命名空间符号），TK/TB 双线均受影响，**请勿使用 1.0.0**，升级方式见下方接入示例
+- ⚠️ **1.0.1-alpha.1 的 TB 包已废弃**（外壳名缺陷无法开箱构建，TK 包可用），TB 客户请直接用 1.0.1-alpha.2
 - **TK Pod**：`flame_sdk_ios`
 - **TB Pod**：`flame_sdk_ios_tb`
 - **import（TK/TB 一致）**：`import flame_sdk_ios` / `#import <flame_sdk_ios/flame_sdk_ios.h>`
 - **两个 Pod 互斥**：不能同时接入
 - **最低支持**：iOS 13.0+
 - **开发语言**：Objective-C
-- **版本快照**：`docs/releases/1.0.0.md`
+- **版本快照**：`docs/releases/1.0.1-alpha.2.md`
 
 ## 目录结构
 
@@ -41,12 +43,18 @@ flame_sdk_ios/
 
 | 组成 | 说明 |
 |---|---|
-| `flame_sdk_ios.xcframework` | 唯一二进制包，TK 和 ToBid 共用 |
+| `flame_sdk_ios.xcframework` | TK 线二进制包（1.0.1-alpha.1 起为静态 framework）|
+| `flame_sdk_ios_tb.xcframework` | TB 线二进制包（1.0.1-alpha.1 起为静态 framework）|
 | `flame_sdk_ios.podspec` | TK 客户 podspec |
 | `flame_sdk_ios_tb.podspec` | ToBid 客户 podspec |
 | `flame_sdk_ios_tk_sigmob_adapter` | TK 侧 Sigmob 适配器（TK 客户自动带出，不需手动声明）|
 
-TK 和 ToBid 两条线共用同一个二进制包，通过不同 podspec 区分广告源依赖。
+1.0.0 曾以"单二进制（动态）"形态分发：flame 动态 framework 对 ToBid 的 8 个 WindMill
+类符号使用扁平命名空间延迟解析（`-undefined dynamic_lookup`），而 ToBid 只有静态归档，
+客户 App 启动时 dyld 解析不到 → 接入即闪退。1.0.1-alpha.1 起改为**静态双线产物**：
+两条线各自只含本线胶水（TK 产物零 WindMill 符号、TB 产物零 AnyThink 符号），
+全部跨平台符号在客户 App 链接期解析，dyld 阶段无跨库查找，问题根除。
+构建入口：`./xcFramework_build.sh tk-static` / `./xcFramework_build.sh tb-static`。
 
 ## TK 与 ToBid 的区别
 
@@ -81,10 +89,10 @@ source 'https://cdn.cocoapods.org/'
 
 target 'YourApp' do
   # TK 客户
-  pod 'flame_sdk_ios', '1.0.0'
+  pod 'flame_sdk_ios', '1.0.1-alpha.1'
 
   # ToBid 客户，二选一
-  # pod 'flame_sdk_ios_tb', '1.0.0'
+  # pod 'flame_sdk_ios_tb', '1.0.1-alpha.1'
 end
 ```
 
