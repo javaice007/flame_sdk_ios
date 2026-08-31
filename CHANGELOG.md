@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.1-alpha.3
+
+- **修复 TK 线发奖回调 `transId` 恒为空**（客户反馈，真机复现确认）：胶水层此前读
+  `localExtra["transId"]`，该 key 全链路只读不写，对任何广告源恒为空，服务端发奖
+  对账受损。现优先取 TopOn 发奖 `extra` 的三方交易号（`third_trans_id`），取不到由
+  Flame 生成唯一事务号（UUID）兜底，保证恒非空且多次发奖互不相同。
+- **修复 TB 线发奖回调 `userCustomData` 恒为空**（SDK 侧排查发现）：此前硬编码空串，
+  load 入参只进 ToBid 服务端回传参数。现 load 入参快照回传，与 TK 线"传入即回传"
+  语义对齐；`userId` 增加入参兜底；`transId` 增加 `thirdTransId` 与 Flame UUID 两级兜底。
+- `userId` / `userCustomData` 既有回传行为不变（仅调用 `loadWithUserId:userCustomData:`
+  时回传，无参 `load` 恒空）。
+- 产物结构与依赖与 1.0.1-alpha.2 完全一致，客户仅改 Podfile 版本号。
+
 ## 1.0.1-alpha.2
 
 - **修复 TB 包打包缺陷（alpha.1 引入）**：TB 产物外壳名
