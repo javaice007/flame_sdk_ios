@@ -239,16 +239,14 @@ static UIViewController *flame_topViewController(void) {
         // userCustomData：ToBid 客户端回调不回传（1.0.1-alpha.2 及之前此处硬编码空串），
         // 回退 load 时入参快照
         NSString *customData = self.loadedUserCustomData ?: @"";
-        // transId（业务ID/发奖对账凭证）：优先 ToBid 交易id（WindMillRewardInfo.transId，
-        // "交易的唯一id"），其次三方广告源标识（thirdTransId，腾讯/百度），仍为空由 Flame
-        // 生成唯一事务号兜底，保证恒非空且每次发奖互不相同
-        NSString *transId = reward.transId.length > 0 ? reward.transId : reward.thirdTransId;
-        if (transId.length == 0) {
-            transId = [[NSUUID UUID] UUIDString];
-        }
-        [FlameLogger i:[NSString stringWithFormat:@"[TB_REWARD_DIAG] reward: userId=%@ transId(len=%lu) src=%@",
-            userId, (unsigned long)transId.length,
-            reward.transId.length > 0 ? @"windmill" : (reward.thirdTransId.length > 0 ? @"thirdTransId" : @"flame-uuid")]];
+        // transId（业务ID/发奖对账凭证）：仅取 ToBid 交易id（WindMillRewardInfo.transId，
+        // "交易的唯一id"，与 ToBid 服务端激励回传同源，可配对对账）。取不到保持空串：
+        // 不本地伪造 id（伪造值接收方无法分辨真实来源），也不混用 thirdTransId
+        // （三方广告源标识，命名空间不同，无法与 ToBid 服务端回传配对）——
+        // thirdTransId 仅在诊断日志中输出供排查。
+        NSString *transId = reward.transId ?: @"";
+        [FlameLogger i:[NSString stringWithFormat:@"[TB_REWARD_DIAG] reward: userId=%@ transId(len=%lu) thirdTransId=%@",
+            userId, (unsigned long)transId.length, reward.thirdTransId ?: @"-"]];
         [self.listener onAdReward:userId userCustomData:customData transId:transId];
     }
 }

@@ -5,6 +5,16 @@
 #import <AnyThinkSDK/AnyThinkSDK.h>
 #import "FlameConfigManager.h"
 #import "FlameErrorCode.h"
+#import "FlameLogger.h"
+
+/// 展示唯一 ID 快照（kATADDelegateExtraIDKey，ATAPI.h 注释 "a unique ID generated
+/// for each impression"）。Taku 服务端激励文档（help.takuad.com/docs/msbnkj §3.2）：
+/// 服务端回调的 trans_id 由 Taku 服务端生成、唯一，"对应客户端展示回调信息中的
+/// getShowId()"（Android 命名，iOS 即 kATADDelegateExtraIDKey），是发奖对账的
+/// 官方凭证。展示回调里捕获，发奖回调时作为 transId 使用（reward extra 未带时兜底）。
+@interface AtRewardAdapter ()
+@property (nonatomic, copy) NSString *capturedShowId;
+@end
 
 @implementation AtRewardAdapter
 
@@ -45,6 +55,11 @@
     }
     if (userCustomData.length > 0) {
         self.localExtra[kATAdLoadingExtraUserDataKeywordKey] = userCustomData;
+        // Taku 服务端激励官方示例（help.takuad.com/docs/msbnkj §4.2）：用户自定义数据
+        // 走 kATAdLoadingExtraMediaExtraKey，随服务端激励回调 URL 回传开发者服务器。
+        // 双写两个 key：UserDataKeywordKey 面向三方网络透传（既有行为），
+        // MediaExtraKey 面向 Taku 服务端激励回传（官方通道，此前缺失）。
+        self.localExtra[kATAdLoadingExtraMediaExtraKey] = userCustomData;
     }
 
     // 3. 执行加载
@@ -82,6 +97,7 @@
     // 断开监听器引用（虽然是weak属性，但显式断开是最佳实践）
     _listener = nil;
     _viewController = nil;
+    self.capturedShowId = nil;
 
     // 清理配置数据
     [_localExtra removeAllObjects];
@@ -108,6 +124,11 @@
 
 // 广告展示
 - (void)rewardedVideoDidStartPlayingForPlacementID:(NSString *)placementID extra:(NSDictionary *)extra {
+    // 捕获展示唯一 ID（服务端 trans_id 的客户端对应物），供发奖回调取用
+    id showId = extra[kATADDelegateExtraIDKey];
+    if ([showId isKindOfClass:[NSString class]] && [(NSString *)showId length] > 0) {
+        self.capturedShowId = showId;
+    }
     if ([self.listener respondsToSelector:@selector(onAdShow)]) {
         [self.listener onAdShow];
     }
@@ -135,13 +156,27 @@
         NSString *customData = self.localExtra[kATAdLoadingExtraUserDataKeywordKey] ?: @"";
         // transId（业务ID/发奖对账凭证）：此前读 localExtra[@"transId"]，该 key 全链路
         // 只读不写 → 恒为空（1.0.1-alpha.2 及之前，真机实测确认）。
-        // 修复：优先取 TopOn 发奖 extra 中的三方交易号（kATTrackerExtraNetworkTransIDKey
-        // = "third_trans_id"，ATAdEnums.h 字符串宏）；取不到由 Flame 生成唯一事务号兜底，
-        // 保证 transId 恒非空且每次发奖互不相同。
-        NSString *transId = extra[kATTrackerExtraNetworkTransIDKey];
-        if (transId.length == 0) {
-            transId = [[NSUUID UUID] UUIDString];
+        // 修复（按 Taku 官方文档口径）：服务端 trans_id 对应客户端"展示唯一ID"
+        // （kATADDelegateExtraIDKey，ATAPI.h；Android 侧命名 getShowId()）。
+        // 取值链：发奖 extra 的展示ID → 展示回调捕获的展示ID → 空串。
+        // 平台未回传时保持空串，不本地伪造 id（伪造值接收方无法分辨真实来源）；
+        // 排查看 [TK_REWARD_DIAG] 日志的 src= 标注。
+        NSString *transId = nil;
+        NSString *transIdSrc = nil;
+        id extraShowId = extra[kATADDelegateExtraIDKey];
+        if ([extraShowId isKindOfClass:[NSString class]] && [(NSString *)extraShowId length] > 0) {
+            transId = extraShowId;
+            transIdSrc = @"topon-show-id(reward-extra)";
+        } else if (self.capturedShowId.length > 0) {
+            transId = self.capturedShowId;
+            transIdSrc = @"topon-show-id(show-captured)";
         }
+        if (transId.length == 0) {
+            transId = @"";
+            transIdSrc = @"none(平台未回传)";
+        }
+        [FlameLogger i:[NSString stringWithFormat:@"[TK_REWARD_DIAG] reward: userId=%@ transId(len=%lu) src=%@",
+            userId, (unsigned long)transId.length, transIdSrc]];
         [self.listener onAdReward:userId userCustomData:customData transId:transId];
     }
 }

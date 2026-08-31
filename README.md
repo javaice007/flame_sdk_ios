@@ -4,17 +4,17 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 
 ## 版本信息
 
-- **当前发布版本**：`1.0.1-alpha.3`（TK/TB 双线静态产物 + 发奖回调修复版）
+- **当前发布版本**：`1.0.1-alpha.4`（TK/TB 双线静态产物 + 发奖回调修复版）
 - ⚠️ **1.0.0 已知严重问题**：公开 Pod 1.0.0（动态单二进制）接入即启动闪退（dyld 无法解析 WindMill 扁平命名空间符号），TK/TB 双线均受影响，**请勿使用 1.0.0**，升级方式见下方接入示例
-- ⚠️ **1.0.1-alpha.1 的 TB 包已废弃**（外壳名缺陷无法开箱构建，TK 包可用），TB 客户请直接用 1.0.1-alpha.3
-- ⚠️ **≤1.0.1-alpha.2 发奖回调缺陷**：TK 线 `onAdReward` 的 `transId` 恒空；TB 线 `userCustomData` 恒空。已在 1.0.1-alpha.3 修复
+- ⚠️ **1.0.1-alpha.1 的 TB 包已废弃**（外壳名缺陷无法开箱构建，TK 包可用），TB 客户请直接用 1.0.1-alpha.4
+- ⚠️ **≤1.0.1-alpha.2 发奖回调缺陷**：TK 线 `onAdReward` 的 `transId` 恒空；TB 线 `userCustomData` 恒空。已在 1.0.1-alpha.4 修复
 - **TK Pod**：`flame_sdk_ios`
 - **TB Pod**：`flame_sdk_ios_tb`
 - **import（TK/TB 一致）**：`import flame_sdk_ios` / `#import <flame_sdk_ios/flame_sdk_ios.h>`
 - **两个 Pod 互斥**：不能同时接入
 - **最低支持**：iOS 13.0+
 - **开发语言**：Objective-C
-- **版本快照**：`docs/releases/1.0.1-alpha.3.md`
+- **版本快照**：`docs/releases/1.0.1-alpha.4.md`
 
 ## 目录结构
 
@@ -90,10 +90,10 @@ source 'https://cdn.cocoapods.org/'
 
 target 'YourApp' do
   # TK 客户
-  pod 'flame_sdk_ios', '1.0.1-alpha.3'
+  pod 'flame_sdk_ios', '1.0.1-alpha.4'
 
   # ToBid 客户，二选一
-  # pod 'flame_sdk_ios_tb', '1.0.1-alpha.3'
+  # pod 'flame_sdk_ios_tb', '1.0.1-alpha.4'
 end
 ```
 
