@@ -40,6 +40,14 @@ static UIViewController *flame_topViewController(void) {
     return rootVC;
 }
 
+/// load 时入参快照：ToBid 客户端发奖回调不保证回传 userId（reward.userId 依赖
+/// 服务端回显），userCustomData 则完全不回传（入参只进 request.options 服务端
+/// 回传参数）。发奖回调以这两个属性兜底，保证与 TK 线一致的"传入即回传"语义。
+@interface TbRewardAdapter ()
+@property (nonatomic, copy) NSString *loadedUserId;
+@property (nonatomic, copy) NSString *loadedUserCustomData;
+@end
+
 @implementation TbRewardAdapter
 
 - (instancetype)initWithViewController:(UIViewController *)viewController
@@ -68,6 +76,10 @@ static UIViewController *flame_topViewController(void) {
         }
         return;
     }
+
+    // 入参快照：供发奖回调兜底回传（见 loadedUserId / loadedUserCustomData 注释）
+    self.loadedUserId = [userId copy];
+    self.loadedUserCustomData = [userCustomData copy];
 
     // 清除旧对象（防止 stale delegate）
     if (self.rewardVideoAd) {
@@ -144,6 +156,8 @@ static UIViewController *flame_topViewController(void) {
     }
     self.listener = nil;
     self.viewController = nil;
+    self.loadedUserId = nil;
+    self.loadedUserCustomData = nil;
 }
 
 #pragma mark - WindMillRewardVideoAdDelegate（ToBid 回调映射到 FlameRewardListener）
@@ -220,9 +234,22 @@ static UIViewController *flame_topViewController(void) {
 /// 奖励发放
 - (void)rewardVideoAd:(WindMillRewardVideoAd *)rewardVideoAd reward:(WindMillRewardInfo *)reward {
     if ([self.listener respondsToSelector:@selector(onAdReward:userCustomData:transId:)]) {
-        NSString *userId = reward.userId ?: @"";
-        NSString *transId = reward.transId ?: @"";
-        [self.listener onAdReward:userId userCustomData:@"" transId:transId];
+        // userId：优先 ToBid 回传（WindMillRewardInfo.userId），为空回退 load 时入参（对齐 TK 线语义）
+        NSString *userId = reward.userId.length > 0 ? reward.userId : (self.loadedUserId ?: @"");
+        // userCustomData：ToBid 客户端回调不回传（1.0.1-alpha.2 及之前此处硬编码空串），
+        // 回退 load 时入参快照
+        NSString *customData = self.loadedUserCustomData ?: @"";
+        // transId（业务ID/发奖对账凭证）：优先 ToBid 交易id（WindMillRewardInfo.transId，
+        // "交易的唯一id"），其次三方广告源标识（thirdTransId，腾讯/百度），仍为空由 Flame
+        // 生成唯一事务号兜底，保证恒非空且每次发奖互不相同
+        NSString *transId = reward.transId.length > 0 ? reward.transId : reward.thirdTransId;
+        if (transId.length == 0) {
+            transId = [[NSUUID UUID] UUIDString];
+        }
+        [FlameLogger i:[NSString stringWithFormat:@"[TB_REWARD_DIAG] reward: userId=%@ transId(len=%lu) src=%@",
+            userId, (unsigned long)transId.length,
+            reward.transId.length > 0 ? @"windmill" : (reward.thirdTransId.length > 0 ? @"thirdTransId" : @"flame-uuid")]];
+        [self.listener onAdReward:userId userCustomData:customData transId:transId];
     }
 }
 

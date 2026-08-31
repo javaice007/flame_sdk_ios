@@ -133,7 +133,15 @@
         // TopOn 成功回调的 extra 中通常包含之前传入的透传参数
         NSString *userId = self.localExtra[kATAdLoadingExtraUserIDKey] ?: @"";
         NSString *customData = self.localExtra[kATAdLoadingExtraUserDataKeywordKey] ?: @"";
-        NSString *transId = self.localExtra[@"transId"] ?: @"";
+        // transId（业务ID/发奖对账凭证）：此前读 localExtra[@"transId"]，该 key 全链路
+        // 只读不写 → 恒为空（1.0.1-alpha.2 及之前，真机实测确认）。
+        // 修复：优先取 TopOn 发奖 extra 中的三方交易号（kATTrackerExtraNetworkTransIDKey
+        // = "third_trans_id"，ATAdEnums.h 字符串宏）；取不到由 Flame 生成唯一事务号兜底，
+        // 保证 transId 恒非空且每次发奖互不相同。
+        NSString *transId = extra[kATTrackerExtraNetworkTransIDKey];
+        if (transId.length == 0) {
+            transId = [[NSUUID UUID] UUIDString];
+        }
         [self.listener onAdReward:userId userCustomData:customData transId:transId];
     }
 }
