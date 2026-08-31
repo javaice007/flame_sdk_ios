@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.1-alpha.4
+
+- **发奖 transId 语义修正（按 Taku/ToBid 官方文档）**：transId 只回传平台真实交易号，
+  平台未回传为空串，SDK 不本地伪造 id。
+  - TK：取客户端"展示唯一ID"（`kATADDelegateExtraIDKey`，Taku 文档口径为服务端
+    `trans_id` 的客户端对应物），优先发奖回调 extra、次选展示回调捕获；移除 alpha.3
+    使用的 `third_trans_id`（官方文档无依据）与 UUID 兜底。
+  - TB：仅取 ToBid `WindMillRewardInfo.transId`（与其服务端激励回传同源）；移除
+    UUID 兜底与 `thirdTransId` 混用（三方广告源标识只进诊断日志）。
+  - 双线增加来源诊断日志（`[TK_REWARD_DIAG]` / `[TB_REWARD_DIAG]`），标注实际取值来源。
+- **TK userCustomData 补写官方服务端回传通道**：按 Taku《服务端激励》示例，load 时
+  双写 `kATAdLoadingExtraUserDataKeywordKey`（三方网络透传，既有）与
+  `kATAdLoadingExtraMediaExtraKey`（Taku 服务端激励回调 URL 回传，新增），依赖服务端
+  激励回调做发奖关联的客户可拿到自定义数据。
+- ⚠️ 接入方注意：本版起 transId 可能为空串（平台未回传时），服务端发奖逻辑需将
+  空值视为合法输入。
+- 产物结构与依赖不变；客户仅改 Podfile 版本号。
+
 ## 1.0.1-alpha.3
 
 - **修复 TK 线发奖回调 `transId` 恒为空**（客户反馈，真机复现确认）：胶水层此前读

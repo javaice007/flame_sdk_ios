@@ -25,12 +25,12 @@
 # 二者互斥不可同时接入。module_name 均为 flame_sdk_ios。
 #
 # 接入方：
-#   pod 'flame_sdk_ios_tb', '1.0.1-alpha.3'
+#   pod 'flame_sdk_ios_tb', '1.0.1-alpha.4'
 #   import flame_sdk_ios
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb'
-  s.version          = '1.0.1-alpha.3'
+  s.version          = '1.0.1-alpha.4'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TB (ToBid) glue embedded. WindMill symbols resolve at app link time via ToBid-iOS-RC static archives.'
@@ -117,9 +117,9 @@ end
 #
 # 4. 升级指引
 #    客户侧仅需改 Podfile 版本号：
-#      pod 'flame_sdk_ios_tb', '1.0.1-alpha.3'
+#      pod 'flame_sdk_ios_tb', '1.0.1-alpha.4'
 #    无需任何代码改动（module/import/API 均不变）；产物由动态变静态后，
 #    flame 将链接进主程序（包内不再有 flame_sdk_ios.framework 动态库）。
 #    1.0.1-alpha.1 的 TB 包存在外壳名缺陷（无法开箱构建），请直接用 alpha.3；
-#    1.0.1-alpha.3 同时修复发奖回调 userCustomData 恒空（透传断裂）。
+#    1.0.1-alpha.4 同时修复发奖回调 userCustomData 恒空（透传断裂）。
 # ============================================================================
