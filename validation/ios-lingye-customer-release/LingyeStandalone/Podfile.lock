@@ -1,0 +1,145 @@
+PODS:
+  - Ads-CN/BUAdSDK (7.6.0.4)
+  - AnyThinkiOS (6.5.60):
+    - AnyThinkiOS/AnyThinkSDK (= 6.5.60)
+  - AnyThinkiOS/AnyThinkSDK (6.5.60)
+  - AnyThinkMediationAdxSmartdigimktCNAdapter (6.5.63.2.0):
+    - AnyThinkiOS (>= 6.5.60)
+    - SmartdigimktCNSDK (= 6.5.63)
+  - BaiduMobAdSDK (10.050)
+  - CJJTAdSDK (1.0.4)
+  - CJLKAdSDK (1.0.3)
+  - CJLYAdSDK (1.0.22)
+  - CJMobileAd (2.4.32):
+    - CJLKAdSDK (= 1.0.3)
+    - CJLYAdSDK (= 1.0.22)
+    - CJPTAdSDK (= 1.0.12)
+    - CJZFAdSDK/ChannelNoWechat (= 1.10.10.3)
+    - HXSDK (= 5.1.8)
+    - HXSDK/JT (= 5.1.8)
+    - HXSDK/MS (= 5.1.8)
+    - HXSDK/UBiX (= 5.1.8)
+    - JYAdSDK (~> 2.1.0)
+  - CJPTAdSDK (1.0.12)
+  - CJZFAdSDK/ChannelNoWechat (1.10.10.3):
+    - CJZFAdSDK/Core
+  - CJZFAdSDK/Core (1.10.10.3)
+  - CXHAdSDK (1.10.10):
+    - CXHAdSDK-Adapter (= 1.10.10)
+    - CXHAdSDK/Core (= 1.10.10)
+  - CXHAdSDK-Adapter (1.10.10):
+    - CXHAdSDK-Kit (~> 1.10)
+  - CXHAdSDK-Kit (1.13.0)
+  - CXHAdSDK/Core (1.10.10):
+    - CXHAdSDK-Adapter (= 1.10.10)
+  - GDTMobSDK (4.15.90)
+  - HXSDK (5.1.8):
+    - HXSDK/Core (= 5.1.8)
+  - HXSDK/Core (5.1.8)
+  - HXSDK/JT (5.1.8):
+    - HXSDK/Core
+    - OpenSSL-Universal (~> 1.1)
+  - HXSDK/MS (5.1.8):
+    - HXSDK/Core
+    - MSMobAdSDKv3/MS (~> 3.0.10.2)
+  - HXSDK/UBiX (5.1.8):
+    - HXSDK/Core
+    - UBiXMerakSDK (~> 2.10.0.11)
+  - JYAdSDK (2.1.11)
+  - KSAdSDK (5.4.10.1)
+  - Masonry (1.1.0)
+  - MSMobAdSDKv3/Minimal (3.0.10.2)
+  - MSMobAdSDKv3/MS (3.0.10.2):
+    - MSMobAdSDKv3/Minimal
+    - MSMobAdSDKv3/MSIDFALib
+    - MSMobAdSDKv3/MSMotion
+  - MSMobAdSDKv3/MSIDFALib (3.0.10.2)
+  - MSMobAdSDKv3/MSMotion (3.0.10.2)
+  - OpenSSL-Universal (1.1.2301)
+  - QMAdSDK (1.6.0.5)
+  - SDWebImage (5.21.7):
+    - SDWebImage/Core (= 5.21.7)
+  - SDWebImage/Core (5.21.7)
+  - SmartdigimktCNSDK (6.5.63)
+  - UBiXDaq (2.6.0)
+  - UBiXMerakSDK (2.10.0.11):
+    - UBiXDaq (~> 2.6.0)
+
+DEPENDENCIES:
+  - Ads-CN/BUAdSDK (= 7.6.0.4)
+  - AnyThinkiOS (= 6.5.60)
+  - AnyThinkMediationAdxSmartdigimktCNAdapter (= 6.5.63.2.0)
+  - BaiduMobAdSDK (= 10.050)
+  - CJJTAdSDK (= 1.0.4)
+  - CJMobileAd (= 2.4.32)
+  - CXHAdSDK (= 1.10.10)
+  - GDTMobSDK (= 4.15.90)
+  - KSAdSDK (= 5.4.10.1)
+  - Masonry
+  - OpenSSL-Universal (from `../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301`)
+  - QMAdSDK (= 1.6.0.5)
+  - SDWebImage
+
+SPEC REPOS:
+  https://gitee.com/jyadteam/JYSpecs.git:
+    - JYAdSDK
+  https://gitee.com/XJCode250323489/AdSpec.git:
+    - CJJTAdSDK
+    - CJLKAdSDK
+    - CJLYAdSDK
+    - CJMobileAd
+    - CJPTAdSDK
+  trunk:
+    - Ads-CN
+    - AnyThinkiOS
+    - AnyThinkMediationAdxSmartdigimktCNAdapter
+    - BaiduMobAdSDK
+    - CJZFAdSDK
+    - CXHAdSDK
+    - CXHAdSDK-Adapter
+    - CXHAdSDK-Kit
+    - GDTMobSDK
+    - HXSDK
+    - KSAdSDK
+    - Masonry
+    - MSMobAdSDKv3
+    - QMAdSDK
+    - SDWebImage
+    - SmartdigimktCNSDK
+    - UBiXDaq
+    - UBiXMerakSDK
+
+EXTERNAL SOURCES:
+  OpenSSL-Universal:
+    :path: "../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301"
+
+SPEC CHECKSUMS:
+  Ads-CN: 6bfc5a80f72a8fa723bb8d0941c84bcc03a5c088
+  AnyThinkiOS: 11e8091c7ede45edc20ea4edb38b0ac1d14c6b45
+  AnyThinkMediationAdxSmartdigimktCNAdapter: 22e771a646c423c3b60caf95f48e3be3bdc583fc
+  BaiduMobAdSDK: cc8a2e7deeec4d0365532bcf326f4e77641ed446
+  CJJTAdSDK: 6e040e40b6b1271aeee1f17325d989422ed377ee
+  CJLKAdSDK: 1eb2934227125ad4d41186ffc208235ebdc89461
+  CJLYAdSDK: 6a8d5c9b26ce333ceb3cf36f4ffd4dfdc84278a7
+  CJMobileAd: dde1893d7f70e8d65e1fe447d82ed8b2f9d71edd
+  CJPTAdSDK: 13e35331f7a6fae832eee331bbcaf20e5ca41407
+  CJZFAdSDK: c5e6953c5380d2405d11dd3dd1ea3609f94da578
+  CXHAdSDK: 14d2fbfa78b977c069a60715ec7f831bc0c50a69
+  CXHAdSDK-Adapter: 97f206c64b25fdc0e1c6a17e9c4aa9ac7b097f30
+  CXHAdSDK-Kit: 38f5e56f6024cd4cec7011cb082968d701e8d724
+  GDTMobSDK: fdec348687362cf20effb182286a5d1fbd3e8467
+  HXSDK: 03491fbdba7a2c2997071fbdc952ee15022f473f
+  JYAdSDK: 24585bf191eed7a62419cfd4a434e22627506a98
+  KSAdSDK: 81517aad7b5f0d668c62e65be59b6fef0bbd9980
+  Masonry: 678fab65091a9290e40e2832a55e7ab731aad201
+  MSMobAdSDKv3: 24f462c9dfb5743b4838a8bcce5b1710b5aa92f2
+  OpenSSL-Universal: ca89c20240633a77c776082ba76b7d90f992bf77
+  QMAdSDK: baac5b7770ecf7eb35a707f25797e1a4639a709e
+  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
+  SmartdigimktCNSDK: e5fddb83852f68bf9c204e74ac4178eb7d30e652
+  UBiXDaq: dc9e01975832d4734af08f036e83b41493b124f5
+  UBiXMerakSDK: a4f64fba8dfe72247e7383524c88e8f5fa2c511a
+
+PODFILE CHECKSUM: 5a3be582521cc54fb20f6128fe8c7635446944c3
+
+COCOAPODS: 1.16.2

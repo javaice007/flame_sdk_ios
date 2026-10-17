@@ -1,0 +1,25 @@
+# LingyeFlameTBCoexist — P0D 正式验证 Host C
+# CJMobileAd 2.4.32 完整客户闭包 + flame_sdk_ios_tb_lingye。
+name: LingyeFlameTBCoexist
+options:
+  bundleIdPrefix: com.flame.validation
+  deploymentTarget:
+    iOS: "15.0"
+settings:
+  base:
+targets:
+  LingyeFlameTBCoexist:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.flame.sdk.test
+        GENERATE_INFOPLIST_FILE: "NO"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: BTY45V9GK4

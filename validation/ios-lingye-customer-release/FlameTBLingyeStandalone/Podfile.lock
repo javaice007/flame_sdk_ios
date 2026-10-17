@@ -1,0 +1,173 @@
+PODS:
+  - Ads-CN/BUAdLive (7.6.0.4)
+  - Ads-CN/BUAdLive-Framework (7.6.0.4):
+    - Ads-CN/BUAdLive
+    - BUTTSDKFramework/LivePull-Lite (= 1.48.2.3-premium)
+  - Ads-CN/BUAdSDK (7.6.0.4)
+  - Ads-CN/CSJMediation (7.6.0.4):
+    - Ads-CN/BUAdLive-Framework
+    - Ads-CN/CSJMediation-Only
+  - Ads-CN/CSJMediation-Only (7.6.0.4):
+    - Ads-CN/BUAdSDK
+  - BaiduMobAdSDK (10.050)
+  - BUTTSDKFramework/Core (1.48.2.3-premium)
+  - BUTTSDKFramework/LiveBase (1.48.2.3-premium):
+    - BUTTSDKFramework/Core
+    - BUTTSDKFramework/Reachability
+  - BUTTSDKFramework/LivePlayer/Base (1.48.2.3-premium):
+    - BUTTSDKFramework/Core
+    - BUTTSDKFramework/LiveBase
+    - BUTTSDKFramework/LivePull-VolcLog
+    - BUTTSDKFramework/Reachability
+  - BUTTSDKFramework/LivePlayer/Lite (1.48.2.3-premium):
+    - BUTTSDKFramework/LivePlayer/Base
+    - BUTTSDKFramework/PlayerCore/LiveLite
+  - BUTTSDKFramework/LivePull-Lite (1.48.2.3-premium):
+    - BUTTSDKFramework/LivePlayer/Lite
+    - BUTTSDKFramework/Strategy/Lite
+  - BUTTSDKFramework/LivePull-VolcLog (1.48.2.3-premium):
+    - BUTTSDKFramework/VolcLog
+  - BUTTSDKFramework/PlayerCore/Base (1.48.2.3-premium):
+    - BUTTSDKFramework/Core
+  - BUTTSDKFramework/PlayerCore/LiveLite (1.48.2.3-premium):
+    - BUTTSDKFramework/PlayerCore/Base
+    - BUTTSDKFramework/TTFFmpeg/LiveLite
+  - BUTTSDKFramework/Reachability (1.48.2.3-premium)
+  - BUTTSDKFramework/Strategy/Core (1.48.2.3-premium):
+    - BUTTSDKFramework/LiveBase
+    - BUTTSDKFramework/Reachability
+  - BUTTSDKFramework/Strategy/Lite (1.48.2.3-premium):
+    - BUTTSDKFramework/LivePlayer/Lite
+    - BUTTSDKFramework/Strategy/Core
+  - BUTTSDKFramework/TTFFmpeg/LiveLite (1.48.2.3-premium)
+  - BUTTSDKFramework/VolcLog (1.48.2.3-premium)
+  - flame_sdk_ios_tb_lingye (1.0.1-lingye.1-local):
+    - OpenSSL-Universal (~> 1.1)
+    - ToBid-iOS-RC (= 5.5.6)
+    - ToBid-iOS-RC/BaiduAdapter (= 5.5.6)
+    - ToBid-iOS-RC/CSJAdapter (= 5.5.6)
+    - ToBid-iOS-RC/GDTAdapter (= 5.5.6)
+    - ToBid-iOS-RC/GromoreAdapter (= 5.5.6)
+    - ToBid-iOS-RC/KSAdapter (= 5.5.6)
+    - ToBid-iOS-RC/MintegralAdapter (= 5.5.6)
+    - ToBid-iOS-RC/OctopusAdapter (= 5.5.6)
+  - GDTMobSDK (4.15.90)
+  - KSAdSDK (5.4.10.1)
+  - MintegralAdSDK (7.7.6):
+    - MintegralAdSDK/BannerAd (= 7.7.6)
+    - MintegralAdSDK/BidBannerAd (= 7.7.6)
+    - MintegralAdSDK/BidInterstitialVideoAd (= 7.7.6)
+    - MintegralAdSDK/BidNativeAd (= 7.7.6)
+    - MintegralAdSDK/BidNewInterstitialAd (= 7.7.6)
+    - MintegralAdSDK/BidRewardVideoAd (= 7.7.6)
+    - MintegralAdSDK/InterstitialVideoAd (= 7.7.6)
+    - MintegralAdSDK/NativeAd (= 7.7.6)
+    - MintegralAdSDK/NewInterstitialAd (= 7.7.6)
+    - MintegralAdSDK/RewardVideoAd (= 7.7.6)
+  - MintegralAdSDK/BannerAd (7.7.6):
+    - MintegralAdSDK/NativeAd
+  - MintegralAdSDK/BidBannerAd (7.7.6):
+    - MintegralAdSDK/BannerAd
+    - MintegralAdSDK/BidNativeAd
+  - MintegralAdSDK/BidInterstitialVideoAd (7.7.6):
+    - MintegralAdSDK/BidNativeAd
+    - MintegralAdSDK/InterstitialVideoAd
+  - MintegralAdSDK/BidNativeAd (7.7.6):
+    - MintegralAdSDK/NativeAd
+  - MintegralAdSDK/BidNativeAdvancedAd (7.7.6):
+    - MintegralAdSDK/BidNativeAd
+    - MintegralAdSDK/NativeAdvancedAd
+  - MintegralAdSDK/BidNewInterstitialAd (7.7.6):
+    - MintegralAdSDK/BidNativeAd
+    - MintegralAdSDK/NewInterstitialAd
+  - MintegralAdSDK/BidRewardVideoAd (7.7.6):
+    - MintegralAdSDK/BidNativeAd
+    - MintegralAdSDK/RewardVideoAd
+  - MintegralAdSDK/BidSplashAd (7.7.6):
+    - MintegralAdSDK/BidNativeAd
+    - MintegralAdSDK/SplashAd
+  - MintegralAdSDK/InterstitialVideoAd (7.7.6):
+    - MintegralAdSDK/NativeAd
+  - MintegralAdSDK/NativeAd (7.7.6)
+  - MintegralAdSDK/NativeAdvancedAd (7.7.6):
+    - MintegralAdSDK/NativeAd
+  - MintegralAdSDK/NewInterstitialAd (7.7.6):
+    - MintegralAdSDK/InterstitialVideoAd
+    - MintegralAdSDK/NativeAd
+  - MintegralAdSDK/RewardVideoAd (7.7.6):
+    - MintegralAdSDK/NativeAd
+  - MintegralAdSDK/SplashAd (7.7.6):
+    - MintegralAdSDK/NativeAd
+  - OctopusSDK (2.6.4.29):
+    - OctopusSDK/OctopusBaseSDK (= 2.6.4.29)
+  - OctopusSDK/OctopusBaseSDK (2.6.4.29)
+  - OpenSSL-Universal (1.1.2301)
+  - ToBid-iOS-RC (5.5.6):
+    - ToBid-iOS-RC/ToBidSDK (= 5.5.6)
+  - ToBid-iOS-RC/BaiduAdapter (5.5.6):
+    - BaiduMobAdSDK (= 10.050)
+    - ToBid-iOS-RC/ToBidSDK
+  - ToBid-iOS-RC/CSJAdapter (5.5.6):
+    - Ads-CN/BUAdSDK (= 7.6.0.4)
+    - ToBid-iOS-RC/ToBidSDK
+  - ToBid-iOS-RC/GDTAdapter (5.5.6):
+    - GDTMobSDK (= 4.15.90)
+    - ToBid-iOS-RC/ToBidSDK
+  - ToBid-iOS-RC/GromoreAdapter (5.5.6):
+    - Ads-CN/BUAdSDK (= 7.6.0.4)
+    - Ads-CN/CSJMediation (= 7.6.0.4)
+    - ToBid-iOS-RC/ToBidSDK
+  - ToBid-iOS-RC/KSAdapter (5.5.6):
+    - KSAdSDK (= 5.4.10.1)
+    - ToBid-iOS-RC/ToBidSDK
+  - ToBid-iOS-RC/MintegralAdapter (5.5.6):
+    - MintegralAdSDK (= 7.7.6)
+    - MintegralAdSDK/BidBannerAd (= 7.7.6)
+    - MintegralAdSDK/BidNativeAd (= 7.7.6)
+    - MintegralAdSDK/BidNativeAdvancedAd (= 7.7.6)
+    - MintegralAdSDK/BidNewInterstitialAd (= 7.7.6)
+    - MintegralAdSDK/BidRewardVideoAd (= 7.7.6)
+    - MintegralAdSDK/BidSplashAd (= 7.7.6)
+    - MintegralAdSDK/NewInterstitialAd (= 7.7.6)
+    - ToBid-iOS-RC/ToBidSDK
+  - ToBid-iOS-RC/OctopusAdapter (5.5.6):
+    - OctopusSDK (= 2.6.4.29)
+    - ToBid-iOS-RC/ToBidSDK
+  - ToBid-iOS-RC/ToBidSDK (5.5.6)
+
+DEPENDENCIES:
+  - flame_sdk_ios_tb_lingye (from `../../../flame_sdk_ios_tb_lingye.podspec`)
+  - OpenSSL-Universal (from `../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301`)
+
+SPEC REPOS:
+  trunk:
+    - Ads-CN
+    - BaiduMobAdSDK
+    - BUTTSDKFramework
+    - GDTMobSDK
+    - KSAdSDK
+    - MintegralAdSDK
+    - OctopusSDK
+    - ToBid-iOS-RC
+
+EXTERNAL SOURCES:
+  flame_sdk_ios_tb_lingye:
+    :podspec: "../../../flame_sdk_ios_tb_lingye.podspec"
+  OpenSSL-Universal:
+    :path: "../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301"
+
+SPEC CHECKSUMS:
+  Ads-CN: 6bfc5a80f72a8fa723bb8d0941c84bcc03a5c088
+  BaiduMobAdSDK: cc8a2e7deeec4d0365532bcf326f4e77641ed446
+  BUTTSDKFramework: 34f8f8d541da07e79e9c479eb71336d1e4d90fdd
+  flame_sdk_ios_tb_lingye: a8896c0f078a3797c01b4d4517ad40900b260862
+  GDTMobSDK: fdec348687362cf20effb182286a5d1fbd3e8467
+  KSAdSDK: 81517aad7b5f0d668c62e65be59b6fef0bbd9980
+  MintegralAdSDK: 81febc34aafe94f744f0526bfbd421eda325722e
+  OctopusSDK: d06fd88530fca861d1f6d8aac0eff5506a4c684a
+  OpenSSL-Universal: ca89c20240633a77c776082ba76b7d90f992bf77
+  ToBid-iOS-RC: 81b900e8baf57543946267b6cb0c884df96a0ca9
+
+PODFILE CHECKSUM: ad68626eefa833b054d5fc6955a3315be570d063
+
+COCOAPODS: 1.16.2

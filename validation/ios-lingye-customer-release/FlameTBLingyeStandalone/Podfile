@@ -1,0 +1,14 @@
+# FlameTBLingyeStandalone — P0D Host B
+# 只接 flame_sdk_ios_tb_lingye（正式客户变体 podspec，仓库根目录）。
+# 注意：trunk 上 OpenSSL-Universal 1.1.x 的 source 已腐烂（P0B 实证），
+# 验证环境用本地 :path pod（内容同 tag 1.1.2301）满足变体的 ~>1.1 约束 ——
+# 这是环境修复，不改变变体依赖语义（正式客户从 trunk/镜像 解析 1.1.x）。
+platform :ios, '15.0'
+
+source 'https://cdn.cocoapods.org/'
+
+target 'FlameTBLingyeStandalone' do
+  use_frameworks! :linkage => :static
+  pod 'flame_sdk_ios_tb_lingye', :podspec => '../../../flame_sdk_ios_tb_lingye.podspec'
+  pod 'OpenSSL-Universal', :path => '../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301'
+end

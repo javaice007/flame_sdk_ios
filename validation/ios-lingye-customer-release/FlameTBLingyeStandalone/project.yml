@@ -1,0 +1,25 @@
+# FlameTBLingyeStandalone — P0D 正式验证 Host B
+# 只接 flame_sdk_ios_tb_lingye（领页客户共存变体），不接 CJMobileAd。
+name: FlameTBLingyeStandalone
+options:
+  bundleIdPrefix: com.flame.validation
+  deploymentTarget:
+    iOS: "15.0"   # 验证口径（P0D_VALIDATION_DT=15；正式契约 iOS 13 不变）
+settings:
+  base:
+targets:
+  FlameTBLingyeStandalone:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.flame.sdk.test   # P0D runtime：复用本机已有含目标设备的描述文件
+        GENERATE_INFOPLIST_FILE: "NO"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: BTY45V9GK4

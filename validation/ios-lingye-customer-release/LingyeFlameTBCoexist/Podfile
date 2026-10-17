@@ -1,0 +1,29 @@
+# LingyeFlameTBCoexist — P0D Host C（正式客户共存验证）
+# 领页侧：CJMobileAd 2.4.32 + 客户既有依赖闭包（HXSDK/MS/UBiX + JY + CJ 系）+
+#         链接必需的宿主网络/SDK（AnyThink 6.5.60、QM 1.6.0.5、CXH 1.10.10、CJJT 1.0.4，
+#         版本考证见 P0C 16 号文档）。
+# Flame 侧：flame_sdk_ios_tb_lingye（OpenSSL ~>1.1 + 去 MSAdAdapter）。
+# 共享网络 CSJ/GDT/KS/Baidu 不显式 pin —— 由 Flame 变体闭包提供单副本
+# （P0C 实证同代版本可满足领页未定义符号）。
+# MS 单副本 = 客户既有 MSMobAdSDKv3（经 HXSDK/MS）。OpenSSL 单副本 = 1.1.2301。
+platform :ios, '15.0'
+
+source 'https://cdn.cocoapods.org/'
+source 'https://gitee.com/XJCode250323489/AdSpec.git'
+source 'https://gitee.com/jyadteam/JYSpecs.git'
+
+target 'LingyeFlameTBCoexist' do
+  use_frameworks! :linkage => :static
+
+  # —— 领页侧（客户现状 + 链接闭包）——
+  pod 'CJMobileAd', '2.4.32'
+  pod 'AnyThinkiOS', '6.5.60'
+  pod 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.63.2.0'   # 酷鹰 ADX（厂商注释 necessary；2.4.33.10 活动 pin 同版）
+  pod 'QMAdSDK', '1.6.0.5'
+  pod 'CXHAdSDK', '1.10.10'
+  pod 'CJJTAdSDK', '1.0.4'
+  pod 'OpenSSL-Universal', :path => '../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301'
+
+  # —— Flame 侧（客户共存变体）——
+  pod 'flame_sdk_ios_tb_lingye', :podspec => '../../../flame_sdk_ios_tb_lingye.podspec'
+end

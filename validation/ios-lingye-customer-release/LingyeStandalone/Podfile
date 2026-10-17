@@ -1,0 +1,45 @@
+# LingyeStandalone — P0D 正式验证 Host A（对照组：CJMobileAd 2.4.32 link-complete 客户环境，不接 Flame）
+# 目标：补齐 CJMobileAd 2.4.32 实际链接闭包，验证 link-complete。
+# 共享网络（CSJ/GDT/KS/Baidu）一律使用 Flame TB 1.0.1-alpha.4 当前 resolved 同代版本，
+# 用于回答"Flame TB 将来提供的单一网络副本能否直接满足 CJMobileAd 未定义符号"。
+# 版本依据（禁止随意取最新）：
+#   AnyThinkiOS 6.5.60          ← CJMobileAd 2.4.32 podspec 注释 pin + 2.4.33.10 活动 pin
+#   Ads-CN/BUAdSDK 7.6.0.4      ← Flame TB resolved（= 2.4.32 注释 pin Ads-CN-Beta ~>7.6.0.4 同代）
+#   GDTMobSDK 4.15.90           ← Flame TB resolved（= 2.4.32/2.4.33 注释 pin ~>4.15.90）
+#   KSAdSDK 5.4.10.1            ← Flame TB resolved（= 2.4.32/2.4.33 注释 pin ~>5.4.10.1）
+#   BaiduMobAdSDK 10.050        ← Flame TB resolved（= 2.4.32 注释 pin ~>10.050）
+#   QMAdSDK 1.6.0.5             ← 2.4.32 注释 pin ~>1.6.0.5（trunk 可解析）
+#   CXHAdSDK 1.10.10            ← HXSDK 5.1.8/IconAd 引用 ~>1.10.6 的 1.10.x 尾版
+#   CJJTAdSDK 1.0.4             ← 2.4.32 注释 pin（LYJTAdSDK 提供者）
+#   OpenSSL-Universal 1.1.2301  ← HXSDK/JT ~>1.1 的本地 :path（trunk source 已腐烂，内容同 tag）
+use_frameworks!
+source 'https://cdn.cocoapods.org/'
+source 'https://gitee.com/XJCode250323489/AdSpec.git'
+source 'https://gitee.com/jyadteam/JYSpecs.git'
+
+platform :ios, '12.0'
+
+target 'CJMobileAd_Example' do
+  pod 'CJMobileAd', '2.4.32'
+  pod 'Masonry'
+  pod 'SDWebImage'
+  # P0B 验证环境覆盖：trunk 上 OpenSSL-Universal 1.1.2301 的 source 指向已失效的
+  # github /archive/ 短链（本机直连 github 亦受限）。改用 codeload 下载的本地 :path pod，
+  # 内容与 tag 1.1.2301 完全一致（验证专用，不改变任何正式依赖契约）。
+  pod 'OpenSSL-Universal', :path => '../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301'
+
+  # —— 补齐链接闭包（TEST_ONLY，不改领页正式依赖）——
+  pod 'AnyThinkiOS', '6.5.60'
+  pod 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.63.2.0'   # 酷鹰 ADX（厂商注释 necessary；2.4.33.10 活动 pin 同版）
+  pod 'Ads-CN/BUAdSDK', '7.6.0.4'
+  pod 'GDTMobSDK', '4.15.90'
+  pod 'KSAdSDK', '5.4.10.1'
+  pod 'BaiduMobAdSDK', '10.050'
+  pod 'QMAdSDK', '1.6.0.5'
+  pod 'CXHAdSDK', '1.10.10'
+  pod 'CJJTAdSDK', '1.0.4'
+
+  target 'CJMobileAd_Tests' do
+    inherit! :search_paths
+  end
+end

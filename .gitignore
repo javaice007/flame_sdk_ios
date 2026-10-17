@@ -134,3 +134,14 @@ research/exp_b_tb_no_anythink/
 
 # ZCode 本地会话状态（plans 等，仅本机使用，不入仓库）
 .zcode/
+
+# P0B/P0C/P0D 验证区：只跟踪源级证据（Podfile/lockfile/host 源码/podspec 文本），二进制与生成物不入库
+validation/**/Pods/
+validation/**/build/
+validation/**/local_pods/**
+!validation/**/local_pods/**/*.podspec
+!validation/**/local_pods/**/*.podspec.json
+validation/**/*.xcworkspace/
+validation/**/xcuserdata/
+validation/**/ddata*/
+validation/**/*.xcuserstate

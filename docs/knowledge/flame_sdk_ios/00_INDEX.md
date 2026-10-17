@@ -20,6 +20,8 @@
 | 12_Public_API兼容基线.md | 客户当前看到的完整 API 面 + 稳定性分类 | 2026-08-18 | 全部公共头文件（10 个） |
 | 13_Funlink_Official_Network_Migration_Research.md | Funlink 官方 Network 迁移可行性调研（含版本矩阵/宿主契约/旧版本兼容/收益链路） | 2026-09-14 | flame_sdk_ios.podspec:72、flame-specs 全版本 podspec、docs/YfG41D3N、docs/2KR6QU、trunk podspec |
 | 14_iOS双线基线冻结.md | P0A 双线基线冻结：唯一正式基线 / 双线架构 / Pod 模型 / 依赖边界 / Build Gate / 决策 D1-D4 / 分支治理 | 2026-10-17 | 全仓库 + 两 podspec + xcFramework_build.sh + build/{tk,tb}-static 产物审计 |
+| 15/16（P0B/P0C 研究文档） | 领页共存调研与依赖闭包/OpenSSL 研究（含口径修正）——位于 research 研究分支 | 2026-10-17 | research/ios-lingye-tobid-coexistence @0335b63、research/ios-lingye-tobid-dependency-closure @0d31655 |
+| 17_iOS领页_TB客户共存适配.md | P0D 客户变体 flame_sdk_ios_tb_lingye：构建门禁全 PASS + 真机基线 A 全链/B init(OpenSSL1.1) PASS + 共存 edata-missing 阻断发现 | 2026-10-17 | validation/ios-lingye-customer-release/ 三 host + 真机日志/截图 + 交叉验证 |
 
 ## 一句话结论
 

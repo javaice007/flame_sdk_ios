@@ -1,0 +1,396 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1DC8B383C5E6B85C1AE7ED1E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = E1E10935183DE801ACC5F4D5 /* main.m */; };
+		2D39538F9758A5491236B02A /* Pods_FlameTBLingyeStandalone.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 71126917E33AAADAFD7B014E /* Pods_FlameTBLingyeStandalone.framework */; };
+		713DEC9967A729D9093421B3 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 53FB34CD08DC7E68C2C88055 /* AppDelegate.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		25EB4C4E4212C7351F2B7817 /* Pods-FlameTBLingyeStandalone.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FlameTBLingyeStandalone.release.xcconfig"; path = "Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone.release.xcconfig"; sourceTree = "<group>"; };
+		53FB34CD08DC7E68C2C88055 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		6AA1EEF7543228BDBF72AC4E /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		71126917E33AAADAFD7B014E /* Pods_FlameTBLingyeStandalone.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FlameTBLingyeStandalone.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA1D8B01B128AD3DF130DAAF /* FlameTBLingyeStandalone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FlameTBLingyeStandalone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B86BCDA5A155AB7210ECAA47 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		E1E10935183DE801ACC5F4D5 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		EF5836BE5FD42BD914B70C1E /* Pods-FlameTBLingyeStandalone.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FlameTBLingyeStandalone.debug.xcconfig"; path = "Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone.debug.xcconfig"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		97A314BAAEF49B1C571B0AF2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2D39538F9758A5491236B02A /* Pods_FlameTBLingyeStandalone.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		26A06ED3D18DF37CF1362626 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				71126917E33AAADAFD7B014E /* Pods_FlameTBLingyeStandalone.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		74865FBDD580A809468F9A8F = {
+			isa = PBXGroup;
+			children = (
+				AE7018C4BD37F9AFB70FA9D6 /* Sources */,
+				ED1093B09D92C6EC840E7E77 /* Products */,
+				FF8EB565027089EC630BC222 /* Pods */,
+				26A06ED3D18DF37CF1362626 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		AE7018C4BD37F9AFB70FA9D6 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				6AA1EEF7543228BDBF72AC4E /* AppDelegate.h */,
+				53FB34CD08DC7E68C2C88055 /* AppDelegate.m */,
+				B86BCDA5A155AB7210ECAA47 /* Info.plist */,
+				E1E10935183DE801ACC5F4D5 /* main.m */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		ED1093B09D92C6EC840E7E77 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA1D8B01B128AD3DF130DAAF /* FlameTBLingyeStandalone.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FF8EB565027089EC630BC222 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				EF5836BE5FD42BD914B70C1E /* Pods-FlameTBLingyeStandalone.debug.xcconfig */,
+				25EB4C4E4212C7351F2B7817 /* Pods-FlameTBLingyeStandalone.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA312AC164678B4F20131A7B /* FlameTBLingyeStandalone */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1F367A35D2625BD940FEAA07 /* Build configuration list for PBXNativeTarget "FlameTBLingyeStandalone" */;
+			buildPhases = (
+				61FC9EEBCB986DA75D0D1B94 /* [CP] Check Pods Manifest.lock */,
+				383790B6F0A5685009099262 /* Sources */,
+				97A314BAAEF49B1C571B0AF2 /* Frameworks */,
+				04DBF4D3CFA6561D3FA2D86B /* [CP] Embed Pods Frameworks */,
+				9F144C5E52FF402EEF62D462 /* [CP] Copy Pods Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FlameTBLingyeStandalone;
+			productName = FlameTBLingyeStandalone;
+			productReference = AA1D8B01B128AD3DF130DAAF /* FlameTBLingyeStandalone.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C8228571864DCAF3BF593244 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					AA312AC164678B4F20131A7B = {
+						DevelopmentTeam = BTY45V9GK4;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 3243675355186291363F598D /* Build configuration list for PBXProject "FlameTBLingyeStandalone" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 74865FBDD580A809468F9A8F;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = ED1093B09D92C6EC840E7E77 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AA312AC164678B4F20131A7B /* FlameTBLingyeStandalone */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		04DBF4D3CFA6561D3FA2D86B /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		61FC9EEBCB986DA75D0D1B94 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-FlameTBLingyeStandalone-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		9F144C5E52FF402EEF62D462 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-FlameTBLingyeStandalone/Pods-FlameTBLingyeStandalone-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		383790B6F0A5685009099262 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				713DEC9967A729D9093421B3 /* AppDelegate.m in Sources */,
+				1DC8B383C5E6B85C1AE7ED1E /* main.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		1DE05AF6C828FC376E06D53D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		2EE132FF6622C66F179D575F /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 25EB4C4E4212C7351F2B7817 /* Pods-FlameTBLingyeStandalone.release.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = BTY45V9GK4;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.flame.sdk.test;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		902386D695C28D936A07D057 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = EF5836BE5FD42BD914B70C1E /* Pods-FlameTBLingyeStandalone.debug.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = BTY45V9GK4;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.flame.sdk.test;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CF0AA5A710E805FB76CC881D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1F367A35D2625BD940FEAA07 /* Build configuration list for PBXNativeTarget "FlameTBLingyeStandalone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				902386D695C28D936A07D057 /* Debug */,
+				2EE132FF6622C66F179D575F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		3243675355186291363F598D /* Build configuration list for PBXProject "FlameTBLingyeStandalone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF0AA5A710E805FB76CC881D /* Debug */,
+				1DE05AF6C828FC376E06D53D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C8228571864DCAF3BF593244 /* Project object */;
+}
