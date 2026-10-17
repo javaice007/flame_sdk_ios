@@ -9,6 +9,7 @@
 //
 #import "AppDelegate.h"
 #import "P0DLingyeTestIDs.h"
+#import "P0DNetProbe.h"
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 #import <CJMobileAd/CJMobileAd.h>
@@ -122,7 +123,8 @@ static void P0DLogStack(NSString *tag)
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-    [P0DProbe installProbes];   // +load 时 AnyThinkSDK 动态框架可能未加载，此处挂探针
+    [P0DProbe installProbes];
+    [P0DNetProbe install];   // +load 时 AnyThinkSDK 动态框架可能未加载，此处挂探针
     self.window = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
     self.window.rootViewController = [[UIViewController alloc] init];
     [self.window makeKeyAndVisible];
@@ -139,6 +141,9 @@ static void P0DLogStack(NSString *tag)
         @"REINIT_FI":   @[@"FI",@"FI",@"FA"],
         @"REINIT_MIX1": @[@"LI",@"FI",@"LI",@"LA"],
         @"REINIT_MIX2": @[@"FI",@"LI",@"FI",@"FA"],
+        @"C0":           @[@"FI"],            // §16：仅链接，不调 CJ 任何 API
+        @"C1":           @[@"CJLOG",@"FI"],   // §16：只 openDebugLog
+        @"C2":           @[@"LI",@"FI"],
     };
     self.steps = map[seq] ?: @[@"LI"];
     NSLog(@"[P0D-C] LAUNCH seq=%@ steps=%@ taku=? tobid=?", seq, [self.steps componentsJoinedByString:@","]);
@@ -165,6 +170,7 @@ static void P0DLogStack(NSString *tag)
         });
     };
     if ([s isEqualToString:@"LI"]) [self p0dLingyeInit:done];
+    else if ([s isEqualToString:@"CJLOG"]) { [CJADManager openDebugLog]; done(YES); }
     else if ([s isEqualToString:@"FI"]) [self p0dFlameInit:done];
     else if ([s isEqualToString:@"LA"]) [self p0dLingyeReward:done];
     else if ([s isEqualToString:@"FA"]) [self p0dFlameReward:done];

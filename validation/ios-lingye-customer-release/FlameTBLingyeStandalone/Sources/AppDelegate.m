@@ -6,6 +6,7 @@
 //  标记前缀 [P0D-B]。
 //
 #import "AppDelegate.h"
+#import "P0DNetProbe.h"
 #import <flame_sdk_ios/flame_sdk_ios.h>
 
 static NSString *Env(NSString *k) { return [[NSProcessInfo processInfo].environment objectForKey:k]; }
@@ -27,6 +28,7 @@ static NSString *Env(NSString *k) { return [[NSProcessInfo processInfo].environm
     NSString *appKey = Env(@"P0D_FAPPKEY");
     NSLog(@"[P0D-B] LAUNCH cred=%@", appId.length > 0 ? @"injected" : @"MISSING");
 
+    [P0DNetProbe install];
     [FlameSdk setDebug:YES];
     NSLog(@"[P0D-B] FI_BEGIN");
     [FlameSdk initWithAppId:appId appKey:appKey callback:self];

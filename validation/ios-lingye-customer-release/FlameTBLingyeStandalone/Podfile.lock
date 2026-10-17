@@ -41,7 +41,7 @@ PODS:
     - BUTTSDKFramework/Strategy/Core
   - BUTTSDKFramework/TTFFmpeg/LiveLite (1.48.2.3-premium)
   - BUTTSDKFramework/VolcLog (1.48.2.3-premium)
-  - flame_sdk_ios_tb_lingye (1.0.1-lingye.1-local):
+  - flame_sdk_ios_tb_lingye (1.0.1-lingye.2-local):
     - OpenSSL-Universal (~> 1.1)
     - ToBid-iOS-RC (= 5.5.6)
     - ToBid-iOS-RC/BaiduAdapter (= 5.5.6)
@@ -136,7 +136,7 @@ PODS:
   - ToBid-iOS-RC/ToBidSDK (5.5.6)
 
 DEPENDENCIES:
-  - flame_sdk_ios_tb_lingye (from `../../../flame_sdk_ios_tb_lingye.podspec`)
+  - flame_sdk_ios_tb_lingye (from `../local_pods/flame_sdk_ios_tb_lingye-fixed`)
   - OpenSSL-Universal (from `../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301`)
 
 SPEC REPOS:
@@ -152,7 +152,7 @@ SPEC REPOS:
 
 EXTERNAL SOURCES:
   flame_sdk_ios_tb_lingye:
-    :podspec: "../../../flame_sdk_ios_tb_lingye.podspec"
+    :path: "../local_pods/flame_sdk_ios_tb_lingye-fixed"
   OpenSSL-Universal:
     :path: "../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301"
 
@@ -160,7 +160,7 @@ SPEC CHECKSUMS:
   Ads-CN: 6bfc5a80f72a8fa723bb8d0941c84bcc03a5c088
   BaiduMobAdSDK: cc8a2e7deeec4d0365532bcf326f4e77641ed446
   BUTTSDKFramework: 34f8f8d541da07e79e9c479eb71336d1e4d90fdd
-  flame_sdk_ios_tb_lingye: a8896c0f078a3797c01b4d4517ad40900b260862
+  flame_sdk_ios_tb_lingye: bcd0a9cce038be270de478d34888f50e4b0570ff
   GDTMobSDK: fdec348687362cf20effb182286a5d1fbd3e8467
   KSAdSDK: 81517aad7b5f0d668c62e65be59b6fef0bbd9980
   MintegralAdSDK: 81febc34aafe94f744f0526bfbd421eda325722e
@@ -168,6 +168,6 @@ SPEC CHECKSUMS:
   OpenSSL-Universal: ca89c20240633a77c776082ba76b7d90f992bf77
   ToBid-iOS-RC: 81b900e8baf57543946267b6cb0c884df96a0ca9
 
-PODFILE CHECKSUM: ad68626eefa833b054d5fc6955a3315be570d063
+PODFILE CHECKSUM: b179edc4a725e60d773e6d2bc9ba00ddf88ba26a
 
 COCOAPODS: 1.16.2

@@ -9,6 +9,6 @@ source 'https://cdn.cocoapods.org/'
 
 target 'FlameTBLingyeStandalone' do
   use_frameworks! :linkage => :static
-  pod 'flame_sdk_ios_tb_lingye', :podspec => '../../../flame_sdk_ios_tb_lingye.podspec'
+  pod 'flame_sdk_ios_tb_lingye', :path => '../local_pods/flame_sdk_ios_tb_lingye-fixed'  # P0E 修复版
   pod 'OpenSSL-Universal', :path => '../../ios-lingye-tobid-coexistence/lingye/local_pods/OpenSSL-Universal-1.1.2301'
 end

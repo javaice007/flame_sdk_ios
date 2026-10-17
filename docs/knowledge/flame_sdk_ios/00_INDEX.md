@@ -22,6 +22,7 @@
 | 14_iOS双线基线冻结.md | P0A 双线基线冻结：唯一正式基线 / 双线架构 / Pod 模型 / 依赖边界 / Build Gate / 决策 D1-D4 / 分支治理 | 2026-10-17 | 全仓库 + 两 podspec + xcFramework_build.sh + build/{tk,tb}-static 产物审计 |
 | 15/16（P0B/P0C 研究文档） | 领页共存调研与依赖闭包/OpenSSL 研究（含口径修正）——位于 research 研究分支 | 2026-10-17 | research/ios-lingye-tobid-coexistence @0335b63、research/ios-lingye-tobid-dependency-closure @0d31655 |
 | 17_iOS领页_TB客户共存适配.md | P0D 客户变体 flame_sdk_ios_tb_lingye：构建门禁全 PASS + 真机基线 A 全链/B init(OpenSSL1.1) PASS + 共存 edata-missing 阻断发现 | 2026-10-17 | validation/ios-lingye-customer-release/ 三 host + 真机日志/截图 + 交叉验证 |
+| 18_iOS领页_TB_edata根因与运行时收口.md | P0E：edata 根因=驱动 env 缺陷+SDK 吞错（共存无罪，P0D 结论推翻）；双修复落地；共存 FI 11/11；遗留 Reward 平台 no-fill | 2026-10-18 | research/ios-lingye-edata-rootcause + NetProbe 证据 + 真机矩阵 |
 
 ## 一句话结论
 
