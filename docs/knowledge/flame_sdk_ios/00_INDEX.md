@@ -20,6 +20,9 @@
 | 12_Public_API兼容基线.md | 客户当前看到的完整 API 面 + 稳定性分类 | 2026-08-18 | 全部公共头文件（10 个） |
 | 13_Funlink_Official_Network_Migration_Research.md | Funlink 官方 Network 迁移可行性调研（含版本矩阵/宿主契约/旧版本兼容/收益链路） | 2026-09-14 | flame_sdk_ios.podspec:72、flame-specs 全版本 podspec、docs/YfG41D3N、docs/2KR6QU、trunk podspec |
 | 14_iOS双线基线冻结.md | P0A 双线基线冻结：唯一正式基线 / 双线架构 / Pod 模型 / 依赖边界 / Build Gate / 决策 D1-D4 / 分支治理 | 2026-10-17 | 全仓库 + 两 podspec + xcFramework_build.sh + build/{tk,tb}-static 产物审计 |
+| 17-21号（iOS领页×TB 客户线文档） | Lingye 客户线：共存适配/edata 收口/人工 Demo/预检/1.0.2-lingye.1 发布记录——位于客户分支 feature/ios-lingye-tobid-coexist-release（1.0.2-lingye.1 已 CLOSED） | 2026-10-17/19 | 客户分支 docs/knowledge/flame_sdk_ios/ 17-21 号 |
+| 22_iOS标准双线_1.0.2_WindMill回灌与发布预检.md | 标准双线 1.0.2：WindMill 幂等回灌 + 版本对齐 MANDATORY + clean-room 双构建 + 预检/技术终审 PASS | 2026-10-18 | release/ios-dual-line 22 号（本文件所在树） |
+| 23_iOS标准双线_1.0.2正式发布记录.md | 标准双线 1.0.2 原子发布 CLOSED：tag 1.0.2 @ 8f42f92b（TK root + TB tb/）、flame-specs 双 spec、Published TK/TB 远端验收全绿 | 2026-10-18/19 | distribution commit 8f42f92b + flame-specs master |
 
 ## 一句话结论
 
