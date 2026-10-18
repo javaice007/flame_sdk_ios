@@ -39,6 +39,7 @@ def walk(cur_rel):
 
 
 file_refs = []       # (uuid, basename)
+_rel_of = {}
 group_defs = []      # (uuid, name, path)
 group_children = {}  # uuid -> [child uuid]
 
@@ -49,12 +50,30 @@ def build_group(rel, name, path):
     kids = [uid("file:" + rel + "/" + f[0]) for f in files]
     group_defs.append((g, name, path))
     for fname, frel in files:
-        file_refs.append((uid("file:" + rel + "/" + fname), fname))
+        fu = uid("file:" + rel + "/" + fname)
+        file_refs.append((fu, fname))
+        _rel_of[fu] = rel + "/" + fname if rel else fname
     for dname, drel in dirs:
         kids.append(build_group(drel, dname, dname))
     group_children[g] = kids
     return g
 
+
+# canonical 公开头清单（冻结 v77 工程 publicHeaders 原文；与 1.0.1-alpha.4 发布产物 Headers 一致，
+# 对应 docs/knowledge/flame_sdk_ios/12_Public_API兼容基线.md 的 10 个公共头）。
+# 其余 .h 仅为编译期项目头（不进 Headers phase），保证发布面与历史发布完全一致。
+CANONICAL_PUBLIC_HEADERS = {
+    "ads/banner/FlameBannerAd.h",
+    "ads/banner/FlameBannerAdMaterial.h",
+    "ads/banner/FlameBannerAdRenderSlots.h",
+    "ads/interstitial/FlameInterstitialAd.h",
+    "ads/nativate/FlameNativeAd.h",
+    "ads/reward/FlameRewardAd.h",
+    "ads/splash/FlameSplashAd.h",
+    "core/FlameCallback.h",
+    "core/FlameSdk.h",
+    "flame_sdk_ios.h",
+}
 
 root_sub = build_group("", TARGET, TARGET)
 m_files = [u for u, b in file_refs if b.endswith(".m")]
@@ -119,7 +138,14 @@ out.append("/* End PBXProject section */")
 out.append("")
 
 out.append("/* Begin PBXHeadersBuildPhase section */")
-hdr_lines = "\n".join("\t\t\t\t%s /* %s in Headers */," % (uid("hf:" + u), basename_of[u]) for u in h_files)
+import os as _os
+public_h = []
+for u, b in file_refs:
+    if not b.endswith(".h"):
+        continue
+    if _rel_of[u] in CANONICAL_PUBLIC_HEADERS:
+        public_h.append(u)
+hdr_lines = "\n".join("\t\t\t\t%s /* %s in Headers */," % (uid("hf:" + u), basename_of[u]) for u in public_h)
 out.append("\t\t%s /* Headers */ = {\n\t\t\tisa = PBXHeadersBuildPhase;\n\t\t\tbuildActionMask = 2147483647;\n\t\t\tfiles = (\n%s\n\t\t\t);\n\t\t\trunOnlyForDeploymentPostprocessing = 0;\n\t\t};" % (HDR_PH, hdr_lines))
 out.append("/* End PBXHeadersBuildPhase section */")
 out.append("")
