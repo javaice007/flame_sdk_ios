@@ -406,3 +406,95 @@ FORMAL_RELEASE_EXECUTED = NO
 2. **契约决策**：由决策层重新审视"IOS_MINIMUM_DEPLOYMENT_TARGET = 13.0 + Xcode15.4 正式构建"
    组合的必要性（当前市场消费端 Xcode 26+ 链接 ToBid 5.5.6 无任何障碍——27.1 零垫片全绿）
 3. 以上任一落定后，重跑本预检 §11/§13 对应段；FINAL RC hash 以届时重建为准
+
+
+## 14.【本阶段正式构建事实】P0H-PRE：Xcode 26.0.1 正式 DT13 FINAL RC（2026-10-18）
+
+> 决策冻结（P0G-X26 后）：FORMAL_BUILD_XCODE = Xcode 26.0.1（24229）/ SDK iphoneos26.0 /
+> Swift 6.2 / FORMAL_BUILD_DEPLOYMENT_TARGET = 13.0 / ToBid 5.5.6 / CJ 2.4.32。
+> §13 的 Xcode15 路线 BLOCKER 重新分类为 **HISTORICAL_LEGACY_TOOLCHAIN_LIMITATION**（保留历史，不再阻塞）。
+
+### 14.1 构建方式（§四/§九/§十/§十一）
+
+- **直接使用 canonical objectVersion 77 工程**（CANONICAL_V77_PROJECT_XCODE26_READABLE = YES，
+  xcodebuild -project -list 实测），classic generator 不参与
+  （CLASSIC_PROJECT_GENERATOR_REQUIRED_FOR_FORMAL_BUILD = NO，XCODE15_CLASSIC_PROJECT_TOOLING = HISTORICAL_ONLY）
+- Clean-room worktree @ **FORMAL_RELEASE_SOURCE_HEAD = 6cff1ea**（含全部 SDK 产品修复与工具链参数化）
+- FLAME_DEPLOYMENT_TARGET 未设（默认 13.0）→ **VALIDATION_DT15_OVERRIDE_ACTIVE_FOR_FORMAL_BUILD = NO**
+- `./xcFramework_build.sh tb-static` → BUILD SUCCEEDED（脚本内置审计：零 TK/AnyThink 符号污染）
+- **XCODE26_CUSTOMER_FORMAL_BUILD = PASS**（Customer TB 与 Standard TB 同源产物：
+  **XCODE26_STANDARD_TB_FORMAL_BUILD = PASS**）
+
+### 14.2 正式产物审计
+
+```
+DEVICE_ARCHS        = [arm64]           SIMULATOR_ARCHS = [x86_64]（历史 INTEL_SIMULATOR_ONLY 契约 → PASS）
+FORMAL_BINARY_MIN_OS = 13.0（LC_BUILD_VERSION: platform=IOS, minos=13.0, sdk=26.0）
+CANONICAL_PUBLIC_HEADER_COUNT = 10      FINAL_PUBLIC_HEADER_COUNT = 10
+PUBLIC_HEADER_SET_DIFF = []             ← Xcode26 原生构建的 v77 publicHeaders 直接生效
+CONFIG_ERROR_PROPAGATION_FIX_PRESENT = YES
+EMPTY_CREDENTIAL_GUARD_PRESENT       = YES
+TB_REINIT_IDEMPOTENCY_FIX_PRESENT    = YES
+FORMAL_FLAME_BINARY_TAKU_STATIC_PATH = NO（ATAPI/ATAdManager/AnyThink/TopOn/AT* nm 全零）
+FORMAL_FLAME_TB_PATH_PRESENT         = YES（FlameTBProvider/Tb*/WindMill 符号齐备）
+OPENSSL 13 required symbols 实测在位；OPENSSL_UNRESOLVED_SYMBOL_GAP = []
+FORMAL_OPENSSL_SYMBOL_COMPAT = PASS（静态；runtime 见 14.3 FI）
+CUSTOM_SWIFT_MARKER_STUB_IN_FLAME = NO；CUSTOM_SWIFT_MARKER_STUB_IN_CUSTOMER_POD = NO
+XCODE26_OFFICIAL_SWIFT_MARKER_PROVIDER_COUNT = 8（SDK iphoneos26.0 tbd 实测）
+```
+
+### 14.3 FINAL Fresh Consumer（全新工程，DT=13.0，Xcode26 托管签名）
+
+```
+FINAL_X26_MARKER_SOURCE_COUNT = 0   FINAL_X26_MARKER_OBJECT_COUNT = 0
+FINAL_X26_CUSTOM_MARKER_SYMBOL_COUNT = 0   FINAL_X26_CUSTOM_LINKER_WORKAROUND = NO
+FINAL_X26_FRESH_POD_INSTALL = PASS（28 pods）
+FINAL_X26_FRESH_COMPILE = PASS   FINAL_X26_FRESH_LINK = PASS
+FINAL_X26_ZERO_STUB_LINK = PASS
+App binary minos = 13.0（managed signing，com.flame.sdk.test 复用 team profile）
+真机 SANITY（iOS 27.1 设备）：LI/FI/LS/FS/FCLR/FI/FS = **7/7 ALL_OK**
+  LS network=qm requestId=997a1280-…；FS×2 真实填充（ToBid 5.5.6 + Xcode26 构建链）
+FINAL_X26_FRESH_LI/FI/LS/FS = PASS   FINAL_X26_FRESH_CLEAR_REINIT = PASS
+crash/exception 扫描 = 0
+依赖复测：CJ 2.4.32 / ToBid 5.5.6 / OpenSSL 1.1.2301 单副本 / MS 单副本 /
+  Flame 无 MS adapter / AnyThink 来自客户闭包
+```
+
+### 14.4 发布身份（§三十二）
+
+```
+FORMAL_RELEASE_SOURCE_HEAD         = 6cff1ea（feature/ios-lingye-tobid-coexist-release）
+FORMAL_BUILD_XCODE_VERSION         = 26.0.1
+FORMAL_BUILD_XCODE_BUILD           = 24229
+FORMAL_BUILD_IOS_SDK               = 26.0
+XCODE26_FINAL_RC_XCFRAMEWORK_SHA256 = 3059b1e4783bba5ba4d99eaa7223dc0325d4e5f5fb3f8580ddff8d7447cbb583
+  （口径：staging tb/ 目录 tar；staging = rc_staging/flame_sdk_ios_tb_lingye/1.0.1-lingye.1）
+XCODE26_FINAL_PODSPEC_SHA256       = 219b7009095d1ed33ae213729f6bbc44c4655f2b71c1d6e1a63214deafe3ffc9
+CUSTOMER_PODSPEC_PORTABLE          = YES
+历史 Xcode15 RC（6caf8dfe…）降级为 HISTORICAL_XCODE15_RC_SHA256，禁止用于发布
+Standard TB 回归 = PASS（FINAL staging 重建 + 真机 FI PASS；FR 800110 瞬时 no-fill 不阻塞）
+```
+
+### 14.5 终审 Gate（§三十）
+
+```
+XCODE26_CUSTOMER_FORMAL_BUILD      = PASS
+XCODE26_STANDARD_TB_FORMAL_BUILD   = PASS
+FORMAL_BINARY_MIN_OS               = 13.0
+PUBLIC_HEADER_SET_DIFF             = []
+三产品修复                          = YES ×3
+TAKU = NO / TB = YES / OpenSSL = PASS（GAP=[]）/ MS = NO + 单副本
+CUSTOMER_EXTRA_SWIFT_MARKER_STUB_REQUIRED     = NO
+CUSTOMER_EXTRA_LINKER_WORKAROUND_REQUIRED     = NO
+FINAL_X26_ZERO_STUB_LINK = PASS   FINAL_X26_FRESH_* = PASS ×4   CLEAR_REINIT = PASS
+STANDARD_TB_FORMAL_BUILD / INIT_REGRESSION = PASS
+
+TECH_RELEASE_AUDIT = PASS
+USER_FINAL_RELEASE_APPROVAL = NO（待产品负责人明确批准）
+RELEASE_ALLOWED = NO
+FORMAL_RELEASE_EXECUTED = NO
+```
+
+下一阶段：P0H RELEASE EXECUTION（仅在 USER_FINAL_RELEASE_APPROVAL = YES 后）——
+正式 tag `1.0.1-lingye.1` 绑定本 FINAL RC、分发仓 release、flame-specs、
+published fresh consumer 验证。
