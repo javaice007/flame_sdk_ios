@@ -231,3 +231,103 @@ FORMAL_RELEASE_EXECUTED     = NO
 ```
 
 等待双重审批：TECH_RELEASE_AUDIT = PASS（决策层）+ USER_FINAL_RELEASE_APPROVAL = YES（产品负责人）。
+
+
+## 12.【本阶段正式构建事实】P0G-TA 技术终审（TECH_RELEASE_AUDIT，2026-10-18）
+
+### 12.1 Swift marker 垫片归属审计（§三-七，最高优先级）
+
+```
+SWIFT_MARKER_STUB_FILE            = /tmp/p0g_sign/swift_stub.c（构建环境垫片；非交付物、非 SDK 源、未入 Git）
+SWIFT_MARKER_SYMBOLS              = [__swift_FORCE_LOAD_$_swift_{Builtin_float, errno, math, signal,
+                                     stdio, time, swiftsys_time, unistd}]（8 个）
+SWIFT_MARKER_STUB_LINKED_INTO     = FRESH_CONSUMER_APP_ONLY
+                                    （正式 SDK 产物 nm 实测 8 符号全 0；fresh app 二进制内 defined）
+根因分类                           = A(WindMill/ToBid-iOS-RC 5.5.6 供应商 Swift 适配器 autolink)
+                                     + D(Xcode15-era ld 对未知 swift system-lib autolink 硬失败；
+                                        Xcode16+ ld 降级为 warning——validation 在 27.1 无垫片多次链接成功)
+SWIFT_MARKER_STUB_REQUIRED_FOR_CUSTOMER_BUILD = NO
+CUSTOMER_EXTRA_SWIFT_MARKER_STUB_REQUIRED = NO
+CLEAN_FRESH_CONSUMER_LINK_WITHOUT_MARKER_STUB = PASS
+  （FreshLingyeFlameConsumerClean：零垫片/零 validation 源/零手工 linker 项，
+   Xcode 27.1 托管签名 BUILD SUCCEEDED + 真机 SANITY SEQ_DONE ALL_OK）
+```
+
+### 12.2 确定性与等价性（§十一/十二）
+
+- GEN_CLASSIC_PROJECT_DETERMINISTIC = YES（clean checkout 两次生成逐字节一致；
+  scheme 由生成器产出；Podfile Tests target 已移除——工具链提交 ebd09a2/0c56d5a）
+- 公开头审计修正：canonical v77 publicHeaders=10（与 1.0.1-alpha.4 发布 Headers 一致），
+  P0G 初版 RC 误为 47 → 生成器强制 canonical 集合后 FINAL RC Headers=10 逐文件一致
+- PRODUCT_SOURCE_SET_DIFF = []；PUBLIC_HEADER_SET_DIFF = []（修正后）；
+  PRODUCT_COMPILE_DEFINE_DIFF = []；PRODUCT_LINK_DEPENDENCY_DIFF = []
+  （canonical synchronized folder=源码目录全量 vs 生成器 walk 同目录；v77 例外集仅 README.md 非源码）
+
+### 12.3 Clean-room 正式重建（§八-十三）
+
+```
+FORMAL_RELEASE_SOURCE_HEAD = 0c56d5a（含全部 tooling：DT 参数化 f320e9b / generator a961999+0c56d5a）
+FORMAL_RELEASE_TOOLING_HEAD = 0c56d5a（source 与 tooling 同一冻结 HEAD）
+CLEAN_ROOM_FORMAL_BUILD    = PASS（Xcode 15.4 / DT=13.0 / tb-static）
+FINAL_RC_XCFRAMEWORK_SHA256 = 6caf8dfe8e7ffd7fc68e022618bca5d881eb5b53e2bc68992a49b60e0c77c602
+  （口径：staging 目录 tar；P0G_INITIAL_RC_SHA256=f196289e… 仅作历史；两代差异=公开头修正+ar 时间戳，
+   内容等价审计：members=28 identical / exported symbols identical / minos=13.0 identical）
+FINAL_PODSPEC_SHA256 = 219b7009095d1ed33ae213729f6bbc44c4655f2b71c1d6e1a63214deafe3ffc9
+后续 tag/podspec/flame-specs 只绑定本 FINAL RC。
+```
+
+### 12.4 XCFramework 架构专项（§十四）
+
+```
+DEVICE_ARCHS    = [arm64]      SIMULATOR_ARCHS = [x86_64]
+SIMULATOR_ARCH_POLICY = PASS
+依据（既有产品契约 INTEL_SIMULATOR_ONLY）：
+  1) xcFramework_build.sh 产品注释明示"模拟器产物只归档 x86_64 架构（与现有分发口径一致）"
+  2) 历史发布 1.0.1-alpha.4 xcframework 同为 x86_64-only simulator 切片
+  3) 根因：国产广告 adapter xcframework（BeiZi/Sigmob 等）只提供 x86_64 模拟器切片
+```
+
+### 12.5 OpenSSL 静态闭包（§十八）
+
+```
+FLAME_OPENSSL_REQUIRED_SYMBOLS = [_EVP_CIPHER_CTX_{new,free,ctrl},
+  _EVP_{Encrypt,Decrypt}{Init,Update,Final}_ex, _EVP_aes_{128,192,256}_gcm, _RAND_bytes]（13 个）
+OPENSSL11_EXPORTED_MATCH = PASS（13/13 在 1.1.2301 arm64 归档导出表逐符号命中）
+OPENSSL_UNRESOLVED_SYMBOL_GAP = []
+结合 runtime FRESH_FI = PASS → FORMAL_OPENSSL_SYMBOL_COMPAT = PASS（冻结）
+```
+
+### 12.6 Fresh Consumer Final + 签名口径（§十九-二十四）
+
+- FreshLingyeFlameConsumerClean（零垫片）：pod install PASS；Xcode 27.1 托管签名 build PASS；
+  真机 SANITY（LI FI LS FS FCLR FI FS）SEQ_DONE ALL_OK；FS×2 真实填充
+- 签名口径修正：FRESH_CONSUMER_XCODE_MANAGED_SIGNING = PASS（复用既有 team profile；
+  P0G 初版"无账户"仅因新 bundle id 需建证）；MANUAL_SIGNING = NOT_REQUIRED（clean 路径）；
+  P0G 初版 15.4 路径记 MANUAL_TEST_HOST_FRAMEWORK_RESIGN_REQUIRED=YES（测试宿主无托管签名的
+  环境现象，非 SDK 分发缺陷——正式 CocoaPods 流程由 Embed Frameworks phase 自动签名）
+- 依赖 Gate 复测：CJ 2.4.32；OpenSSL/GDT/KS/Baidu/MS/Mintegral 单副本；Flame 无 MS adapter；
+  AnyThink 来自客户闭包；FLAME_INTRODUCED_ANYTHINK = NO
+
+### 12.7 Standard TB FINAL 回归（§二十五）
+
+- STANDARD_TB_FORMAL_BUILD = PASS（FINAL RC 同源产物 + standard candidate podspec）
+- STANDARD_TB_INIT_REGRESSION = **PASS**（真机 FI PASS；FR 亦真实填充 PASS）
+- 回灌冻结不变：STANDARD_TB_WINDMILL_REINIT_BACKPORT_REQUIRED = YES_AFTER_CUSTOMER_RELEASE
+
+### 12.8 宿主环境风险记录（§二十七）
+
+```
+XCODE15_UNMODIFIED_ON_MACOS26_BUILD_RESULT = PASS
+HOST_COMPATIBILITY_HACK_USED = NO
+HOST_ENVIRONMENT_IS_NONSTANDARD_FOR_XCODE15 = YES（REPRODUCIBILITY_RISK_NOTE；
+  clean-room rebuild 已在同一环境重复成功，暂不构成 blocker）
+```
+
+### 12.9 终审 Gate（§二十八）
+
+```
+TECH_RELEASE_AUDIT = PASS
+USER_FINAL_RELEASE_APPROVAL = NO（待产品负责人明确批准）
+RELEASE_ALLOWED = NO
+FORMAL_RELEASE_EXECUTED = NO
+```
