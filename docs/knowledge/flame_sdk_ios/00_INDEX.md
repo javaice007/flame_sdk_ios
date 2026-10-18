@@ -24,7 +24,7 @@
 | 17_iOS领页_TB客户共存适配.md | P0D 客户变体 flame_sdk_ios_tb_lingye：构建门禁全 PASS + 真机基线 A 全链/B init(OpenSSL1.1) PASS + 共存 edata-missing 阻断发现 | 2026-10-17 | validation/ios-lingye-customer-release/ 三 host + 真机日志/截图 + 交叉验证 |
 | 18_iOS领页_TB_edata根因与运行时收口.md | P0E：edata 根因=驱动 env 缺陷+SDK 吞错（共存无罪，P0D 结论推翻）；双修复落地；共存 FI 11/11；遗留 Reward 平台 no-fill | 2026-10-18 | research/ios-lingye-edata-rootcause + NetProbe 证据 + 真机矩阵 |
 | 20_iOS领页_TB正式发布预检.md | P0F_RELEASE_PREFLIGHT：runtime 全绿（P0E_RUNTIME_CLOSURE=PASS / RELEASE_CANDIDATE）；正式构建 BLOCKED_BY_TOOLCHAIN（仅 Xcode 27.1）；版本/分发仓/podspec/修复符号审计齐备 | 2026-10-18 | 20 号文档 + 75b0135 修复 + 全量矩阵日志 |
-| 19_iOS领页_TB人工验收Demo.md | P0F 人工验收工作台：Coexist Test Console（默认 MANUAL_MODE，人工/自动共用控制层，runtime 归因不伪造）；V2 极简版 + Splash 主矩阵全绿 + clear→re-init SDK 缺陷修复（75b0135）；详见 18 号 §10 | 2026-10-18 | LingyeFlameTBCoexist Sources/P0FTestCore·P0FConsoleViewController·AppDelegate + 新测试 App b22375234108 填充证据 |
+| 19_iOS领页_TB人工验收Demo.md | P0F 人工验收工作台：Coexist Test Console（默认 MANUAL_MODE，人工/自动共用控制层，runtime 归因不伪造）；V2 极简版 + Splash 主矩阵全绿 + clear→re-init SDK 缺陷修复（75b0135）；详见 18 号 §10；P0G：原机并存 Xcode 15.4 完成 DT13 正式构建 + Fresh Consumer 全绿（见 20 号 §11，PREFLIGHT=PASS） | 2026-10-18 | LingyeFlameTBCoexist Sources/P0FTestCore·P0FConsoleViewController·AppDelegate + 新测试 App b22375234108 填充证据 |
 
 ## 一句话结论
 

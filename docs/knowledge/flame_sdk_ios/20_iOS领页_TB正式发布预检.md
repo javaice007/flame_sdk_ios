@@ -1,8 +1,10 @@
 # 20 · iOS 领页×TB 正式发布预检（P0F_RELEASE_PREFLIGHT）
 
 > 阶段：2026-10-18。性质：正式发布前置审计。
-> 结论先行：**P0F_RELEASE_PREFLIGHT = BLOCKED（BLOCKED_BY_TOOLCHAIN）**——本机唯一 Xcode 27.1（min DT 15.0）无法执行 iOS13 正式构建。
-> 运行时侧不受影响：**P0E_RUNTIME_CLOSURE = PASS**，**IOS_LINGYE_TB_CUSTOMER_VARIANT = RELEASE_CANDIDATE**（保留，§十六允许）。
+> 结论速览：§2-§9 为工具链阻塞期历史（BLOCKED_BY_TOOLCHAIN，Xcode 27.1 唯一）；
+> **§11 已记录 P0G 阶段在原机并存安装官方 Xcode 15.4 完成正式 DT13 构建，
+> P0F_RELEASE_PREFLIGHT = PASS，TECH_RELEASE_AUDIT_CANDIDATE = READY（FORMAL_RELEASE_EXECUTED = NO）。**
+> 运行时侧：P0E_RUNTIME_CLOSURE = PASS，IOS_LINGYE_TB_CUSTOMER_VARIANT = RELEASE_CANDIDATE。
 
 ## 1.【已有运行时事实】只读终审（不重跑）
 
@@ -160,3 +162,72 @@ LINGYE_CUSTOM_DEPENDENCY_BACKPORT = NO
 
 - 尚未发布：正式 tag、分发仓推送、flame-specs、pod repo push——全部等待双重审批（TECH_RELEASE_AUDIT=PASS + USER_FINAL_RELEASE_APPROVAL=YES）
 - 发布后待验：客户生产环境 fresh 接入回归、线上数据回报
+
+
+## 11.【本阶段正式构建事实】P0G DT13 工具链解除与正式构建（2026-10-18）
+
+### 11.1 工具链（原机并存，零 hack）
+
+- 官方渠道下载 Xcode_15.4.xip（Apple Developer 登录下载，3.19GB），`xip` 工具签名校验解压，
+  并存安装 `/Applications/Xcode_15.4.app`（CFBundleShortVersionString=15.4，Build 22622）；
+  Xcode 27.1 保留、全局 xcode-select 未动、未修改任何兼容性文件
+- `XCODE15_ON_MACOS26_XCODEBUILD_STARTS = YES`（macOS 26.6.2 宿主实测，仅 objc 重复类告警噪音）
+- `XCODE15_IOS_SDK = iphoneos17.5`
+- **SEPARATE_BUILD_MACHINE_REQUIRED = NO**（原机方案成立，Sonoma VM/第二台 Mac 不需要）
+
+### 11.2 DT13 Gate（§六/§七）
+
+- 真实 build system 探测（SwiftPM + xcodebuild，非 clang 单测）：DT=13.0 接受，
+  产物实测 `platform=IOS minos=13.0 sdk=17.5` → `XCODE15_DT13_BUILD_SYSTEM_ACCEPTED = YES`
+- iOS 平台层经 `xcodebuild -downloadPlatform iOS` 安装（17.5）
+
+### 11.3 正式构建（worktree @f320e9b + classic 生成工程）
+
+- 隔离：git worktree `/tmp/flame_ios_lingye_release_build` @ `f320e9b`（FORMAL_RELEASE_SOURCE_HEAD）；
+  validation DT15 patch 已参数化隔离（`FLAME_DEPLOYMENT_TARGET`，默认=产品契约 13.0；f320e9b），
+  正式构建未设该变量；v77 工程经 `release-tooling/gen_classic_xcodeproj.py` 生成 classic v56 副本
+- Standard TB / Lingye Customer TB 同源产物：`build/tb-static/flame_sdk_ios.xcframework` 构建成功
+- **FORMAL_BINARY_MIN_OS = 13.0**（LC_BUILD_VERSION: platform=IOS, minos=13.0, sdk=17.5）；
+  FORMAL_BINARY_ARCHS = [arm64]（device）+ x86_64（simulator）
+- **CONFIG_ERROR_PROPAGATION_FIX_PRESENT = YES / EMPTY_CREDENTIAL_GUARD_PRESENT = YES /
+  TB_REINIT_IDEMPOTENCY_FIX_PRESENT = YES**（strings 实测正式产物）
+- **FORMAL_FLAME_BINARY_TAKU_STATIC_PATH = NO**（nm 全零）；
+  **FORMAL_FLAME_TB_PATH_PRESENT = YES**（FlameTBProvider/Tb*/WindMill 符号齐备）
+- `XCODE27_VALIDATION_HACK_IN_RELEASE_ARTIFACT = NO`
+
+### 11.4 RC artifact（staging，未发布）
+
+- RC_XCFRAMEWORK = `rc_staging/flame_sdk_ios_tb_lingye/1.0.1-lingye.1/tb/flame_sdk_ios.xcframework`
+- RC_XCFRAMEWORK_SHA256(tb/) = `f196289e71959e5c542b7722aa35bb6a336f1fae260a49c9f176b6e9ef2dbea2`
+- candidate podspec：s.version=1.0.1-lingye.1，source.tag=1.0.1-lingye.1（**tag 尚未创建**，发布期执行）
+- PODSPEC_SHA256(customer) = `219b7009095d1ed33ae213729f6bbc44c4655f2b71c1d6e1a63214deafe3ffc9`
+- CUSTOMER_PODSPEC_PORTABLE = YES（无本地路径；发布期仅需创建对应 tag）
+
+### 11.5 Fresh Consumer（全新工程，无 validation 复用）
+
+- FRESH_CONSUMER_POD_INSTALL = **PASS**（28 pods；CJMobileAd 2.4.32；OpenSSL 1.1.2301 单副本；
+  GDT/KS/Baidu/MS/Mintegral 单副本；Flame 无 MSAdAdapter；AnyThink 来自客户闭包）
+- FRESH_CONSUMER_DEVICE_BUILD = **PASS**（Xcode 15.4 / DT=13.0 / arm64；
+  WindMill Swift 适配器老 autolink 经 8 符号 marker 垫片满足，运行时由 OS dylib 提供）
+- App 二进制 minos = **13.0**；未定义符号=0（链接期）
+- 真机 sanity（iOS 27 真机，DT13 产物）：**FRESH_LI/FI/LS/FS/FCLR+FI+FS = 全 PASS
+  （SEQ_DONE ALL_OK）**；LS network=qm requestId=bc4244a8-…；FS 真实填充
+- clear→re-init（幂等修复）在正式产物上验证 PASS
+- FRESH_LINGYE_REWARD / FRESH_FLAME_REWARD = REUSED_EXISTING_RUNTIME_EVIDENCE
+- crash/exception 扫描 = 0（仅 harness signal 9）
+
+### 11.6 Standard TB 回归（§三十二/三十三）
+
+- STANDARD_TB_FORMAL_BUILD = **PASS**（同一 DT13 tb-static 产物 + standard candidate podspec）
+- STANDARD_TB_INIT_REGRESSION = **PASS**（独立 fresh host 真机 FI 0.6s PASS）
+- 回灌冻结不变：STANDARD_TB_WINDMILL_REINIT_BACKPORT_REQUIRED = YES_AFTER_CUSTOMER_RELEASE
+
+### 11.7 终局 Gate（§四十六）
+
+```
+P0F_RELEASE_PREFLIGHT       = PASS
+TECH_RELEASE_AUDIT_CANDIDATE = READY
+FORMAL_RELEASE_EXECUTED     = NO
+```
+
+等待双重审批：TECH_RELEASE_AUDIT = PASS（决策层）+ USER_FINAL_RELEASE_APPROVAL = YES（产品负责人）。
