@@ -34,7 +34,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb_lingye'
-  s.version          = '1.0.1-lingye.1-local'
+  s.version          = '1.0.2-lingye.1'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Lingye Coexist Edition'
   s.description      = 'Flame advertising aggregation SDK, customer variant for coexistence with CJMobileAd 2.4.32: OpenSSL ~>1.1 compatible, ToBid MSAdAdapter excluded (customer MSMobAdSDKv3 stays the single MS copy). Core binary and public API identical to standard flame_sdk_ios_tb.'
@@ -43,7 +43,7 @@ Pod::Spec.new do |s|
 
   # 与标准 TB 同一份冻结二进制：当前指向分发仓库既有 tag 1.0.1-alpha.4 的
   # tb/ 子目录产物（FLAME_CORE_BINARY_CHANGED = NO）。
-  s.source = { :git => 'https://github.com/javaice007/flame_sdk_ios.git', :tag => '1.0.1-alpha.4' }
+  s.source = { :git => 'https://github.com/javaice007/flame_sdk_ios.git', :tag => '1.0.2-lingye.1' }
 
   s.license = {
     :type => 'Commercial',
