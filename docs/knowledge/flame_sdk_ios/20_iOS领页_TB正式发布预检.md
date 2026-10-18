@@ -326,8 +326,83 @@ HOST_ENVIRONMENT_IS_NONSTANDARD_FOR_XCODE15 = YES（REPRODUCIBILITY_RISK_NOTE；
 ### 12.9 终审 Gate（§二十八）
 
 ```
-TECH_RELEASE_AUDIT = PASS
+~~TECH_RELEASE_AUDIT = PASS~~
+  ⚠️ 本结论已被 §13 P0G-TA2 取代：Xcode15/DT13 零垫片 clean consumer 链接失败，
+  TECH_RELEASE_AUDIT = BLOCKED（DT13_CONSUMER_SWIFT_AUTOLINK_COMPATIBILITY）
 USER_FINAL_RELEASE_APPROVAL = NO（待产品负责人明确批准）
 RELEASE_ALLOWED = NO
 FORMAL_RELEASE_EXECUTED = NO
 ```
+
+
+## 13.【本阶段正式构建事实】P0G-TA2：Xcode15/DT13 零垫片 Clean Consumer 终审（2026-10-18）
+
+> 结论：**TECH_RELEASE_AUDIT = BLOCKED**，BLOCKER = `DT13_CONSUMER_SWIFT_AUTOLINK_COMPATIBILITY`。
+> 本节取代 §12.9 的 PASS 结论；§12.1-12.8 其余审计事实保留。
+
+### 13.1 零垫片 clean consumer 实测（全新工程，无任何复用）
+
+- FreshLingyeFlameConsumerDT13Final：全新目录/全新 classic pbxproj（新 UUID）/全新 Podfile/
+  仅复制最小业务调用源码（main.m/AppDelegate.h/m，垫片文本扫描=0）
+- Xcode 15.4（DEVELOPER_DIR 实测）+ IPHONEOS_DEPLOYMENT_TARGET=13.0 + CODE_SIGNING_ALLOWED=NO
+- DT13_CLEAN_POD_INSTALL = **PASS**（28 pods）
+- DT13_CLEAN_COMPILE = **PASS**（9 个源文件全部编译）
+- **DT13_CLEAN_LINK = FAIL**：undefined `__swift_FORCE_LOAD_$_swift_*` 家族
+  （Builtin_float/errno/math/signal/stdio/time/swiftsys_time/swiftunistd）
+- 因此 §12.9 的 TECH_RELEASE_AUDIT=PASS 作废；P0G 初版 fresh consumer 的垫片
+  属 APP_SIDE_LINKER_WORKAROUND，不构成零客户改动证据（27.1 零垫片 PASS 不等价于 15.4）
+
+### 13.2 marker 起源表（§十三，全 Pods 实测）
+
+- 引用者：ToBid-iOS-RC **5.5.6** 的 WindMillSDK 本体 + 全部 7 个 WindMill*Adapter
+  （CSJ/GDT/Baidu/KS/MTG/Octopus/GroMore；arm64+sim 全切片），每个 Swift 模块各带
+  私有注册符号 `__swift_FORCE_LOAD_$_swift_X_$_<module>`
+- 公共 marker 提供者（`__swift_FORCE_LOAD_$_swift_X` 无后缀）：**Pods 全树无任何定义者**
+- PROVIDER_EXPECTED = Swift 6.2 分区运行库（libswift_{errno,math,...}.tbd——Xcode 26-era SDK 才提供；
+  实测 Xcode 27.1 SDK swift/ 目录 8 个 tbd 全在）
+- PROVIDER_FOUND（Xcode 15.4 / SDK iphoneos17.5）= **无**
+- SWIFT_MARKER_ORIGIN = TOBID_WINDMILL（5.5.6 二进制以 Xcode 26-era Swift 构建）
+
+### 13.3 供应商兼容性判定（§十四）
+
+```
+WINDMILL_BINARY_XCODE15_LINK_COMPATIBLE = NO（对 DT13 契约）
+  条件性说明：Xcode 26+ SDK 提供 8 个 tbd（链接期闭合）；运行期 dylib 需 iOS 26+ 系统镜像。
+  即 ToBid 5.5.6 现有二进制的实际可行消费窗口 = 消费端 Xcode 26+ 且目标设备 iOS 26+，
+  与本产品 iOS 13 起的设备矩阵契约不相容。
+```
+
+### 13.4 §十六 处置判定
+
+- A（正规链接方式）：Xcode 15.4 工具链/SDK 无这些运行库，不存在合法 packaging 方案 → 不可行
+- B（供应商兼容版本）：**TOBID_VERSION_CHANGE_REQUIRED = YES** —— 需 ToBid 官方提供以
+  Xcode ≤15-era Swift 构建的兼容二进制（或官方 marker 处理说明）→ 停止，等决策层
+- C（Flame 自持包装）：按 §十五 禁止（marker 桩/弱符号仅"满足名字"，ABI/运行时语义未证）
+
+### 13.5 终局状态
+
+```
+DT13_CLEAN_CONSUMER_MARKER_SOURCE_COUNT = 0
+DT13_CLEAN_CONSUMER_MARKER_OBJECT_COUNT = 0
+DT13_CLEAN_POD_INSTALL  = PASS
+DT13_CLEAN_COMPILE      = PASS
+DT13_CLEAN_LINK         = FAIL（8 marker unresolved）
+XCODE15_DT13_CLEAN_CONSUMER_LINK_WITHOUT_MARKER_STUB = FAIL
+SWIFT_MARKER_ORIGIN     = TOBID_WINDMILL
+WINDMILL_BINARY_XCODE15_LINK_COMPATIBLE = NO
+CUSTOMER_EXTRA_SWIFT_MARKER_STUB_REQUIRED     = YES（若坚持 Xcode15/DT13 工具链组合）
+CUSTOMER_EXTRA_LINKER_WORKAROUND_REQUIRED     = YES（同上）
+TECH_RELEASE_AUDIT    = BLOCKED
+BLOCKER               = DT13_CONSUMER_SWIFT_AUTOLINK_COMPATIBILITY
+RELEASE_ALLOWED       = NO
+FORMAL_RELEASE_EXECUTED = NO
+```
+
+### 13.6 解除阻塞路径（供决策层，三选一）
+
+1. **ToBid 版本决策**（§十六.B）：向 ToBid/移石获取以 Xcode ≤15-era Swift 构建的
+   5.5.x 兼容二进制，或其官方对 swift_errno 等 autolink 的处理说明；
+   注意这可能触发 adapter/网络 SDK/runtime 矩阵重新回归
+2. **契约决策**：由决策层重新审视"IOS_MINIMUM_DEPLOYMENT_TARGET = 13.0 + Xcode15.4 正式构建"
+   组合的必要性（当前市场消费端 Xcode 26+ 链接 ToBid 5.5.6 无任何障碍——27.1 零垫片全绿）
+3. 以上任一落定后，重跑本预检 §11/§13 对应段；FINAL RC hash 以届时重建为准
