@@ -53,9 +53,7 @@ target 'flame_sdk_ios' do
   # 防止 WindMill 9.4MB 静态合并污染 flame_sdk_ios.framework binary。
   pod 'ToBid-iOS-RC', '5.5.6'
 
-  target 'flame_sdk_iosTests' do
-    # Pods for testing
-  end
+  # P0G-TA：classic 生成工程（Xcode 15.4 正式构建）不含 Tests target，此声明已移除
 end
 
 post_install do |installer|

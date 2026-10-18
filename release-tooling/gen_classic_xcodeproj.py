@@ -164,4 +164,37 @@ out.append("}")
 os.makedirs(PROJECT_DIR, exist_ok=True)
 with open(os.path.join(PROJECT_DIR, "project.pbxproj"), "w") as f:
     f.write("\n".join(out) + "\n")
+# shared scheme（确定性 UUID，消除手工补 scheme 步骤）
+T_UUID = uid("target:" + TARGET)
+ws_dir = os.path.join(ROOT, "flame_sdk_ios.xcworkspace", "xcshareddata", "xcschemes")
+os.makedirs(ws_dir, exist_ok=True)
+scheme = """<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1540"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "%(t)s"
+               BuildableName = "%(n)s.framework"
+               BlueprintName = "%(n)s"
+               ReferencedContainer = "container:%(n)s.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+</Scheme>
+""" % {"t": T_UUID, "n": TARGET}
+with open(os.path.join(ws_dir, TARGET + ".xcscheme"), "w") as f:
+    f.write(scheme)
+
 print("generated classic pbxproj: %d .m, %d .h -> %s" % (len(m_files), len(h_files), PROJECT_DIR))
