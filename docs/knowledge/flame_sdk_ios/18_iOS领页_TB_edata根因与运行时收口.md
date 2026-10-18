@@ -4,7 +4,10 @@
 > 研究分支：`research/ios-lingye-edata-rootcause`（基 = 客户分支 46663e7）
 > **结论速览：edata-missing 根因定案 = 测试驱动 env 注入缺陷 + SDK 错误传播缺陷的组合；
 > 共存本身无网络层缺陷（FI 修复版 11/11 场景全 PASS）。最小正式修复（错误传播 + 入参防御）
-> 已完成并重编产物验证。P0D 的"共存特有阻断"结论被推翻。唯一遗留 = Flame Reward 平台 no-fill
+> 已完成并重编产物验证。P0D 的"共存特有阻断"结论被推翻。
+> ⚠️ 历史口径提示：本文 §5/§6/§7 中"唯一遗留 = Flame Reward 平台 no-fill / PARTIAL_PASS"等为
+> **HISTORICAL_P0E_INTERMEDIATE_STATE**（旧 App b58225548566 时代的中间结论），
+> 已被 §10/§11 终局收口取代：P0E_RUNTIME_CLOSURE = PASS，不作为当前最终结论。
 > （waterfall 待后台核对，疑与去 MS 相关）。**
 
 ## 1. §5 网络实现权威摘要（源码直读）
@@ -74,10 +77,19 @@ CUSTOM_TB_REWARD_COMPLETE = FAIL（800110 no-fill 恒定，平台侧——见 §
 CASE_A/CASE_B/C1-C4 = FAIL（全部因 FA no-fill 传导；除 FA 外所有步骤 OK）
 ```
 
+> ⚠️ 以上两行（CUSTOM_TB_REWARD_COMPLETE / CASE 矩阵 FAIL）为
+> **HISTORICAL_P0E_INTERMEDIATE_STATE**：仅对旧 App b58225548566/q96839761612 成立。
+> 终局见 §10/§11：新测试 App 上 Flame Reward 真实填充全链 PASS，矩阵全绿。
+
 设备锁屏导致 Baseline A/B 独立复验未跑（等效证据：共存矩阵中 LA 全链 OK×8、FI 11/11；
 解锁后可按仓内 runner 补跑）。
 
-## 6. Reward no-fill（唯一遗留，平台侧）
+## 6. Reward no-fill（HISTORICAL_P0E_INTERMEDIATE_STATE —— 旧 App 时代诊断，已闭环）
+
+> ⚠️ 本节整段为 **HISTORICAL_P0E_INTERMEDIATE_STATE**：针对旧 App b58225548566 /
+> 旧 placement q96839761612 的 no-fill 诊断。终局定性 = TEST_CONFIG_SPECIFIC
+> （旧瀑布流源自身包名/代码位问题），**不构成任何 release blocker**。
+> 新 App b22375234108 上 Flame Reward 已真实填充全链 PASS（§10），本节仅保留研究过程。
 
 ```
 FLAME_TB_TEST_PLACEMENT_HAS_MS = UNKNOWN（需 Flame 后台核对 q96839761612 waterfall；
@@ -91,14 +103,20 @@ FLAME_TB_MS_NETWORK_REQUIRED_FOR_CUSTOMER = UNKNOWN → CUSTOMER_TB_NETWORK_PROF
 ## 7. 判定
 
 ```
+── 当前最终值（2026-10-18 P0F-V2 + Preflight 终局，取代下方历史中间态）──
+P0E_RUNTIME_CLOSURE = PASS
+IOS_LINGYE_TB_CUSTOMER_VARIANT = RELEASE_CANDIDATE（≠ RELEASED；正式构建另受工具链门禁，
+  见 20 号文档 P0F_RELEASE_PREFLIGHT=BLOCKED_BY_TOOLCHAIN）
+LINGYE_REWARD_SMOKE = PASS_REUSED_FROM_EXISTING_REAL_DEVICE_EVIDENCE
+FLAME_REWARD_SMOKE  = PASS
+FLAME_SDK_REWARD_CAPABILITY = PROVEN
+OLD_APP_NO_FILL = TEST_CONFIG_SPECIFIC
+
+── HISTORICAL_P0E_INTERMEDIATE_STATE（旧 App 时代中间结论，勿作为当前结论）──
 P0E_RUNTIME_CLOSURE = PARTIAL_PASS
   已收口：edata 根因（非共存缺陷）+ SDK 双修复 + 共存 init 11/11 + 领页全链 + reinit + 零异常
   未收口：Flame Reward 真实广告链（平台 no-fill，待后台配置）→ Case 矩阵按真实广告标准判 FAIL
-IOS_LINGYE_TB_CUSTOMER_VARIANT = RELEASE_CANDIDATE（P0E_RUNTIME_CLOSURE=PASS，2026-10-18 P0F-V2 终局收口；
-  正式发布构建另受工具链门禁约束，见 20 号文档 P0F_RELEASE_PREFLIGHT=BLOCKED_BY_TOOLCHAIN）
-RELEASE_GATE 剩余输入：
-  1) Flame 后台为测试 placement 配置非 MS 源 → 重跑 FA 链与 Case 矩阵
-  2) P0F：DT13 工具链复建产物、分发仓 tag 1.0.1-lingye.1、flame-specs（均待决策层批准）
+  （该"未收口"已由 §10 新 App 真实填充闭环取代；旧 App RELEASE_GATE 输入已失效）
 ```
 
 ## 8. 复现资产（本分支）
@@ -122,7 +140,10 @@ RELEASE_GATE 剩余输入：
 - 探针终证（保存原 IMP + C hook，观测不改行为）：Taku 三入口（handleAppLaunch/tryCheckADXConfigIfNeeded/ATAdManager sharedManager）在全部矩阵窗口零调用（仅启动期 AnyThink +load 自init，action=IDLE）→ FLAME_TB_TRIGGERS_TAKU_INIT=NO；WindMill 管理器 init 全部落在 Flame 加载窗口 → LINGYE_TRIGGERED_TOBID_INIT=NO、FLAME_TOBID_MANAGER_OWNER=FLAME_ONLY
 - 异常扫描（探针修复后终局窗口 17 份日志）：crash/EXC/NSException/unrecognized selector/dyld/duplicate class = 0（仅存 signal 9 = harness terminate-existing 正常行为）
 - 共享网络归属表：LINGYE reward→csj-1｜LINGYE splash→qm｜FLAME reward→sigmob(f84b138a500)｜FLAME splash→sigmob(ee793f95649)——同 App 双方各走各源，互不污染
-- 遗留：LINGYE_REWARD_SMOKE 需一次完整看完视频（已两次被提前关闭）；FLAME_REWARD_SMOKE=PASS（既有 08:47 全链证据）
+- Reward smoke 终值：LINGYE_REWARD_SMOKE = PASS_REUSED_FROM_EXISTING_REAL_DEVICE_EVIDENCE
+  （P0D 真实设备证据：standalone LA_REWARDED req=f27050d0… + 共存宿主 p0d_c_CASE_B LA_REWARDED，
+  载于 20 号文档 §1；本日两次人工提前关闭的尝试不构成阻断）；
+  FLAME_REWARD_SMOKE = PASS（既有 08:47 全链证据）
 
 ## 11. P0E_RUNTIME_CLOSURE 正式收口（P0F Release Preflight 只读终审，2026-10-18）
 

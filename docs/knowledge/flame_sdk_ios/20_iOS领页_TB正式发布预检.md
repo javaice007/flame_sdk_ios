@@ -40,13 +40,30 @@ FRESH_LI/FI/LS/FS/FLAME_CLEAR_REINIT    = NOT_RUN
 
 ### 2.1 validation 构建上的等价审计（信息性，XCODE27_VALIDATION_BUILD=PASS，非正式产物）
 
-- 1.0.1-lingye.3-local 二进制（DT15/minos 15.0/sdk 27.1，arm64+x86_64sim）：
-  - CONFIG_ERROR_PROPAGATION_FIX_PRESENT = **YES**（3 处标记）
-  - EMPTY_CREDENTIAL_GUARD_PRESENT = **YES**
-  - TB_REINIT_IDEMPOTENCY_FIX_PRESENT = **YES**（"skip re-setup (idempotent init)" 在产物内）
-- FORMAL_FLAME_BINARY_TAKU_STATIC_PATH = **NO**（nm 全零：ATAPI/ATAdManager/AnyThink/TopOn/AT* 均无）
-- FORMAL_FLAME_TB_PATH_PRESENT = **YES**（FlameTBProvider/TbRewardAdapter/TbSplashAdapter/WindMill 符号齐备）
-- OpenSSL：podspec ~>1.1，runtime 1.1.2301 已验证；FORMAL_OPENSSL_COPY_COUNT/SYMBOL_COMPAT 待 DT13 fresh consumer 复核
+> 边界冻结：以下均为 **VALIDATION_*** 变量（1.0.1-lingye.3-local / DT15 / Xcode 27.1 产物），
+> **不得**给任何 FORMAL_* 变量赋最终值。FORMAL_* 必须等真正 DT13 artifact 产生后再填。
+
+```
+VALIDATION_FLAME_BINARY_TAKU_STATIC_PATH          = NO（nm 全零：ATAPI/ATAdManager/AnyThink/TopOn/AT* 均无）
+VALIDATION_FLAME_TB_PATH_PRESENT                  = YES（FlameTBProvider/TbRewardAdapter/TbSplashAdapter/WindMill 符号齐备）
+VALIDATION_OPENSSL_VERSION                        = 1.1.2301（runtime）
+VALIDATION_CONFIG_ERROR_PROPAGATION_FIX_PRESENT   = YES
+VALIDATION_EMPTY_CREDENTIAL_GUARD_PRESENT         = YES
+VALIDATION_TB_REINIT_IDEMPOTENCY_FIX_PRESENT      = YES
+（载体：1.0.1-lingye.3-local，DT15/minos 15.0/sdk 27.1，arm64+x86_64sim）
+```
+
+```
+── FORMAL_*（未产生 DT13 artifact 前一律 NOT_BUILT / NOT_RUN）──
+FORMAL_FLAME_BINARY_TAKU_STATIC_PATH = NOT_BUILT
+FORMAL_FLAME_TB_PATH_PRESENT         = NOT_BUILT
+FORMAL_OPENSSL_VERSION               = NOT_BUILT
+FORMAL_OPENSSL_COPY_COUNT            = NOT_BUILT
+FORMAL_OPENSSL_SYMBOL_COMPAT         = NOT_RUN
+FORMAL_MS_BINARY_COPY_COUNT          = NOT_BUILT
+FORMAL_BINARY_MIN_OS                 = NOT_BUILT
+FORMAL_BINARY_ARCHS                  = NOT_BUILT
+```
 
 ### 2.2 `75b0135` 专项审计（§二十）
 
@@ -111,8 +128,29 @@ FORMAL_RELEASE_EXECUTED        = NO
 
 ## 9. 解除阻塞路径（供决策层）
 
-1. 安装 iOS13 兼容 Xcode（≤15.x 系列，如 Xcode 15.4/16.x，需 iOS 13 DT 支持；或按决策层指定的构建机）→ 重跑本预检 §2 起的正式构建/fresh consumer 段
+1. IOS13_TOOLCHAIN_REQUIREMENT：找到一个**经过实际构建验证**能够以
+   `IPHONEOS_DEPLOYMENT_TARGET = 13.0` 成功完成当前 Flame iOS device build/archive 的
+   Xcode toolchain（机器/版本由决策层指定，不按 Xcode 大版本号猜测）。
+   解除阻塞时必须实际验证：`xcodebuild -version` → 以 `IPHONEOS_DEPLOYMENT_TARGET=13.0`
+   完成 device archive/build → `FORMAL_BINARY_MIN_OS = 13.0`（otool/vtool 实测）。
+   不能仅凭版本号判断；§十七四类伪造做法全部禁止。
 2. 或决策层显式豁免 DT13 契约（产品决策，非本阶段权限）
+
+## 9.1 canonical 回灌冻结（§三十九/四十细化）
+
+```
+STANDARD_TB_WINDMILL_REINIT_BACKPORT_REQUIRED = YES_AFTER_CUSTOMER_RELEASE
+  依据：clear→re-init 缺陷根因位于 FlameTBProvider / WindMill 通用 TB 生命周期，
+  不是 CJMobileAd / Lingye 特有兼容问题。领页客户正式发布闭环后，必须回到
+  release/ios-dual-line 单独实施并验证（Flame clear → Flame init → Splash/Reward
+  load/show）。不得在当前客户发布阶段提前 merge。
+CONFIG_MANAGER_HARDENING_BACKPORT = SEPARATE_DECISION_RECOMMENDED
+  对应：server code/message propagation + empty appId/appKey defensive guard
+  （通用健壮性修复，回灌 canonical 仍需单独审计）。
+LINGYE_CUSTOM_DEPENDENCY_BACKPORT = NO
+  禁止回灌：OpenSSL ~>1.1、remove ToBid MSAdAdapter、flame_sdk_ios_tb_lingye、
+  CJMobileAd dependency closure、任何领页客户专用配置。
+```
 
 ## 10.【尚未发布】/【发布后待验】
 
