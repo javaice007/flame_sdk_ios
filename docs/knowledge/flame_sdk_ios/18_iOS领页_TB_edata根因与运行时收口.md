@@ -94,7 +94,8 @@ FLAME_TB_MS_NETWORK_REQUIRED_FOR_CUSTOMER = UNKNOWN → CUSTOMER_TB_NETWORK_PROF
 P0E_RUNTIME_CLOSURE = PARTIAL_PASS
   已收口：edata 根因（非共存缺陷）+ SDK 双修复 + 共存 init 11/11 + 领页全链 + reinit + 零异常
   未收口：Flame Reward 真实广告链（平台 no-fill，待后台配置）→ Case 矩阵按真实广告标准判 FAIL
-IOS_LINGYE_TB_CUSTOMER_VARIANT = NOT_RELEASE_READY（仅剩平台侧 fill 条件 + P0F 发布前置）
+IOS_LINGYE_TB_CUSTOMER_VARIANT = RELEASE_CANDIDATE（P0E_RUNTIME_CLOSURE=PASS，2026-10-18 P0F-V2 终局收口；
+  正式发布构建另受工具链门禁约束，见 20 号文档 P0F_RELEASE_PREFLIGHT=BLOCKED_BY_TOOLCHAIN）
 RELEASE_GATE 剩余输入：
   1) Flame 后台为测试 placement 配置非 MS 源 → 重跑 FA 链与 Case 矩阵
   2) P0F：DT13 工具链复建产物、分发仓 tag 1.0.1-lingye.1、flame-specs（均待决策层批准）
@@ -122,3 +123,9 @@ RELEASE_GATE 剩余输入：
 - 异常扫描（探针修复后终局窗口 17 份日志）：crash/EXC/NSException/unrecognized selector/dyld/duplicate class = 0（仅存 signal 9 = harness terminate-existing 正常行为）
 - 共享网络归属表：LINGYE reward→csj-1｜LINGYE splash→qm｜FLAME reward→sigmob(f84b138a500)｜FLAME splash→sigmob(ee793f95649)——同 App 双方各走各源，互不污染
 - 遗留：LINGYE_REWARD_SMOKE 需一次完整看完视频（已两次被提前关闭）；FLAME_REWARD_SMOKE=PASS（既有 08:47 全链证据）
+
+## 11. P0E_RUNTIME_CLOSURE 正式收口（P0F Release Preflight 只读终审，2026-10-18）
+
+- 依据 20 号文档 §1 只读终审（不重跑）：runtime 全部 Gate 满足 → **P0E_RUNTIME_CLOSURE = PASS**
+- LINGYE_REWARD_SMOKE = PASS_REUSED_FROM_EXISTING_REAL_DEVICE_EVIDENCE（P0D /tmp/p0d_all_rt.log LA_REWARDED req=f27050d0… + 共存宿主 p0d_c_CASE_B LA_REWARDED）
+- 正式 iOS13 构建 = BLOCKED_BY_TOOLCHAIN（本机唯一 Xcode 27.1，min DT 15.0）；不改变 runtime RC 状态
