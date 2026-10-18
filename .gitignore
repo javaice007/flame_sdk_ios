@@ -145,3 +145,6 @@ validation/**/*.xcworkspace/
 validation/**/xcuserdata/
 validation/**/ddata*/
 validation/**/*.xcuserstate
+
+# P0F manual demo: local secret config, never commit
+validation/**/Sources/P0FSecretConfig.h

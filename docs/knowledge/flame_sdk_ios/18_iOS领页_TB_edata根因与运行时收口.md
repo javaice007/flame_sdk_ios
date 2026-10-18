@@ -106,3 +106,8 @@ RELEASE_GATE 剩余输入：
 - C0/CJLOG/C2 隔离序列 + 合并 env runner 修正（**devicectl 多 -e 会覆盖——须合并单 JSON**）
 - 修复版本地 pod：`validation/.../local_pods/flame_sdk_ios_tb_lingye-fixed`（产物 gitignored）
 - 关键日志：/tmp/p0e_*.log、/tmp/p0f_*.log（证据摘要见 §2/§5；AppKey 未入任何提交）
+
+## 9. 人工 Demo 验收工作台（P0F 后续，2026-10-18）
+
+- 遗留 FA no-fill 已由新测试 App（b22375234108 / q57514498879 → ToBid 1886359231652093，Sigmob 单源）真实填充闭环：load→show→reward（transId 36 位）→close 全链 PASS；旧 App no-fill 根因盖棺=旧瀑布流源自身问题（GDT/KS/Baidu 包名+CSJ 代码位），与 MSAdAdapter 移除/SDK/共存无关
+- 验收工作台见 **19 号文档**：MANUAL_DEMO_IMPLEMENTED=YES / BUILD=PASS；INSTALL/LAUNCH 待真机解锁

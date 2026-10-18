@@ -17,6 +17,7 @@ targets:
       path: Sources/Info.plist
       properties:
         UILaunchScreen: {}
+        NSUserTrackingUsageDescription: 用于获取广告标识符以验证广告 SDK 填充（仅测试用途）
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.flame.sdk.test

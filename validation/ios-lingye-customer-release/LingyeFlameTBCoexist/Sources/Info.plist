@@ -18,6 +18,8 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>用于获取广告标识符以验证广告 SDK 填充（仅测试用途）</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 </dict>
