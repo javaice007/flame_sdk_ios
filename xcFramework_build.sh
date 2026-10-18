@@ -63,6 +63,14 @@ set -e
 # ============================================================
 
 # =========================
+# Deployment target（P0G §七：显式参数，默认=产品契约 13.0，禁止硬编码 15.0）
+# Xcode 27.1 validation 机器请显式：FLAME_DEPLOYMENT_TARGET=15 ./xcFramework_build.sh ...
+# Podfile post_install 读取同一变量；正式 DT13 构建一律不设该变量或设 13.0
+# =========================
+FLAME_DEPLOYMENT_TARGET="${FLAME_DEPLOYMENT_TARGET:-13.0}"
+MIN_IOS_VERSION="${FLAME_DEPLOYMENT_TARGET}"
+
+# =========================
 # 变体解析（single-binary / tb-static / tk-static）
 # =========================
 VARIANT="${1:-single-binary}"
@@ -148,7 +156,7 @@ if [ "$VARIANT" = "tb-static" ] || [ "$VARIANT" = "tk-static" ]; then
     -configuration Release \
     -destination "generic/platform=iOS" \
     -derivedDataPath "${DERIVED_DATA}" \
-    IPHONEOS_DEPLOYMENT_TARGET="15.0" \
+    IPHONEOS_DEPLOYMENT_TARGET="${MIN_IOS_VERSION}" \
     MACH_O_TYPE="staticlib" \
     BUILD_LIBRARY_FOR_DISTRIBUTION="YES" \
     CODE_SIGNING_ALLOWED="NO" \
@@ -163,7 +171,7 @@ if [ "$VARIANT" = "tb-static" ] || [ "$VARIANT" = "tk-static" ]; then
     -destination "generic/platform=iOS Simulator" \
     -derivedDataPath "${DERIVED_DATA}" \
     ARCHS="x86_64" \
-    IPHONEOS_DEPLOYMENT_TARGET="15.0" \
+    IPHONEOS_DEPLOYMENT_TARGET="${MIN_IOS_VERSION}" \
     MACH_O_TYPE="staticlib" \
     BUILD_LIBRARY_FOR_DISTRIBUTION="YES" \
     CODE_SIGNING_ALLOWED="NO" \
@@ -290,7 +298,6 @@ echo "=========================================="
 WORKSPACE_NAME="flame_sdk_ios.xcworkspace"
 SCHEME_NAME="flame_sdk_ios"
 FRAMEWORK_NAME="flame_sdk_ios"
-MIN_IOS_VERSION="15.0"
 
 # single-binary 正式输出到 build/ 顶层（无子目录）
 # 中间 xcarchive 放 Archives/single_binary/（构建后清理）

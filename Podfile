@@ -59,11 +59,13 @@ target 'flame_sdk_ios' do
 end
 
 post_install do |installer|
-  # Xcode 27.1 构建机临时方案：Pods 目标级 DT=13 被构建图校验拒绝（min 15.0）。
-  # 正式 DT13 复建属于 P0F_RELEASE_PREFLIGHT，不在本分支范围。
-  installer.target_installation_results.pod_target_installation_results.each do |pod_name, target_installation_result|
-    target_installation_result.native_target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+  # Pod 目标 DT 收口：仅在 Xcode 27.1 validation（FLAME_DEPLOYMENT_TARGET=15）时强制 15.0；
+  # 正式 DT13 构建（默认，不设变量）不改 Pods 目标 DT，保持各 podspec 原生声明（Xcode 15.4 原生支持 13.0）。
+  if ENV['FLAME_DEPLOYMENT_TARGET']
+    installer.target_installation_results.pod_target_installation_results.each do |pod_name, target_installation_result|
+      target_installation_result.native_target.build_configurations.each do |config|
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = ENV['FLAME_DEPLOYMENT_TARGET']
+      end
     end
   end
 
