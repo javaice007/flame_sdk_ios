@@ -1,48 +1,41 @@
 //
-//  P0FConsoleViewController.m — Coexist Test Console（人工验收工作台，TEST_ONLY）
+//  P0FConsoleViewController.m — Coexist Test Console（P0F-V2 极简人工验收工作台，TEST_ONLY）
 //
-//  §23：白底、分区明显、按钮大、状态颜色易识别；不做动画/特效。
-//  所有状态变化只由 P0FTestCore 事件驱动；不硬编码任何 PASS（§21）。
+//  §2/§4/§23：两排六主按钮，单击自动 load→show；
+//    第一排 [LY初始化][LY开屏][LY激励]，第二排 [FL初始化][FL开屏][FL激励]；
+//  LAST ACTION 卡直接显示 OWNER/TYPE/RESULT/NETWORK/PLACEMENT/ERROR（§19）；
+//  配置详情与辅助按钮折叠进「调试工具」（§5）。
 //
 
 #import "P0FConsoleViewController.h"
 #import "P0FTestCore.h"
 #import <flame_sdk_ios/flame_sdk_ios.h>
 
-@interface P0FConsoleViewController () <P0FTestListener, UITextViewDelegate>
-// zone A
-@property (nonatomic, strong) UILabel *configLabel;
-@property (nonatomic, strong) UILabel *resolvedLabel;
-// last action card
-@property (nonatomic, strong) UILabel *lastActionLabel;
-// badges
+@interface P0FConsoleViewController () <P0FTestListener>
+// 主界面
 @property (nonatomic, strong) UILabel *lingyeBadge;
 @property (nonatomic, strong) UILabel *flameBadge;
-// per-ad state lines
-@property (nonatomic, strong) UILabel *lingyeSplashStateLabel;
-@property (nonatomic, strong) UILabel *lingyeRewardStateLabel;
-@property (nonatomic, strong) UILabel *flameSplashStateLabel;
-@property (nonatomic, strong) UILabel *flameRewardStateLabel;
-// buttons
+@property (nonatomic, strong) UILabel *lingyeStateLabel;
+@property (nonatomic, strong) UILabel *flameStateLabel;
 @property (nonatomic, strong) UIButton *liInitBtn;
-@property (nonatomic, strong) UIButton *liSplashLoadBtn;
-@property (nonatomic, strong) UIButton *liSplashShowBtn;
-@property (nonatomic, strong) UIButton *liRewardLoadBtn;
-@property (nonatomic, strong) UIButton *liRewardShowBtn;
-@property (nonatomic, strong) UIButton *liResetBtn;
+@property (nonatomic, strong) UIButton *liSplashBtn;
+@property (nonatomic, strong) UIButton *liRewardBtn;
 @property (nonatomic, strong) UIButton *fiInitBtn;
-@property (nonatomic, strong) UIButton *fiSplashLoadBtn;
-@property (nonatomic, strong) UIButton *fiSplashShowBtn;
-@property (nonatomic, strong) UIButton *fiRewardLoadBtn;
-@property (nonatomic, strong) UIButton *fiRewardShowBtn;
+@property (nonatomic, strong) UIButton *fiSplashBtn;
+@property (nonatomic, strong) UIButton *fiRewardBtn;
+@property (nonatomic, strong) UILabel *lastActionLabel;
+@property (nonatomic, strong) UITextView *logView;
+// 调试工具（折叠）
+@property (nonatomic, strong) UIButton *debugToggleBtn;
+@property (nonatomic, strong) UIStackView *debugStack;
+@property (nonatomic, strong) UILabel *configLabel;
+@property (nonatomic, strong) UILabel *resolvedLabel;
 @property (nonatomic, strong) UIButton *fiClearBtn;
+@property (nonatomic, strong) UIButton *resetAllBtn;
+@property (nonatomic, strong) UIButton *clearLogBtn;
+@property (nonatomic, strong) UIButton *logCopyBtn;
 @property (nonatomic, strong) UIButton *caseABtn;
 @property (nonatomic, strong) UIButton *caseBBtn;
-@property (nonatomic, strong) UIButton *clearLogBtn;
-@property (nonatomic, strong) UIButton *resetAllBtn;
-@property (nonatomic, strong) UIButton *logCopyBtn;
-// log panel
-@property (nonatomic, strong) UITextView *logView;
 // last-action accumulator
 @property (nonatomic, copy) NSString *cardKey;
 @property (nonatomic, copy) NSString *cardOwner;
@@ -56,6 +49,7 @@
 @property (nonatomic, copy) NSString *cardShow;
 @property (nonatomic, copy) NSString *cardReward;
 @property (nonatomic, copy) NSString *cardClose;
+@property (nonatomic, copy) NSString *cardCode;
 @property (nonatomic, copy) NSString *cardTime;
 // quick-case runner
 @property (nonatomic, assign) BOOL caseRunning;
@@ -73,8 +67,7 @@
     FlameTestController.shared.listener = self;
     [self buildUI];
     [self renderAll];
-    [self appendLog:[NSString stringWithFormat:@"%@ [CONSOLE] MANUAL_MODE Coexist Test Console ready（人工验收）", [self now]]];
-    [self appendLog:[NSString stringWithFormat:@"%@ [CONSOLE] 提示：先点【初始化领页】/【初始化 Flame】，再加载/展示对应广告", [self now]]];
+    [self appendLog:[NSString stringWithFormat:@"%@ [CONSOLE] MANUAL_MODE 极简工作台 ready（单击=自动 load→show）", [self now]]];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -86,12 +79,11 @@
 
 #pragma mark UI building
 
-// badge 行占位（撑满）
-static inline UIView *P0FSpacer(void)
+- (NSString *)now
 {
-    UIView *v = [[UIView alloc] init];
-    [v setUserInteractionEnabled:NO];
-    return v;
+    NSDateFormatter *f = [[NSDateFormatter alloc] init];
+    f.dateFormat = @"HH:mm:ss";
+    return [f stringFromDate:[NSDate date]];
 }
 
 - (UILabel *)makeLabel:(CGFloat)size bold:(BOOL)bold color:(UIColor *)color
@@ -107,12 +99,32 @@ static inline UIView *P0FSpacer(void)
 {
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     [b setTitle:title forState:UIControlStateNormal];
-    b.titleLabel.font = [UIFont boldSystemFontOfSize:15];
+    b.titleLabel.font = [UIFont boldSystemFontOfSize:17];
     [b setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     b.backgroundColor = color;
-    b.layer.cornerRadius = 6;
-    b.contentEdgeInsets = UIEdgeInsetsMake(12, 8, 12, 8);
+    b.layer.cornerRadius = 8;
+    b.contentEdgeInsets = UIEdgeInsetsMake(14, 8, 14, 8);
     [b addTarget:self action:sel forControlEvents:UIControlEventTouchUpInside];
+    return b;
+}
+
+static inline UIView *P0FSpacer(void)
+{
+    UIView *v = [[UIView alloc] init];
+    [v setUserInteractionEnabled:NO];
+    return v;
+}
+
+- (UILabel *)makeBadge
+{
+    UILabel *b = [[UILabel alloc] init];
+    b.font = [UIFont boldSystemFontOfSize:13];
+    b.textAlignment = NSTextAlignmentCenter;
+    b.layer.cornerRadius = 4;
+    b.clipsToBounds = YES;
+    b.text = @"  NOT_INITIALIZED  ";
+    b.backgroundColor = [UIColor lightGrayColor];
+    b.textColor = [UIColor whiteColor];
     return b;
 }
 
@@ -123,190 +135,156 @@ static inline UIView *P0FSpacer(void)
     [self.view addSubview:scroll];
     UIStackView *stack = [[UIStackView alloc] init];
     stack.axis = UILayoutConstraintAxisVertical;
-    stack.spacing = 10;
+    stack.spacing = 12;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [scroll addSubview:stack];
     [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:12],
-        [stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:16],
-        [stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-16],
+        [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor constant:14],
+        [stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor constant:14],
+        [stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor constant:-14],
         [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor constant:-24],
-        [stack.widthAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.widthAnchor constant:-32],
+        [stack.widthAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.widthAnchor constant:-28],
     ]];
 
-    UIView *(^card)(NSString *) = ^(NSString *title) {
-        UIView *v = [[UIView alloc] init];
-        v.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1];
-        v.layer.cornerRadius = 8;
-        UIStackView *s = [[UIStackView alloc] init];
-        s.axis = UILayoutConstraintAxisVertical;
-        s.spacing = 4;
-        s.translatesAutoresizingMaskIntoConstraints = NO;
-        [v addSubview:s];
-        [NSLayoutConstraint activateConstraints:@[
-            [s.topAnchor constraintEqualToAnchor:v.topAnchor constant:8],
-            [s.leadingAnchor constraintEqualToAnchor:v.leadingAnchor constant:10],
-            [s.trailingAnchor constraintEqualToAnchor:v.trailingAnchor constant:-10],
-            [s.bottomAnchor constraintEqualToAnchor:v.bottomAnchor constant:-8],
-        ]];
-        s.tag = 777;
-        UILabel *h = [self makeLabel:14 bold:YES color:[UIColor blackColor]];
-        h.text = title;
-        [s addArrangedSubview:h];
-        return v;
-    };
-
-    // ── 标题 ──
-    UILabel *title = [self makeLabel:20 bold:YES color:[UIColor blackColor]];
+    UILabel *title = [self makeLabel:19 bold:YES color:[UIColor blackColor]];
     title.text = @"Coexist Test Console";
-    UILabel *subtitle = [self makeLabel:12 bold:NO color:[UIColor darkGrayColor]];
-    subtitle.text = @"领页 CJMobileAd 2.4.32 × Flame TB（ToBid）共存 · 人工验收工作台";
     [stack addArrangedSubview:title];
-    [stack addArrangedSubview:subtitle];
 
-    // ── Zone A 当前配置 ──
-    UIView *cfg = card(@"A · 当前配置");
-    UIStackView *cfgStack = [cfg viewWithTag:777];
-    _configLabel = [self makeLabel:12 bold:NO color:[UIColor blackColor]];
-    _resolvedLabel = [self makeLabel:12 bold:YES color:[UIColor colorWithWhite:0.2 alpha:1]];
-    [cfgStack addArrangedSubview:_configLabel];
-    [cfgStack addArrangedSubview:_resolvedLabel];
-    [stack addArrangedSubview:cfg];
+    // ── 第一排：领页 ──
+    UIStackView *lyHead = [[UIStackView alloc] init];
+    lyHead.axis = UILayoutConstraintAxisHorizontal;
+    UILabel *lyTag = [self makeLabel:14 bold:YES color:[UIColor blackColor]];
+    lyTag.text = @"领页 (LY)";
+    _lingyeBadge = [self makeBadge];
+    [lyHead addArrangedSubview:lyTag];
+    [lyHead addArrangedSubview:_lingyeBadge];
+    [lyHead addArrangedSubview:P0FSpacer()];
+    [stack addArrangedSubview:lyHead];
 
-    // ── Zone LAST ACTION ──
-    UIView *last = card(@"LAST ACTION（最后一次广告结果，可直接截图留证）");
-    UIStackView *lastStack = [last viewWithTag:777];
+    UIStackView *row1 = [[UIStackView alloc] init];
+    row1.axis = UILayoutConstraintAxisHorizontal;
+    row1.spacing = 8;
+    row1.distribution = UIStackViewDistributionFillEqually;
+    _liInitBtn   = [self makeButton:@"LY初始化" action:@selector(liInit:) color:[UIColor colorWithRed:0.2 green:0.45 blue:0.85 alpha:1]];
+    _liSplashBtn = [self makeButton:@"LY开屏" action:@selector(liSplash:) color:[UIColor colorWithRed:0.3 green:0.55 blue:0.85 alpha:1]];
+    _liRewardBtn = [self makeButton:@"LY激励" action:@selector(liReward:) color:[UIColor colorWithRed:0.4 green:0.5 blue:0.9 alpha:1]];
+    [row1 addArrangedSubview:_liInitBtn];
+    [row1 addArrangedSubview:_liSplashBtn];
+    [row1 addArrangedSubview:_liRewardBtn];
+    [stack addArrangedSubview:row1];
+
+    _lingyeStateLabel = [self makeLabel:11 bold:NO color:[UIColor darkGrayColor]];
+    [stack addArrangedSubview:_lingyeStateLabel];
+
+    // ── 第二排：Flame ──
+    UIStackView *flHead = [[UIStackView alloc] init];
+    flHead.axis = UILayoutConstraintAxisHorizontal;
+    UILabel *flTag = [self makeLabel:14 bold:YES color:[UIColor blackColor]];
+    flTag.text = @"Flame (FL · ToBid)";
+    _flameBadge = [self makeBadge];
+    [flHead addArrangedSubview:flTag];
+    [flHead addArrangedSubview:_flameBadge];
+    [flHead addArrangedSubview:P0FSpacer()];
+    [stack addArrangedSubview:flHead];
+
+    UIStackView *row2 = [[UIStackView alloc] init];
+    row2.axis = UILayoutConstraintAxisHorizontal;
+    row2.spacing = 8;
+    row2.distribution = UIStackViewDistributionFillEqually;
+    _fiInitBtn   = [self makeButton:@"FL初始化" action:@selector(fiInit:) color:[UIColor colorWithRed:0.85 green:0.45 blue:0.2 alpha:1]];
+    _fiSplashBtn = [self makeButton:@"FL开屏" action:@selector(fiSplash:) color:[UIColor colorWithRed:0.87 green:0.55 blue:0.3 alpha:1]];
+    _fiRewardBtn = [self makeButton:@"FL激励" action:@selector(fiReward:) color:[UIColor colorWithRed:0.9 green:0.6 blue:0.35 alpha:1]];
+    [row2 addArrangedSubview:_fiInitBtn];
+    [row2 addArrangedSubview:_fiSplashBtn];
+    [row2 addArrangedSubview:_fiRewardBtn];
+    [stack addArrangedSubview:row2];
+
+    _flameStateLabel = [self makeLabel:11 bold:NO color:[UIColor darkGrayColor]];
+    [stack addArrangedSubview:_flameStateLabel];
+
+    // ── LAST ACTION ──
+    UIView *last = [[UIView alloc] init];
+    last.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1];
+    last.layer.cornerRadius = 8;
     _lastActionLabel = [self makeLabel:12 bold:NO color:[UIColor blackColor]];
-    _lastActionLabel.text = @"（尚未执行任何广告动作）";
-    [lastStack addArrangedSubview:_lastActionLabel];
+    _lastActionLabel.text = @"LAST ACTION\n（尚未执行任何广告动作）";
+    _lastActionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [last addSubview:_lastActionLabel];
+    [NSLayoutConstraint activateConstraints:@[
+        [_lastActionLabel.topAnchor constraintEqualToAnchor:last.topAnchor constant:8],
+        [_lastActionLabel.leadingAnchor constraintEqualToAnchor:last.leadingAnchor constant:10],
+        [_lastActionLabel.trailingAnchor constraintEqualToAnchor:last.trailingAnchor constant:-10],
+        [_lastActionLabel.bottomAnchor constraintEqualToAnchor:last.bottomAnchor constant:-8],
+    ]];
     [stack addArrangedSubview:last];
 
-    // ── Zone B 领页 ──
-    UIView *li = card(@"B · 领页控制区（OWNER = LINGYE）");
-    UIStackView *liStack = [li viewWithTag:777];
-    UIStackView *liBadgeRow = [[UIStackView alloc] init];
-    liBadgeRow.axis = UILayoutConstraintAxisHorizontal;
-    _lingyeBadge = [self makeBadge];
-    [liBadgeRow addArrangedSubview:_lingyeBadge];
-    [liBadgeRow addArrangedSubview:P0FSpacer()];
-    [liStack addArrangedSubview:liBadgeRow];
-    _liInitBtn = [self makeButton:@"初始化领页" action:@selector(liInit:) color:[UIColor colorWithRed:0.2 green:0.45 blue:0.85 alpha:1]];
-    _liSplashLoadBtn = [self makeButton:@"加载领页开屏" action:@selector(liSplashLoad:) color:[UIColor colorWithRed:0.35 green:0.55 blue:0.8 alpha:1]];
-    _liSplashShowBtn = [self makeButton:@"展示领页开屏" action:@selector(liSplashShow:) color:[UIColor colorWithRed:0.25 green:0.45 blue:0.7 alpha:1]];
-    _liRewardLoadBtn = [self makeButton:@"加载领页激励" action:@selector(liRewardLoad:) color:[UIColor colorWithRed:0.2 green:0.45 blue:0.85 alpha:1]];
-    _liRewardShowBtn = [self makeButton:@"展示领页激励" action:@selector(liRewardShow:) color:[UIColor colorWithRed:0.25 green:0.45 blue:0.7 alpha:1]];
-    _liResetBtn = [self makeButton:@"清理/重置领页状态" action:@selector(liReset:) color:[UIColor grayColor]];
-    for (UIButton *b in @[_liInitBtn, _liSplashLoadBtn, _liSplashShowBtn, _liRewardLoadBtn, _liRewardShowBtn, _liResetBtn]) {
-        [liStack addArrangedSubview:b];
-    }
-    _lingyeSplashStateLabel = [self makeLabel:11 bold:NO color:[UIColor darkGrayColor]];
-    _lingyeRewardStateLabel = [self makeLabel:11 bold:NO color:[UIColor darkGrayColor]];
-    [liStack addArrangedSubview:_lingyeSplashStateLabel];
-    [liStack addArrangedSubview:_lingyeRewardStateLabel];
-    [stack addArrangedSubview:li];
-
-    // ── Zone C Flame ──
-    UIView *fi = card(@"C · Flame 控制区（OWNER = FLAME，MEDIATION = TOBID）");
-    UIStackView *fiStack = [fi viewWithTag:777];
-    UIStackView *fiBadgeRow = [[UIStackView alloc] init];
-    fiBadgeRow.axis = UILayoutConstraintAxisHorizontal;
-    _flameBadge = [self makeBadge];
-    [fiBadgeRow addArrangedSubview:_flameBadge];
-    [fiBadgeRow addArrangedSubview:P0FSpacer()];
-    [fiStack addArrangedSubview:fiBadgeRow];
-    _fiInitBtn = [self makeButton:@"初始化 Flame" action:@selector(fiInit:) color:[UIColor colorWithRed:0.85 green:0.45 blue:0.2 alpha:1]];
-    _fiSplashLoadBtn = [self makeButton:@"加载 Flame 开屏" action:@selector(fiSplashLoad:) color:[UIColor colorWithRed:0.8 green:0.55 blue:0.3 alpha:1]];
-    _fiSplashShowBtn = [self makeButton:@"展示 Flame 开屏" action:@selector(fiSplashShow:) color:[UIColor colorWithRed:0.7 green:0.45 blue:0.25 alpha:1]];
-    _fiRewardLoadBtn = [self makeButton:@"加载 Flame 激励" action:@selector(fiRewardLoad:) color:[UIColor colorWithRed:0.85 green:0.45 blue:0.2 alpha:1]];
-    _fiRewardShowBtn = [self makeButton:@"展示 Flame 激励" action:@selector(fiRewardShow:) color:[UIColor colorWithRed:0.7 green:0.45 blue:0.25 alpha:1]];
-    _fiClearBtn = [self makeButton:@"Flame Clear" action:@selector(fiClear:) color:[UIColor grayColor]];
-    for (UIButton *b in @[_fiInitBtn, _fiSplashLoadBtn, _fiSplashShowBtn, _fiRewardLoadBtn, _fiRewardShowBtn, _fiClearBtn]) {
-        [fiStack addArrangedSubview:b];
-    }
-    _flameSplashStateLabel = [self makeLabel:11 bold:NO color:[UIColor darkGrayColor]];
-    _flameRewardStateLabel = [self makeLabel:11 bold:NO color:[UIColor darkGrayColor]];
-    [fiStack addArrangedSubview:_flameSplashStateLabel];
-    [fiStack addArrangedSubview:_flameRewardStateLabel];
-    [stack addArrangedSubview:fi];
-
-    // ── 快捷 Case（不替代独立按钮）──
-    UIView *qc = card(@"快捷 Case（自动按顺序执行，独立按钮仍可用）");
-    UIStackView *qcStack = [qc viewWithTag:777];
-    _caseABtn = [self makeButton:@"Case A：领页先（LI→LA→FI→FA→LA）" action:@selector(caseA:) color:[UIColor colorWithRed:0.4 green:0.4 blue:0.75 alpha:1]];
-    _caseBBtn = [self makeButton:@"Case B：Flame 先（FI→FA→LI→LA→FA）" action:@selector(caseB:) color:[UIColor colorWithRed:0.4 green:0.4 blue:0.75 alpha:1]];
-    [qcStack addArrangedSubview:_caseABtn];
-    [qcStack addArrangedSubview:_caseBBtn];
-    [stack addArrangedSubview:qc];
-
-    // ── 管理 ──
-    UIView *mg = card(@"管理");
-    UIStackView *mgStack = [mg viewWithTag:777];
-    _clearLogBtn = [self makeButton:@"清空日志" action:@selector(clearLog:) color:[UIColor grayColor]];
-    _resetAllBtn = [self makeButton:@"重置测试状态" action:@selector(resetAll:) color:[UIColor grayColor]];
-    _logCopyBtn = [self makeButton:@"复制当前日志" action:@selector(copyLog:) color:[UIColor grayColor]];
-    [mgStack addArrangedSubview:_clearLogBtn];
-    [mgStack addArrangedSubview:_resetAllBtn];
-    [mgStack addArrangedSubview:_logCopyBtn];
-    [stack addArrangedSubview:mg];
-
-    // ── Zone D 日志 ──
-    UIView *lg = card(@"D · 日志 / 状态区（runtime 实时）");
-    UIStackView *lgStack = [lg viewWithTag:777];
+    // ── 小日志区 ──
     _logView = [[UITextView alloc] init];
-    _logView.font = [UIFont monospacedSystemFontOfSize:10 weight:UIFontWeightRegular];
+    _logView.font = [UIFont monospacedSystemFontOfSize:9 weight:UIFontWeightRegular];
     _logView.backgroundColor = [UIColor blackColor];
     _logView.textColor = [UIColor colorWithWhite:0.85 alpha:1];
     _logView.editable = NO;
     _logView.layer.cornerRadius = 6;
-    [_logView.heightAnchor constraintEqualToConstant:300].active = YES;
-    [lgStack addArrangedSubview:_logView];
-    [stack addArrangedSubview:lg];
+    _logView.translatesAutoresizingMaskIntoConstraints = NO;
+    [_logView.heightAnchor constraintEqualToConstant:120].active = YES;
+    [stack addArrangedSubview:_logView];
+
+    // ── 调试工具（折叠区，§5 辅助按钮降级）──
+    _debugToggleBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [_debugToggleBtn setTitle:@"▼ 调试工具（配置/清空/复制/重置/Case）" forState:UIControlStateNormal];
+    _debugToggleBtn.titleLabel.font = [UIFont systemFontOfSize:13];
+    [_debugToggleBtn setTitleColor:[UIColor darkGrayColor] forState:UIControlStateNormal];
+    [_debugToggleBtn addTarget:self action:@selector(toggleDebug:) forControlEvents:UIControlEventTouchUpInside];
+    [stack addArrangedSubview:_debugToggleBtn];
+
+    _debugStack = [[UIStackView alloc] init];
+    _debugStack.axis = UILayoutConstraintAxisVertical;
+    _debugStack.spacing = 8;
+    _debugStack.hidden = YES;
+    _configLabel = [self makeLabel:11 bold:NO color:[UIColor blackColor]];
+    _resolvedLabel = [self makeLabel:11 bold:YES color:[UIColor colorWithWhite:0.25 alpha:1]];
+    _fiClearBtn  = [self makeButton:@"Flame Clear" action:@selector(fiClear:) color:[UIColor grayColor]];
+    _resetAllBtn = [self makeButton:@"重置测试状态" action:@selector(resetAll:) color:[UIColor grayColor]];
+    _clearLogBtn = [self makeButton:@"清空日志" action:@selector(clearLog:) color:[UIColor grayColor]];
+    _logCopyBtn  = [self makeButton:@"复制当前日志（已脱敏）" action:@selector(copyLog:) color:[UIColor grayColor]];
+    _caseABtn = [self makeButton:@"Case A：领页先（自动序列）" action:@selector(caseA:) color:[UIColor colorWithRed:0.4 green:0.4 blue:0.75 alpha:1]];
+    _caseBBtn = [self makeButton:@"Case B：Flame 先（自动序列）" action:@selector(caseB:) color:[UIColor colorWithRed:0.4 green:0.4 blue:0.75 alpha:1]];
+    for (UIView *v in @[_configLabel, _resolvedLabel, _fiClearBtn, _resetAllBtn, _clearLogBtn, _logCopyBtn, _caseABtn, _caseBBtn]) {
+        v.translatesAutoresizingMaskIntoConstraints = NO;
+        [_debugStack addArrangedSubview:v];
+    }
+    [stack addArrangedSubview:_debugStack];
 
     [self renderAll];
 }
 
-// 顶部声明区需要 spacer 辅助（badge 行撑满）
-// （见文件前部 P0FSpacer）
-
-- (UILabel *)makeBadge
+- (void)toggleDebug:(UIButton *)s
 {
-    UILabel *b = [[UILabel alloc] init];
-    b.font = [UIFont boldSystemFontOfSize:12];
-    b.textAlignment = NSTextAlignmentCenter;
-    b.layer.cornerRadius = 4;
-    b.clipsToBounds = YES;
-    b.text = @"  NOT_INITIALIZED  ";
-    b.backgroundColor = [UIColor lightGrayColor];
-    b.textColor = [UIColor whiteColor];
-    return b;
+    self.debugStack.hidden = !self.debugStack.hidden;
+    [s setTitle:self.debugStack.hidden ? @"▼ 调试工具（配置/清空/复制/重置/Case）" : @"▲ 收起调试工具"
+       forState:UIControlStateNormal];
 }
 
-#pragma mark actions（只调 Controller，不直接碰 SDK —— MANUAL_TEST_PATH == AUTOMATED_TEST_PATH）
+#pragma mark actions（只调 Controller —— MANUAL_TEST_PATH == AUTOMATED_TEST_PATH）
 
 - (void)liInit:(UIButton *)s { [[LingyeTestController shared] initSDK:nil]; }
-- (void)liSplashLoad:(UIButton *)s { [[LingyeTestController shared] loadSplash:nil]; }
-- (void)liSplashShow:(UIButton *)s { [[LingyeTestController shared] showSplash:nil]; }
-- (void)liRewardLoad:(UIButton *)s { [[LingyeTestController shared] loadReward:nil]; }
-- (void)liRewardShow:(UIButton *)s { [[LingyeTestController shared] showReward:nil]; }
-- (void)liReset:(UIButton *)s { [[LingyeTestController shared] resetState]; }
+- (void)liSplash:(UIButton *)s { [[LingyeTestController shared] runSplashFlow:nil]; }
+- (void)liReward:(UIButton *)s { [[LingyeTestController shared] runRewardFlow:nil]; }
 - (void)fiInit:(UIButton *)s { [[FlameTestController shared] initSDK:nil]; }
-- (void)fiSplashLoad:(UIButton *)s { [[FlameTestController shared] loadSplash:nil]; }
-- (void)fiSplashShow:(UIButton *)s { [[FlameTestController shared] showSplash:nil]; }
-- (void)fiRewardLoad:(UIButton *)s { [[FlameTestController shared] loadReward:nil]; }
-- (void)fiRewardShow:(UIButton *)s { [[FlameTestController shared] showReward:nil]; }
+- (void)fiSplash:(UIButton *)s { [[FlameTestController shared] runSplashFlow:nil]; }
+- (void)fiReward:(UIButton *)s { [[FlameTestController shared] runRewardFlow:nil]; }
 - (void)fiClear:(UIButton *)s { [[FlameTestController shared] clearSDK]; }
-- (void)clearLog:(UIButton *)s { self.logView.text = @""; }
 - (void)resetAll:(UIButton *)s
 {
     [[LingyeTestController shared] resetState];
     [[FlameTestController shared] clearSDK];
 }
+- (void)clearLog:(UIButton *)s { self.logView.text = @""; }
 - (void)copyLog:(UIButton *)s
 {
     [UIPasteboard generalPasteboard].string = self.logView.text;
-    [self appendLog:[NSString stringWithFormat:@"%@ [CONSOLE] 日志已复制到剪贴板（已脱敏：不含 AppKey/Secret）", [self now]]];
+    [self appendLog:[NSString stringWithFormat:@"%@ [CONSOLE] 日志已复制（已脱敏）", [self now]]];
 }
-
 - (void)caseA:(UIButton *)s { [self runCase:@[@"LI", @"LA", @"FI", @"FA", @"LA"]]; }
 - (void)caseB:(UIButton *)s { [self runCase:@[@"FI", @"FA", @"LI", @"LA", @"FA"]]; }
 
@@ -337,8 +315,10 @@ static inline UIView *P0FSpacer(void)
     };
     if ([st isEqualToString:@"LI"]) [[LingyeTestController shared] initSDK:done];
     else if ([st isEqualToString:@"FI"]) [[FlameTestController shared] initSDK:done];
-    else if ([st isEqualToString:@"LA"]) [[LingyeTestController shared] runRewardFlow:done];
-    else if ([st isEqualToString:@"FA"]) [[FlameTestController shared] runRewardFlow:done];
+    else if ([st isEqualToString:@"LA"] || [st isEqualToString:@"LR"]) [[LingyeTestController shared] runRewardFlow:done];
+    else if ([st isEqualToString:@"FA"] || [st isEqualToString:@"FR"]) [[FlameTestController shared] runRewardFlow:done];
+    else if ([st isEqualToString:@"LS"]) [[LingyeTestController shared] runSplashFlow:done];
+    else if ([st isEqualToString:@"FS"]) [[FlameTestController shared] runSplashFlow:done];
     else { done(YES, nil, nil); }
 }
 
@@ -353,28 +333,19 @@ static inline UIView *P0FSpacer(void)
 
 #pragma mark rendering
 
-- (NSString *)now
-{
-    NSDateFormatter *f = [[NSDateFormatter alloc] init];
-    f.dateFormat = @"HH:mm:ss";
-    return [f stringFromDate:[NSDate date]];
-}
-
 - (void)appendLog:(NSString *)line
 {
     if (line.length == 0) return;
     NSMutableString *t = [NSMutableString stringWithString:self.logView.text ?: @""];
     if (t.length) [t appendFormat:@"\n%@", line];
     else [t appendString:line];
-    // 截断保护
     NSArray *lines = [t componentsSeparatedByString:@"\n"];
-    if (lines.count > 400) {
-        lines = [lines subarrayWithRange:NSMakeRange(lines.count - 300, 300)];
+    if (lines.count > 250) {
+        lines = [lines subarrayWithRange:NSMakeRange(lines.count - 200, 200)];
         t = [NSMutableString stringWithString:[lines componentsJoinedByString:@"\n"]];
     }
     self.logView.text = t;
-    NSRange bottom = NSMakeRange(self.logView.text.length, 0);
-    [self.logView scrollRangeToVisible:bottom];
+    [self.logView scrollRangeToVisible:NSMakeRange(self.logView.text.length, 0)];
 }
 
 - (NSString *)sdkStateText:(P0FSDKState)st
@@ -407,7 +378,7 @@ static inline UIView *P0FSpacer(void)
         case P0FAdStateReady:    return @"READY";
         case P0FAdStateShowing:  return @"SHOWING";
         case P0FAdStateRewarded: return @"REWARDED";
-        case P0FAdStateClosed:   return @"CLOSED";
+        case P0FAdStateClosed:   return @"PASS";
         case P0FAdStateError:    return @"ERROR";
         case P0FAdStateTimeout:  return @"TIMEOUT";
     }
@@ -420,95 +391,58 @@ static inline UIView *P0FSpacer(void)
     FlameTestController *F = FlameTestController.shared;
     P0FAdConfig *cfg = L.config;
 
-    // badges
     self.lingyeBadge.text = [NSString stringWithFormat:@"  %@  ", [self sdkStateText:L.sdkState]];
     self.lingyeBadge.backgroundColor = [self sdkStateColor:L.sdkState];
     self.flameBadge.text = [NSString stringWithFormat:@"  %@  ", [self sdkStateText:F.sdkState]];
     self.flameBadge.backgroundColor = [self sdkStateColor:F.sdkState];
 
-    // zone A config（AppKey 永不展示明文 §17）
-    self.configLabel.text = [NSString stringWithFormat:
-        @"Lingye SDK: CJMobileAd 2.4.32\n"
-         "Flame SDK: flame_sdk_ios_tb_lingye (%@)\n"
-         "Flame App ID: %@\n"
-         "Flame Reward Placement: %@\n"
-         "Flame Splash Placement: %@\n"
-         "Lingye Reward ID: %@\n"
-         "Lingye Splash ID: %@\n"
-         "App Key: ••••••（已配置，不展示）\n"
-         "Device: %@ / iOS %@",
-        [self flameVersion], cfg.flameAppId.length ? cfg.flameAppId : @"（未配置）",
-        cfg.flameRewardPlacement.length ? cfg.flameRewardPlacement : @"（未配置）",
-        cfg.flameSplashPlacement.length ? cfg.flameSplashPlacement : @"（未配置）",
-        cfg.lingyeRewardId, cfg.lingyeSplashId.length ? cfg.lingyeSplashId : @"（未配置）",
-        [UIDevice currentDevice].model, [UIDevice currentDevice].systemVersion];
+    // §18 单击自动流状态行
+    self.lingyeStateLabel.text = [NSString stringWithFormat:@"开屏: %@   激励: %@   network=%@",
+        [self adStateText:L.splashState], [self adStateText:L.rewardState], L.lastRewardNetwork ?: @"-"];
+    self.flameStateLabel.text = [NSString stringWithFormat:@"开屏: %@   激励: %@   network=%@ tobid=%@",
+        [self adStateText:F.splashState], [self adStateText:F.rewardState],
+        F.lastRewardNetwork ?: @"N/A", F.lastTobidPlacement ?: @"N/A"];
 
-    // resolved runtime identity（§6：取不到显示 N/A，不伪造）
-    NSString *tobidApp = [P0FLogTap shared].resolvedTobidAppId ?: @"N/A";
-    self.resolvedLabel.text = [NSString stringWithFormat:
-        @"Resolved ToBid App ID: %@\n"
-         "Resolved ToBid Placement: %@\n"
-         "Network Placement: %@\n"
-         "Last Network: %@\n"
-         "Last transId: %@",
-        tobidApp,
-        F.lastTobidPlacement ?: @"N/A",
-        F.lastNetworkPlacement ?: @"N/A",
-        F.lastRewardNetwork ?: @"N/A",
-        F.lastTransId ?: @"N/A"];
-
-    // ad state lines
-    self.lingyeSplashStateLabel.text = [NSString stringWithFormat:@"SPLASH: %@ (placement %@)",
-        [self adStateText:L.splashState], cfg.lingyeSplashId.length ? cfg.lingyeSplashId : @"未配置→按钮不可用"];
-    self.lingyeRewardStateLabel.text = [NSString stringWithFormat:@"REWARD: %@ network=%@ requestId=%@ attempt=#%ld",
-        [self adStateText:L.rewardState], L.lastRewardNetwork ?: @"-", L.lastRewardRequestId ?: @"-", (long)L.rewardAttempt];
-    self.flameSplashStateLabel.text = [NSString stringWithFormat:@"SPLASH: %@ (placement %@)",
-        [self adStateText:F.splashState], cfg.flameSplashPlacement.length ? cfg.flameSplashPlacement : @"未配置→按钮不可用"];
-    self.flameRewardStateLabel.text = [NSString stringWithFormat:
-        @"REWARD: %@\nNETWORK: %@  TOBID_PLACEMENT: %@  NETWORK_PLACEMENT: %@  TRANS_ID: %@",
-        [self adStateText:F.rewardState],
-        F.lastRewardNetwork ?: @"N/A", F.lastTobidPlacement ?: @"N/A",
-        F.lastNetworkPlacement ?: @"N/A", F.lastTransId ?: @"N/A"];
-
-    // buttons
+    // 主按钮（§2 六按钮）
     self.liInitBtn.enabled = (L.sdkState != P0FSDKStateInitializing);
-    BOOL liSplashCfg = cfg.lingyeSplashId.length > 0;
-    self.liSplashLoadBtn.enabled = liSplashCfg && L.sdkState == P0FSDKStateReady && L.splashState != P0FAdStateLoading;
-    self.liSplashShowBtn.enabled = liSplashCfg && L.splashState == P0FAdStateReady;
-    self.liRewardLoadBtn.enabled = L.sdkState == P0FSDKStateReady && L.rewardState != P0FAdStateLoading;
-    self.liRewardShowBtn.enabled = L.rewardState == P0FAdStateReady;
+    self.liSplashBtn.enabled = L.sdkState == P0FSDKStateReady && L.splashState != P0FAdStateLoading && L.splashState != P0FAdStateShowing;
+    self.liRewardBtn.enabled = L.sdkState == P0FSDKStateReady && L.rewardState != P0FAdStateLoading && L.rewardState != P0FAdStateShowing;
     self.fiInitBtn.enabled = (F.sdkState != P0FSDKStateInitializing);
-    BOOL fiSplashCfg = cfg.flameSplashPlacement.length > 0;
-    self.fiSplashLoadBtn.enabled = fiSplashCfg && F.sdkState == P0FSDKStateReady && F.splashState != P0FAdStateLoading;
-    self.fiSplashShowBtn.enabled = fiSplashCfg && F.splashState == P0FAdStateReady;
-    self.fiRewardLoadBtn.enabled = F.sdkState == P0FSDKStateReady && F.rewardState != P0FAdStateLoading;
-    self.fiRewardShowBtn.enabled = F.rewardState == P0FAdStateReady;
+    self.fiSplashBtn.enabled = F.sdkState == P0FSDKStateReady && F.splashState != P0FAdStateLoading && F.splashState != P0FAdStateShowing;
+    self.fiRewardBtn.enabled = F.sdkState == P0FSDKStateReady && F.rewardState != P0FAdStateLoading && F.rewardState != P0FAdStateShowing;
     self.caseABtn.enabled = !self.caseRunning;
     self.caseBBtn.enabled = !self.caseRunning;
-
-    for (UIButton *b in @[self.liSplashLoadBtn, self.liSplashShowBtn, self.fiSplashLoadBtn, self.fiSplashShowBtn]) {
-        b.alpha = b.enabled ? 1.0 : 0.4;
-    }
-    for (UIButton *b in @[self.liInitBtn, self.liRewardLoadBtn, self.liRewardShowBtn,
-                          self.fiInitBtn, self.fiRewardLoadBtn, self.fiRewardShowBtn,
+    for (UIButton *b in @[self.liInitBtn, self.liSplashBtn, self.liRewardBtn,
+                          self.fiInitBtn, self.fiSplashBtn, self.fiRewardBtn,
                           self.caseABtn, self.caseBBtn]) {
-        b.alpha = b.enabled ? 1.0 : 0.4;
+        b.alpha = b.enabled ? 1.0 : 0.35;
     }
+
+    // 折叠区：配置详情（AppKey 永不展示 §17）
+    self.configLabel.text = [NSString stringWithFormat:
+        @"Lingye SDK: CJMobileAd 2.4.32 | Flame: flame_sdk_ios_tb_lingye (%@)\n"
+         "Flame AppID: %@ | Reward: %@ | Splash: %@\n"
+         "App Key: ••••••（已配置，不展示） | %@ / iOS %@",
+        [self flameVersion],
+        cfg.flameAppId.length ? cfg.flameAppId : @"（未配置）",
+        cfg.flameRewardPlacement.length ? cfg.flameRewardPlacement : @"（未配置）",
+        cfg.flameSplashPlacement.length ? cfg.flameSplashPlacement : @"（未配置）",
+        [UIDevice currentDevice].model, [UIDevice currentDevice].systemVersion];
+    self.resolvedLabel.text = [NSString stringWithFormat:
+        @"Resolved ToBid AppID: %@ | ToBid Placement: %@ | NetworkPlacement: %@ | transId: %@",
+        [P0FLogTap shared].resolvedTobidAppId ?: @"N/A",
+        F.lastTobidPlacement ?: @"N/A", F.lastNetworkPlacement ?: @"N/A", F.lastTransId ?: @"N/A"];
 
     [self renderCard];
 }
 
 - (NSString *)flameVersion
 {
-    @try {
-        NSString *v = [[FlameSdk sharedInstance] getVersion];
-        return v ?: @"";
-    } @catch (NSException *e) {
-        return @"";
-    }
+    @try { return [[FlameSdk sharedInstance] getVersion] ?: @""; }
+    @catch (NSException *e) { return @""; }
 }
 
-#pragma mark LAST ACTION card（§16）
+#pragma mark LAST ACTION card（§16/§19）
 
 - (void)updateCard:(P0FAdEvent *)e
 {
@@ -524,6 +458,7 @@ static inline UIView *P0FSpacer(void)
         self.cardPlacement = nil;
         self.cardTransId = nil;
         self.cardRequestId = nil;
+        self.cardCode = nil;
         self.cardLoad = @"-";
         self.cardShow = @"-";
         self.cardReward = @"-";
@@ -533,24 +468,31 @@ static inline UIView *P0FSpacer(void)
     if ([e.action isEqualToString:@"INIT"]) {
         self.cardResult = e.ok ? @"PASS" : @"FAIL";
     } else if ([e.action isEqualToString:@"LOAD"]) {
-        if (e.ok && [e.message isEqualToString:@"READY"]) { self.cardLoad = @"PASS"; self.cardNetwork = e.network ?: self.cardNetwork; self.cardPlacement = e.thirdPlacement ?: self.cardPlacement; }
-        else if (!e.ok && ![e.message isEqualToString:@"START"]) { self.cardLoad = [NSString stringWithFormat:@"FAIL(%@)", e.code ?: @"?"]; self.cardResult = @"FAIL"; }
+        if (e.ok && [e.message isEqualToString:@"READY"]) {
+            self.cardLoad = @"PASS";
+            self.cardNetwork = e.network ?: self.cardNetwork;
+            self.cardPlacement = e.thirdPlacement ?: self.cardPlacement;
+        } else if (!e.ok && ![e.message isEqualToString:@"START"]) {
+            self.cardLoad = [NSString stringWithFormat:@"FAIL(%@)", e.code ?: @"?"];
+            self.cardResult = @"FAIL";
+        }
     } else if ([e.action isEqualToString:@"SHOW"]) {
         if ([e.message isEqualToString:@"BEGIN"]) { self.cardShow = @"ING"; }
-        else if (e.ok) { self.cardShow = @"PASS"; self.cardNetwork = e.network ?: self.cardNetwork; }
+        else if (e.ok) { self.cardShow = @"PASS"; self.cardNetwork = e.network ?: self.cardNetwork; self.cardPlacement = e.thirdPlacement ?: self.cardPlacement; }
     } else if ([e.action isEqualToString:@"REWARD"]) {
         self.cardReward = @"PASS";
         self.cardTransId = e.transId ?: e.requestId ?: self.cardTransId;
     } else if ([e.action isEqualToString:@"CLOSE"]) {
         self.cardClose = @"PASS";
-        if (![self.cardResult isEqualToString:@"FAIL"]
-            && [self.cardLoad isEqualToString:@"PASS"]
-            && [self.cardShow isEqualToString:@"PASS"]) {
+        BOOL rewardOK = [self.cardReward isEqualToString:@"PASS"] || [self.cardType isEqualToString:P0FKindSplash];
+        if (![self.cardResult isEqualToString:@"FAIL"] && rewardOK
+            && [self.cardLoad isEqualToString:@"PASS"] && [self.cardShow isEqualToString:@"PASS"]) {
             self.cardResult = @"PASS";
         }
     } else if ([e.action isEqualToString:@"ERROR"] || [e.action isEqualToString:@"TIMEOUT"]) {
         self.cardResult = @"FAIL";
         if ([e.action isEqualToString:@"TIMEOUT"]) self.cardLoad = @"TIMEOUT";
+        self.cardCode = e.code;
         if (e.network) self.cardNetwork = e.network;
     }
     if (e.requestId.length) self.cardRequestId = e.requestId;
@@ -563,13 +505,14 @@ static inline UIView *P0FSpacer(void)
     if (!self.cardOwner) return;
     NSString *mediation = [self.cardOwner isEqualToString:P0FOwnerFlame] ? @"TOBID" : @"CJ（领页聚合）";
     NSMutableString *s = [NSMutableString string];
-    [s appendFormat:@"OWNER: %@   TYPE: %@   RESULT: %@\n", self.cardOwner, self.cardType, self.cardResult];
+    [s appendFormat:@"LAST ACTION\nOWNER: %@   TYPE: %@   RESULT: %@\n", self.cardOwner, self.cardType, self.cardResult];
     [s appendFormat:@"MEDIATION: %@\n", mediation];
     [s appendFormat:@"NETWORK: %@\n", self.cardNetwork ?: @"N/A"];
     [s appendFormat:@"PLACEMENT: %@\n", self.cardPlacement ?: @"N/A"];
-    [s appendFormat:@"LOAD: %@   SHOW: %@   REWARD: %@   CLOSE: %@\n", self.cardLoad, self.cardShow, self.cardReward, self.cardClose];
-    if (self.cardTransId)   [s appendFormat:@"TRANS_ID: %@\n", self.cardTransId];
-    if (self.cardRequestId) [s appendFormat:@"REQUEST_ID: %@\n", self.cardRequestId];
+    [s appendFormat:@"LOAD: %@  SHOW: %@  REWARD: %@  CLOSE: %@\n", self.cardLoad, self.cardShow, self.cardReward, self.cardClose];
+    if (self.cardCode.length)     [s appendFormat:@"ERROR: code=%@\n", self.cardCode];
+    if (self.cardTransId)         [s appendFormat:@"TRANS_ID: %@\n", self.cardTransId];
+    if (self.cardRequestId.length && ![self.cardRequestId isEqualToString:@"-"]) [s appendFormat:@"REQUEST_ID: %@\n", self.cardRequestId];
     [s appendFormat:@"TIME: %@", self.cardTime];
     self.lastActionLabel.text = s;
 }

@@ -125,6 +125,7 @@ typedef void (^P0FAdDone)(BOOL ok, NSString * _Nullable code, NSString * _Nullab
 - (void)runRewardFlow:(nullable P0FAdDone)done;   // load → 1s → show → closed（= 自动 runner 历史路径）
 - (void)loadSplash:(nullable P0FAdDone)done;
 - (void)showSplash:(nullable P0FAdDone)done;
+- (void)runSplashFlow:(nullable P0FAdDone)done;   // load → ready → show → close（P0F-V2 单击自动流）
 - (void)resetState;
 @end
 
@@ -149,6 +150,7 @@ typedef void (^P0FAdDone)(BOOL ok, NSString * _Nullable code, NSString * _Nullab
 - (void)runRewardFlow:(nullable P0FAdDone)done;
 - (void)loadSplash:(nullable P0FAdDone)done;
 - (void)showSplash:(nullable P0FAdDone)done;
+- (void)runSplashFlow:(nullable P0FAdDone)done;   // load → ready → show → close（P0F-V2 单击自动流）
 - (void)resetState;
 @end
 

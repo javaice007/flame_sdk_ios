@@ -183,14 +183,14 @@ static BOOL gTapStarted = NO;
         s.flameAppId  = P0FEnv(@"P0D_FAPPID")  ?: @"";
         s.flameAppKey = P0FEnv(@"P0D_FAPPKEY") ?: @"";
         s.flameRewardPlacement = P0FEnv(@"P0D_FPLACE") ?: @"";
-        s.flameSplashPlacement = @"";
-        s.lingyeSplashId       = @"";
+        s.flameSplashPlacement = P0FEnv(@"P0D_FSPLASH") ?: @"";
+        s.lingyeSplashId       = P0FEnv(@"P0D_LSPLASH") ?: @"";
 #if __has_include("P0FSecretConfig.h")
         if (!s.flameAppId.length)           s.flameAppId           = P0F_FLAME_APP_ID;
         if (!s.flameAppKey.length)          s.flameAppKey          = P0F_FLAME_APP_KEY;
         if (!s.flameRewardPlacement.length) s.flameRewardPlacement = P0F_FLAME_REWARD_PLACEMENT;
-        s.flameSplashPlacement = P0F_FLAME_SPLASH_PLACEMENT ?: @"";
-        s.lingyeSplashId       = P0F_LINGYE_SPLASH_ID ?: @"";
+        if (!s.flameSplashPlacement.length) s.flameSplashPlacement = P0F_FLAME_SPLASH_PLACEMENT;
+        if (!s.lingyeSplashId.length)       s.lingyeSplashId       = P0F_LINGYE_SPLASH_ID;
 #endif
         s.lingyeAppId    = P0D_LINGYE_APP_ID;
         s.lingyeRewardId = P0D_LINGYE_REWARD_ID;
@@ -498,6 +498,17 @@ static BOOL gTapStarted = NO;
     self.splashShowDone = done;
     [self ev:P0FKindSplash action:@"SHOW" ok:NO network:nil thirdPlacement:nil requestId:nil code:nil message:@"BEGIN" attempt:0];
     [self.splashAd showSplashAdToWindow:self.window];
+}
+
+- (void)runSplashFlow:(P0FAdDone)done
+{
+    __weak typeof(self) w = self;
+    [self loadSplash:^(BOOL ok, NSString *code, NSString *msg) {
+        if (!ok) { if (done) done(NO, code, msg); return; }
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [w showSplash:done];
+        });
+    }];
 }
 
 #pragma mark CJSplashAdDelegate
@@ -952,6 +963,17 @@ static BOOL gTapStarted = NO;
     [self ev:P0FKindSplash action:@"SHOW" ok:NO network:nil flamePlacement:self.config.flameSplashPlacement
               thirdPlacement:nil transId:nil code:nil message:@"BEGIN" attempt:0];
     [self.splashAd show:self.window];
+}
+
+- (void)runSplashFlow:(P0FAdDone)done
+{
+    __weak typeof(self) w = self;
+    [self loadSplash:^(BOOL ok, NSString *code, NSString *msg) {
+        if (!ok) { if (done) done(NO, code, msg); return; }
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [w showSplash:done];
+        });
+    }];
 }
 
 #pragma mark splash callbacks（由 P0FFlameSplashBox 转发）

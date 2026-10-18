@@ -71,41 +71,105 @@ static void P0DLogStack(NSString *tag)
         if (w2) method_exchangeImplementations(w2, class_getClassMethod(self, @selector(p0d_wm2:sdkConfigures:completionHandler:)));
         NSLog(@"[P0D-C] PROBE_INSTALLED WindMillAds(%d,%d)", w1 != NULL, w2 != NULL);
     }
-    // ── Taku Probe v2（§19-20）：AnyThink 6.5.60 无 startWithAppID:*；
-    //    钩真实运行时入口：ATAPI handleAppLaunch / tryCheckADXConfigIfNeeded / ATAdManager sharedManager。
-    //    只记录（时间戳/线程/动作标签/调用栈）后回原实现，不改变行为。
+    // ── Taku Probe v2（§19-20）：AnyThink 6.5.60 无 startWithAppID:*。
+    //    采用「保存原 IMP + C 函数 setImplementation」：不经 selector 查找/转发
+    //    （method exchange + 尾调自身选择器在异类接收者上会 doesNotRecognizeSelector→SIGABRT，
+    //     已由 10:37 崩溃 103938.ips 实证）。只记录（时间/线程/动作标签/调用栈）后回原实现。
     if (atapi) {
-        Method t1 = class_getClassMethod(atapi, NSSelectorFromString(@"handleAppLaunch"));
-        Method t2 = class_getClassMethod(atapi, NSSelectorFromString(@"tryCheckADXConfigIfNeeded"));
-        if (t1) method_exchangeImplementations(t1, class_getClassMethod(self, @selector(p0d_taku_handleAppLaunch)));
-        if (t2) method_exchangeImplementations(t2, class_getClassMethod(self, @selector(p0d_taku_tryCheckADXConfig)));
-        NSLog(@"[P0D-C] PROBE_INSTALLED ATAPI_V2 handleAppLaunch=%d tryCheckADX=%d", t1 != NULL, t2 != NULL);
+        [P0DProbe installTakuProbe:atapi selName:@"handleAppLaunch" tag:@"handleAppLaunch"
+                          hook:(IMP)P0DHLaunchHook origStore:&gOrigHLaunch];
+        [P0DProbe installTakuProbe:atapi selName:@"tryCheckADXConfigIfNeeded" tag:@"tryCheckADXConfigIfNeeded"
+                          hook:(IMP)P0DTryADXHook origStore:&gOrigTryADX];
     }
     Class atmgr = NSClassFromString(@"ATAdManager");
     if (atmgr) {
-        Method t3 = class_getClassMethod(atmgr, NSSelectorFromString(@"sharedManager"));
-        if (t3) method_exchangeImplementations(t3, class_getClassMethod(self, @selector(p0d_taku_sharedManager)));
-        NSLog(@"[P0D-C] PROBE_INSTALLED ATAdManager sharedManager=%d", t3 != NULL);
+        [P0DProbe installTakuProbe:atmgr selName:@"sharedManager" tag:@"ATAdManager sharedManager"
+                          hook:(IMP)P0DSharedMgrHook origStore:&gOrigSharedMgr];
     }
 }
 
-+ (void)p0dTakuCallLog:(NSString *)sel
+// ── Taku v2 C hooks（self/_cmd 之外的超寄存器实参原样留在寄存器，不影响形式签名）──
+static IMP gOrigHLaunch;
+static IMP gOrigTryADX;
+static IMP gOrigSharedMgr;
+
+static void P0DTakuLog(NSString *sel)
 {
     NSLog(@"[P0D-C] PROBE TAKU_CALL sel=%@ thread=%@ action=%@",
           sel, [NSThread currentThread], P0FCurrentAction);
     P0DLogStack(@"TAKU_V2");
 }
 
-+ (void)p0d_taku_handleAppLaunch
+static void P0DHLaunchHook(id self, SEL _cmd)
 {
-    [self p0dTakuCallLog:@"handleAppLaunch"];
-    [self p0d_taku_handleAppLaunch]; // exchange 后即原实现
+    P0DTakuLog(@"handleAppLaunch");
+    ((void (*)(id, SEL))gOrigHLaunch)(self, _cmd);
 }
 
-+ (void)p0d_taku_tryCheckADXConfig
+static void P0DTryADXHook(id self, SEL _cmd)
 {
-    [self p0dTakuCallLog:@"tryCheckADXConfigIfNeeded"];
-    [self p0d_taku_tryCheckADXConfig];
+    P0DTakuLog(@"tryCheckADXConfigIfNeeded");
+    ((void (*)(id, SEL))gOrigTryADX)(self, _cmd);
+}
+
+static id P0DSharedMgrHook(id self, SEL _cmd)
+{
+    P0DTakuLog(@"ATAdManager sharedManager");
+    return ((id (*)(id, SEL))gOrigSharedMgr)(self, _cmd);
+}
+
++ (void)installTakuProbe:(Class)cls selName:(NSString *)selName tag:(NSString *)tag
+                    hook:(IMP)hook origStore:(IMP *)origStore
+{
+    Method m = class_getClassMethod(cls, NSSelectorFromString(selName));
+    if (!m) { NSLog(@"[P0D-C] PROBE_V2 SKIP %@ (method absent)", tag); return; }
+    *origStore = method_getImplementation(m);
+    method_setImplementation(m, hook);
+    NSLog(@"[P0D-C] PROBE_INSTALLED V2 %@ argc=%ld (imp-hook)", tag, (long)(method_getNumberOfArguments(m) - 2));
+}
+
+// ── 迟装 WindMill 探针（§16 ToBid ownership）：didFinishLaunching 时 WindMillAds 尚不在运行时
+//    （所有历史轮次 PROBE_INSTALLED WindMillAds 均缺失，ToBid 管理器懒加载）。FI 完成后重试。──
+static IMP gOrigWMSetup1;
+static IMP gOrigWMSetup2;
+
+static void P0DWMSetup1Hook(id self, SEL _cmd, id appId, id handler)
+{
+    gTobidInitCalls++;
+    NSLog(@"[P0D-C] PROBE TOBID_SETUP %@ appId=%@ action=%@", NSStringFromSelector(_cmd), appId, P0FCurrentAction);
+    ((void (*)(id, SEL, id, id))gOrigWMSetup1)(self, _cmd, appId, handler);
+}
+
+static void P0DWMSetup2Hook(id self, SEL _cmd, id appId, id cfg, id handler)
+{
+    gTobidInitCalls++;
+    NSLog(@"[P0D-C] PROBE TOBID_SETUP %@ appId=%@ action=%@", NSStringFromSelector(_cmd), appId, P0FCurrentAction);
+    ((void (*)(id, SEL, id, id, id))gOrigWMSetup2)(self, _cmd, appId, cfg, handler);
+}
+
++ (void)lateInstallWindMillProbe
+{
+    Class wm = NSClassFromString(@"WindMillAds");
+    NSLog(@"[P0D-C] PROBE_LATE WindMillAds=%@ (action=%@)", wm, P0FCurrentAction);
+    if (!wm) {
+        unsigned int n = 0;
+        Class *list = objc_copyClassList(&n);
+        NSMutableString *hits = [NSMutableString string];
+        for (unsigned int i = 0; i < n; i++) {
+            const char *name = class_getName(list[i]);
+            if (strstr(name, "WindMill") || strstr(name, "WindAD") || strstr(name, "ToBid")) {
+                [hits appendFormat:@"%@ ", @(name)];
+            }
+        }
+        free(list);
+        NSLog(@"[P0D-C] PROBE_LATE WindClasses=%@", hits);
+        return;
+    }
+    Method m1 = class_getClassMethod(wm, NSSelectorFromString(@"setupSDKWithAppId:completionHandler:"));
+    Method m2 = class_getClassMethod(wm, NSSelectorFromString(@"setupSDKWithAppId:sdkConfigures:completionHandler:"));
+    if (m1) { gOrigWMSetup1 = method_getImplementation(m1); method_setImplementation(m1, (IMP)P0DWMSetup1Hook); }
+    if (m2) { gOrigWMSetup2 = method_getImplementation(m2); method_setImplementation(m2, (IMP)P0DWMSetup2Hook); }
+    NSLog(@"[P0D-C] PROBE_LATE INSTALLED WindMill setup hooks (%d,%d)", m1 != NULL, m2 != NULL);
 }
 
 + (BOOL)p0d_atapi1:(NSString *)appID appKey:(NSString *)appKey error:(NSError **)error
@@ -134,12 +198,6 @@ static void P0DLogStack(NSString *tag)
     gTobidInitCalls++;
     NSLog(@"[P0D-C] PROBE TOBID_INIT_CALLED(cfg) appId=%@ action=%@", appId, P0FCurrentAction);
     [self p0d_wm2:appId sdkConfigures:cfg completionHandler:h];
-}
-
-+ (id)p0d_taku_sharedManager   // ATAdManager +sharedManager
-{
-    [self p0dTakuCallLog:@"ATAdManager sharedManager"];
-    return [self p0d_taku_sharedManager];
 }
 
 @end
@@ -223,6 +281,30 @@ static void P0DLogStack(NSString *tag)
 
 @end
 
+#pragma mark - 开屏位探测盒（TEST_ONLY：只观察 load 结果，不 show）
+
+@interface P0FSplashProbeBox : NSObject <FlameSplashListener>
+@property (nonatomic, copy) void (^onResult)(BOOL ok, NSString *code, NSString *desc);
+@property (nonatomic, assign) BOOL finished;
+- (void)finishWith:(BOOL)ok code:(NSString *)code desc:(NSString *)desc;
+@end
+@implementation P0FSplashProbeBox
+- (void)finishWith:(BOOL)ok code:(NSString *)code desc:(NSString *)desc
+{
+    if (self.finished) return;
+    self.finished = YES;
+    if (self.onResult) { void (^c)(BOOL, NSString *, NSString *) = self.onResult; self.onResult = nil; c(ok, code, desc); }
+}
+- (void)onAdLoaded { [self finishWith:YES code:nil desc:nil]; }
+- (void)onAdShow { }
+- (void)onAdClicked { }
+- (void)onAdReward:(NSString *)userId userCustomData:(NSString *)userCustomData { }
+- (void)onAdClosed { }
+- (void)onAdShowComplete:(NSString *)userId userCustomData:(NSString *)userCustomData { }
+- (void)onAdLoadTimeout { [self finishWith:NO code:@"TIMEOUT" desc:@"onAdLoadTimeout"]; }
+- (void)onAdError:(NSString *)code desc:(NSString *)desc { [self finishWith:NO code:code desc:desc]; }
+@end
+
 #pragma mark - AppDelegate
 
 @interface AppDelegate () <UIApplicationDelegate>
@@ -231,6 +313,8 @@ static void P0DLogStack(NSString *tag)
 @property (nonatomic, assign) BOOL seqFail;
 @property (nonatomic, assign) BOOL seqStarted;
 @property (nonatomic, strong) P0FAutoRunnerVC *autoVC;
+@property (nonatomic, strong) NSArray<NSString *> *splashProbeIDs;
+@property (nonatomic, assign) NSUInteger splashProbeIdx;
 @end
 
 @implementation AppDelegate
@@ -268,6 +352,22 @@ static void P0DLogStack(NSString *tag)
             @"REINIT_MIX2": @[@"FI",@"LI",@"FI",@"FA"],
             @"REINIT_R3":   @[@"FI",@"FCLR",@"FI",@"FA"],          // §18 R3：FI→clear→FI→FA
             @"REINIT_R4":   @[@"LI",@"FI",@"FCLR",@"FI",@"LA",@"FA"], // §18 R4：跨 SDK clear 回归
+            // ── P0F-V2：Splash 主矩阵（§6/§10/§17）──
+            @"SPLASH_LY":   @[@"LI",@"LS"],            // LY splash standalone
+            @"SPLASH_FL":   @[@"FI",@"FS"],            // FL splash standalone
+            @"CASE_A_S":    @[@"LI",@"LS",@"FI",@"FS",@"LS",@"FS"],
+            @"CASE_B_S":    @[@"FI",@"FS",@"LI",@"LS",@"FS",@"LS"],
+            @"C1_S":        @[@"LI",@"LS",@"FI",@"FS"],
+            @"C2_S":        @[@"FI",@"FS",@"LI",@"LS"],
+            @"C3_S":        @[@"LI",@"FI",@"LS",@"FS",@"LS",@"FS"],
+            @"C4_S":        @[@"FI",@"LI",@"FS",@"LS",@"FS",@"LS"],
+            @"REINIT_S1":   @[@"LI",@"LI",@"LS"],
+            @"REINIT_S2":   @[@"FI",@"FI",@"FS"],
+            @"REINIT_S3":   @[@"FI",@"FCLR",@"FI",@"FS"],
+            @"REINIT_S4":   @[@"LI",@"FI",@"FCLR",@"FI",@"LS",@"FS"],
+            @"SMOKE_LR":    @[@"LI",@"LR"],            // §12 Reward smoke（一次性）
+            @"SMOKE_FR":    @[@"FI",@"FR"],
+            @"SPLASH_PROBE":@[@"FI",@"FSPROBE"],       // 探测 8 个未知 q-ID 哪个是开屏位
             @"C0":          @[@"FI"],            // §16：仅链接，不调 CJ 任何 API
             @"C1_FULL":     @[@"LI",@"LA",@"FI",@"FA"],  // P0D §早期组合（保留入口）
             @"C2_FULL":     @[@"FI",@"FA",@"LI",@"LA"],
@@ -348,15 +448,25 @@ static void P0DLogStack(NSString *tag)
         NSLog(@"[P0D-C] FI_BEGIN");
         [[FlameTestController shared] initSDK:^(BOOL ok, NSString *code, NSString *msg) {
             NSLog(@"[P0D-C] FI_RESULT=%d code=%@ desc=%@", ok ? 1 : 0, code ?: @"-", msg ?: @"-");
+            [P0DProbe lateInstallWindMillProbe];
             done(ok);
         }];
     }
-    else if ([s isEqualToString:@"LA"]) {
-        NSLog(@"[P0D-C] LA_BEGIN");
+    else if ([s isEqualToString:@"LA"] || [s isEqualToString:@"LR"]) {
+        NSLog(@"[P0D-C] %@_BEGIN", s);
         [[LingyeTestController shared] runRewardFlow:^(BOOL ok, NSString *code, NSString *msg) { done(ok); }];
     }
-    else if ([s isEqualToString:@"FA"]) {
+    else if ([s isEqualToString:@"FA"] || [s isEqualToString:@"FR"]) {
         [self p0dRunFAWithRetry:done];
+    }
+    else if ([s isEqualToString:@"LS"]) {
+        [self p0dRunSplashWithRetry:NO done:done];   // Lingye splash
+    }
+    else if ([s isEqualToString:@"FS"]) {
+        [self p0dRunSplashWithRetry:YES done:done];  // Flame splash
+    }
+    else if ([s isEqualToString:@"FSPROBE"]) {
+        [self p0dRunFlameSplashProbe:done];
     }
     else if ([s isEqualToString:@"FCLR"]) {
         NSLog(@"[P0D-C] FCLR_BEGIN");
@@ -365,6 +475,76 @@ static void P0DLogStack(NSString *tag)
         done(YES);
     }
     else done(YES);
+}
+
+// §9：开屏 load 失败仅自动重试 1 次（间隔 6s）
+- (void)p0dRunSplashWithRetry:(BOOL)flame done:(void (^)(BOOL))done
+{
+    NSLog(@"[P0D-C] %@_BEGIN", flame ? @"FS" : @"LS");
+    __block NSInteger attempt = 0;
+    __block void (^runOnce)(void) = nil;
+    runOnce = ^{
+        attempt++;
+        NSLog(@"[P0D-C] %@_ATTEMPT #%d", flame ? @"FS" : @"LS", (int)attempt);
+        P0FAdDone flow = ^(BOOL ok, NSString *code, NSString *msg) {
+            if (!ok && attempt == 1) {
+                NSLog(@"[P0D-C] %@_LOAD_FAIL retry-after-6s code=%@", flame ? @"FS" : @"LS", code ?: @"-");
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(6 * NSEC_PER_SEC)),
+                               dispatch_get_main_queue(), runOnce);
+            } else {
+                runOnce = nil;
+                done(ok);
+            }
+        };
+        if (flame) [[FlameTestController shared] runSplashFlow:flow];
+        else [[LingyeTestController shared] runSplashFlow:flow];
+    };
+    runOnce();
+}
+
+// ── Flame 开屏位探测：对 8 个未知 q-ID 逐一 load splash（TEST_ONLY，只读不改后台）──
+- (void)p0dRunFlameSplashProbe:(void (^)(BOOL))done
+{
+    if (!self.splashProbeIDs) {
+        self.splashProbeIDs = @[@"q36508625734", @"q37305276475", @"q39142205000", @"q44128606635",
+                                @"q55921206210", @"q71507861622", @"q76977734904", @"q82857633975"];
+        self.splashProbeIdx = 0;
+    }
+    [self probeNextSplashID:done];
+}
+
+- (void)probeNextSplashID:(void (^)(BOOL))done
+{
+    if (self.splashProbeIdx >= self.splashProbeIDs.count) {
+        NSLog(@"[P0D-C] SPLASH_PROBE_DONE");
+        self.splashProbeIDs = nil;
+        self.splashProbeIdx = 0;
+        done(YES);
+        return;
+    }
+    __weak typeof(self) w = self;
+    NSString *pid = self.splashProbeIDs[self.splashProbeIdx];
+    NSLog(@"[P0D-C] SPLASH_PROBE %@ BEGIN", pid);
+    P0FSplashProbeBox *box = [[P0FSplashProbeBox alloc] init];
+    id<FlameSplashAd> ad = [FlameSdk createSplashAdWithViewController:self.window.rootViewController
+                                                          placementId:pid listener:box];
+    box.onResult = ^(BOOL ok, NSString *code, NSString *desc) {
+        NSLog(@"[P0D-C] SPLASH_PROBE_RESULT pid=%@ %@ code=%@ desc=%@",
+              pid, ok ? @"LOADED<<< 开屏位命中" : @"fail", code ?: @"-", desc ?: @"-");
+        [ad destroy];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            w.splashProbeIdx++;
+            [w probeNextSplashID:done];
+        });
+    };
+    // 12s 看门狗
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (!box.finished) {
+            NSLog(@"[P0D-C] SPLASH_PROBE_RESULT pid=%@ timeout", pid);
+            [box finishWith:NO code:@"TIMEOUT" desc:@"12s watchdog"];
+        }
+    });
+    [ad load];
 }
 
 // §17：FA load→800110 仅自动重试 1 次（间隔 6s），禁止死循环；统计经日志 FA_ATTEMPT/FA_NO_FILL
