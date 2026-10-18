@@ -15,6 +15,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// 当前测试动作标签（探针归因用，TEST_ONLY）：emitOwner 漏斗自动更新，形如 FLAME_INIT_LOAD / LINGYE_REWARD_SHOW
+extern NSString * volatile P0FCurrentAction;
+
 extern NSString * const P0FOwnerLingye;   // @"LINGYE"
 extern NSString * const P0FOwnerFlame;    // @"FLAME"
 extern NSString * const P0FKindInit;      // @"INIT"

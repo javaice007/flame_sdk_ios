@@ -71,6 +71,41 @@ static void P0DLogStack(NSString *tag)
         if (w2) method_exchangeImplementations(w2, class_getClassMethod(self, @selector(p0d_wm2:sdkConfigures:completionHandler:)));
         NSLog(@"[P0D-C] PROBE_INSTALLED WindMillAds(%d,%d)", w1 != NULL, w2 != NULL);
     }
+    // ── Taku Probe v2（§19-20）：AnyThink 6.5.60 无 startWithAppID:*；
+    //    钩真实运行时入口：ATAPI handleAppLaunch / tryCheckADXConfigIfNeeded / ATAdManager sharedManager。
+    //    只记录（时间戳/线程/动作标签/调用栈）后回原实现，不改变行为。
+    if (atapi) {
+        Method t1 = class_getClassMethod(atapi, NSSelectorFromString(@"handleAppLaunch"));
+        Method t2 = class_getClassMethod(atapi, NSSelectorFromString(@"tryCheckADXConfigIfNeeded"));
+        if (t1) method_exchangeImplementations(t1, class_getClassMethod(self, @selector(p0d_taku_handleAppLaunch)));
+        if (t2) method_exchangeImplementations(t2, class_getClassMethod(self, @selector(p0d_taku_tryCheckADXConfig)));
+        NSLog(@"[P0D-C] PROBE_INSTALLED ATAPI_V2 handleAppLaunch=%d tryCheckADX=%d", t1 != NULL, t2 != NULL);
+    }
+    Class atmgr = NSClassFromString(@"ATAdManager");
+    if (atmgr) {
+        Method t3 = class_getClassMethod(atmgr, NSSelectorFromString(@"sharedManager"));
+        if (t3) method_exchangeImplementations(t3, class_getClassMethod(self, @selector(p0d_taku_sharedManager)));
+        NSLog(@"[P0D-C] PROBE_INSTALLED ATAdManager sharedManager=%d", t3 != NULL);
+    }
+}
+
++ (void)p0dTakuCallLog:(NSString *)sel
+{
+    NSLog(@"[P0D-C] PROBE TAKU_CALL sel=%@ thread=%@ action=%@",
+          sel, [NSThread currentThread], P0FCurrentAction);
+    P0DLogStack(@"TAKU_V2");
+}
+
++ (void)p0d_taku_handleAppLaunch
+{
+    [self p0dTakuCallLog:@"handleAppLaunch"];
+    [self p0d_taku_handleAppLaunch]; // exchange 后即原实现
+}
+
++ (void)p0d_taku_tryCheckADXConfig
+{
+    [self p0dTakuCallLog:@"tryCheckADXConfigIfNeeded"];
+    [self p0d_taku_tryCheckADXConfig];
 }
 
 + (BOOL)p0d_atapi1:(NSString *)appID appKey:(NSString *)appKey error:(NSError **)error
@@ -97,8 +132,14 @@ static void P0DLogStack(NSString *tag)
 + (void)p0d_wm2:(NSString *)appId sdkConfigures:(NSArray *)cfg completionHandler:(void (^)(BOOL, NSError *))h
 {
     gTobidInitCalls++;
-    NSLog(@"[P0D-C] PROBE TOBID_INIT_CALLED(cfg) appId=%@", appId);
+    NSLog(@"[P0D-C] PROBE TOBID_INIT_CALLED(cfg) appId=%@ action=%@", appId, P0FCurrentAction);
     [self p0d_wm2:appId sdkConfigures:cfg completionHandler:h];
+}
+
++ (id)p0d_taku_sharedManager   // ATAdManager +sharedManager
+{
+    [self p0dTakuCallLog:@"ATAdManager sharedManager"];
+    return [self p0d_taku_sharedManager];
 }
 
 @end
@@ -225,11 +266,18 @@ static void P0DLogStack(NSString *tag)
             @"REINIT_FI":   @[@"FI",@"FI",@"FA"],
             @"REINIT_MIX1": @[@"LI",@"FI",@"LI",@"LA"],
             @"REINIT_MIX2": @[@"FI",@"LI",@"FI",@"FA"],
+            @"REINIT_R3":   @[@"FI",@"FCLR",@"FI",@"FA"],          // §18 R3：FI→clear→FI→FA
+            @"REINIT_R4":   @[@"LI",@"FI",@"FCLR",@"FI",@"LA",@"FA"], // §18 R4：跨 SDK clear 回归
             @"C0":          @[@"FI"],            // §16：仅链接，不调 CJ 任何 API
             @"C1_FULL":     @[@"LI",@"LA",@"FI",@"FA"],  // P0D §早期组合（保留入口）
             @"C2_FULL":     @[@"FI",@"FA",@"LI",@"LA"],
         };
         self.steps = map[seq] ?: @[@"LI"];
+        // §13：ENV 只确认 key 存在，不打印值（AppKey 永不打印）
+        NSLog(@"[P0D-C] ENV_KEYS_PRESENT P0D_FAPPID=%@ P0D_FAPPKEY=%@ P0D_FPLACE=%@（值不打印）",
+              Env(@"P0D_FAPPID").length ? @"present" : @"MISSING",
+              Env(@"P0D_FAPPKEY").length ? @"present" : @"MISSING",
+              Env(@"P0D_FPLACE").length ? @"present" : @"MISSING");
         self.autoVC = [[P0FAutoRunnerVC alloc] initWithSeq:seq];
         LingyeTestController.shared.listener = self.autoVC;
         FlameTestController.shared.listener = self.autoVC;
@@ -308,10 +356,39 @@ static void P0DLogStack(NSString *tag)
         [[LingyeTestController shared] runRewardFlow:^(BOOL ok, NSString *code, NSString *msg) { done(ok); }];
     }
     else if ([s isEqualToString:@"FA"]) {
-        NSLog(@"[P0D-C] FA_BEGIN");
-        [[FlameTestController shared] runRewardFlow:^(BOOL ok, NSString *code, NSString *msg) { done(ok); }];
+        [self p0dRunFAWithRetry:done];
+    }
+    else if ([s isEqualToString:@"FCLR"]) {
+        NSLog(@"[P0D-C] FCLR_BEGIN");
+        [[FlameTestController shared] clearSDK];
+        NSLog(@"[P0D-C] FCLR_DONE");
+        done(YES);
     }
     else done(YES);
+}
+
+// §17：FA load→800110 仅自动重试 1 次（间隔 6s），禁止死循环；统计经日志 FA_ATTEMPT/FA_NO_FILL
+- (void)p0dRunFAWithRetry:(void (^)(BOOL))done
+{
+    NSLog(@"[P0D-C] FA_BEGIN");
+    __block NSInteger attempt = 0;
+    __block void (^runOnce)(void) = nil;
+    __weak typeof(self) w = self;
+    runOnce = ^{
+        attempt++;
+        NSLog(@"[P0D-C] FA_ATTEMPT #%d", (int)attempt);
+        [[FlameTestController shared] runRewardFlow:^(BOOL ok, NSString *code, NSString *msg) {
+            if (!ok && attempt == 1 && [code isEqualToString:@"800110"]) {
+                NSLog(@"[P0D-C] FA_NO_FILL retry-after-6s");
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(6 * NSEC_PER_SEC)),
+                               dispatch_get_main_queue(), runOnce);
+            } else {
+                runOnce = nil;
+                done(ok);
+            }
+        }];
+    };
+    runOnce();
 }
 
 @end

@@ -17,6 +17,8 @@ NSString * const P0FKindInit    = @"INIT";
 NSString * const P0FKindSplash  = @"SPLASH";
 NSString * const P0FKindReward  = @"REWARD";
 
+NSString * volatile P0FCurrentAction = @"IDLE";
+
 static NSString *P0FEnv(NSString *k) { return [[NSProcessInfo processInfo].environment objectForKey:k]; }
 
 static NSString *P0FNow(void)
@@ -219,6 +221,8 @@ static BOOL gTapStarted = NO;
     ev.owner = owner; ev.kind = kind; ev.action = action; ev.ok = ok;
     ev.network = network; ev.flamePlacement = fp; ev.thirdPlacement = tp;
     ev.transId = tid; ev.requestId = rid; ev.code = code; ev.message = msg; ev.attempt = attempt;
+    // 探针归因标签：探针日志带当前动作（§20 Taku/ToBid ownership 判定依据）
+    P0FCurrentAction = [NSString stringWithFormat:@"%@_%@_%@", owner, kind, action];
     NSLog(@"[P0F] %@", ev.line);
     id<P0FTestListener> l = [(id)self listener];
     if (l) [l p0fEvent:ev];
