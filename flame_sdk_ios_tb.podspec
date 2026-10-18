@@ -30,7 +30,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb'
-  s.version          = '1.0.1-alpha.4'
+  s.version          = '1.0.2'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TB (ToBid) glue embedded. WindMill symbols resolve at app link time via ToBid-iOS-RC static archives.'

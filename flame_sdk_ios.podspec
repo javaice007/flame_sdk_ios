@@ -24,7 +24,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '1.0.1-alpha.4'
+  s.version          = '1.0.2'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TK Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TK (TopOn/AnyThink) glue embedded. AnyThink symbols resolve at app link time via AnyThinkSDK.framework.'
