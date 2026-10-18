@@ -72,7 +72,7 @@ PODS:
   - CXHAdSDK-Kit (1.13.0)
   - CXHAdSDK/Core (1.10.10):
     - CXHAdSDK-Adapter (= 1.10.10)
-  - flame_sdk_ios_tb_lingye (1.0.1-lingye.2-local):
+  - flame_sdk_ios_tb_lingye (1.0.1-lingye.3-local):
     - OpenSSL-Universal (~> 1.1)
     - ToBid-iOS-RC (= 5.5.6)
     - ToBid-iOS-RC/BaiduAdapter (= 5.5.6)
@@ -253,7 +253,7 @@ SPEC CHECKSUMS:
   CXHAdSDK: 14d2fbfa78b977c069a60715ec7f831bc0c50a69
   CXHAdSDK-Adapter: 97f206c64b25fdc0e1c6a17e9c4aa9ac7b097f30
   CXHAdSDK-Kit: 38f5e56f6024cd4cec7011cb082968d701e8d724
-  flame_sdk_ios_tb_lingye: bcd0a9cce038be270de478d34888f50e4b0570ff
+  flame_sdk_ios_tb_lingye: 17c546d072d356242bc049962a2f4e75c799ee80
   GDTMobSDK: fdec348687362cf20effb182286a5d1fbd3e8467
   HXSDK: 03491fbdba7a2c2997071fbdc952ee15022f473f
   JYAdSDK: 24585bf191eed7a62419cfd4a434e22627506a98

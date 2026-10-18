@@ -55,11 +55,24 @@ static NSString * const kFlamePlatformTB = @"tb";
 
     // appKey: ToBid / WindMill 初始化不需要 appKey，仅接收不使用
 
+    // WindMill setup 进程内一次性：二次调用 setupSDKWithAppId:completionHandler:
+    // 不再触发 completion（P0F-V2 REINIT_S3/S4 实证：clear→re-init 永远等不到回调）。
+    // FlameSdk.clear 不回收 WindMill 进程级状态，故已完成过 setup 即可直接 success。
+    static BOOL gTBWindMillSetupDone = NO;
+    if (gTBWindMillSetupDone) {
+        [FlameLogger i:@"FlameTBProvider: WindMill already set up in this process, skip re-setup (idempotent init)"];
+        if (callback && [callback respondsToSelector:@selector(success)]) {
+            [callback success];
+        }
+        return;
+    }
+
     // 初始化 ToBid / WindMill SDK
     // API 签名（已从 SDK 头文件确认）：
     // + (void)setupSDKWithAppId:(NSString *)appId completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
     __weak typeof(callback) weakCallback = callback;
     [WindMillAds setupSDKWithAppId:appId completionHandler:^(BOOL success, NSError *error) {
+        gTBWindMillSetupDone = success;
         if (!success) {
             id<FlameCallback> cb = weakCallback;
             if (cb && [cb respondsToSelector:@selector(fail:desc:)]) {

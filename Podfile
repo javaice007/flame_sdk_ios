@@ -59,6 +59,14 @@ target 'flame_sdk_ios' do
 end
 
 post_install do |installer|
+  # Xcode 27.1 构建机临时方案：Pods 目标级 DT=13 被构建图校验拒绝（min 15.0）。
+  # 正式 DT13 复建属于 P0F_RELEASE_PREFLIGHT，不在本分支范围。
+  installer.target_installation_results.pod_target_installation_results.each do |pod_name, target_installation_result|
+    target_installation_result.native_target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+
   # 🔥 修复 Xcode 15 + BSD realpath 不支持 -m 的问题
   installer.aggregate_targets.each do |aggregate_target|
     support_dir = installer.sandbox.target_support_files_dir(aggregate_target.name)

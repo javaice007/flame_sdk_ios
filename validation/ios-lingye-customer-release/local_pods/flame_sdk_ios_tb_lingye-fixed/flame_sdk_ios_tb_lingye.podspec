@@ -34,7 +34,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb_lingye'
-  s.version          = '1.0.1-lingye.2-local'  # P0E 修复版：错误传播 + 入参防御（FlameConfigManager）
+  s.version          = '1.0.1-lingye.3-local'  # P0E 修复版：错误传播 + 入参防御（FlameConfigManager）
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Lingye Coexist Edition'
   s.description      = 'Flame advertising aggregation SDK, customer variant for coexistence with CJMobileAd 2.4.32: OpenSSL ~>1.1 compatible, ToBid MSAdAdapter excluded (customer MSMobAdSDKv3 stays the single MS copy). Core binary and public API identical to standard flame_sdk_ios_tb.'
