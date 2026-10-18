@@ -8,7 +8,9 @@
 > ⚠️ 历史口径提示：本文 §5/§6/§7 中"唯一遗留 = Flame Reward 平台 no-fill / PARTIAL_PASS"等为
 > **HISTORICAL_P0E_INTERMEDIATE_STATE**（旧 App b58225548566 时代的中间结论），
 > 已被 §10/§11 终局收口取代：P0E_RUNTIME_CLOSURE = PASS，不作为当前最终结论。
-> （waterfall 待后台核对，疑与去 MS 相关）。**
+> 其中"waterfall 待后台核对，疑与去 MS 相关"一行同为历史怀疑：
+> 终局已由新 App b22375234108 真实 Reward fill 证明旧 no-fill 为
+> TEST_CONFIG_SPECIFIC，不构成当前 release blocker，无需任何 MS/waterfall 前置核查。**
 
 ## 1. §5 网络实现权威摘要（源码直读）
 
@@ -129,7 +131,11 @@ P0E_RUNTIME_CLOSURE = PARTIAL_PASS
 ## 9. 人工 Demo 验收工作台（P0F 后续，2026-10-18）
 
 - 遗留 FA no-fill 已由新测试 App（b22375234108 / q57514498879 → ToBid 1886359231652093，Sigmob 单源）真实填充闭环：load→show→reward（transId 36 位）→close 全链 PASS；旧 App no-fill 根因盖棺=旧瀑布流源自身问题（GDT/KS/Baidu 包名+CSJ 代码位），与 MSAdAdapter 移除/SDK/共存无关
-- 验收工作台见 **19 号文档**：MANUAL_DEMO_IMPLEMENTED=YES / BUILD=PASS；INSTALL/LAUNCH 待真机解锁
+- 验收工作台见 **19 号文档**。最终状态：
+  MANUAL_DEMO_IMPLEMENTED = YES / MANUAL_DEMO_BUILD = PASS / MANUAL_DEMO_INSTALL = PASS /
+  MANUAL_DEMO_LAUNCH = PASS / HOME_SCREEN_VISIBLE = YES / BLACK_SCREEN = NO /
+  MANUAL_DEMO_READINESS = PASS
+  （后续 P0F-V2 已演进为两排六按钮极简 Console，单击自动 load→show，见 19 号文档更新）
 
 ## 10. P0F-V2 终局：Splash 主矩阵 + clear→re-init 缺陷修复（2026-10-18）
 

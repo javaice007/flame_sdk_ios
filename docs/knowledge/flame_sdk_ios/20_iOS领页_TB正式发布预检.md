@@ -8,7 +8,7 @@
 
 | 项 | 冻结值 | 证据 |
 |---|---|---|
-| Git 冻结 | WORKTREE_CLEAN=YES；LOCAL_HEAD==REMOTE_HEAD=9ada993（feature/ios-lingye-tobid-coexist-release） | git fetch/status/rev-parse |
+| Git 冻结 | WORKTREE_CLEAN=YES；PREFLIGHT 时 LOCAL_HEAD==REMOTE_HEAD=9ada993（PREFLIGHT_RUNTIME_DOC_HEAD）。commit 消歧见 §7 | git fetch/status/rev-parse |
 | LINGYE_REWARD_SMOKE | **PASS_REUSED_FROM_EXISTING_REAL_DEVICE_EVIDENCE** | P0D 时代 /tmp/p0d_all_rt.log 22:12 `LA_REWARDED req=f27050d0…`（csj-1，load→show→reward→close）；共存宿主 /tmp/p0d_c_CASE_B.log 22:36 `LA_REWARDED` |
 | FLAME_REWARD_SMOKE | **PASS** | /tmp/p0f_caseb_newapp2.log 08:47 FA load→show→reward（transId len=36）→close，sigmob f84b138a500 @1886359231652093 |
 | LINGYE_SPLASH_STANDALONE | **PASS** | 官方 Example.zip CJMobilePublic.h splashId=8a4965ae2b5f4ce6（appID 一致）；network=qm，requestId 948843a4-… |
@@ -103,7 +103,11 @@ Key adaptations:
 ## 7. 证据包 manifest（§四十三）
 
 ```
-SOURCE_COMMIT = 9ada993（含 75b0135 SDK 修复）
+PRODUCT_SOURCE_COMMIT = 75b0135（SDK 产品修复：FlameTBProvider 幂等 init；真正的源码修复 commit）
+PREFLIGHT_BASE_HEAD   = 9ada993（Preflight 只读终审时的工作区 HEAD，docs-only 演进起点）
+CURRENT_DOC_HEAD      = 见 git rev-parse HEAD（docs-only 提交会持续前移，不代表产品修复 commit）
+FORMAL_RELEASE_SOURCE_HEAD = <正式 DT13 artifact 实际构建时的 commit，届时重新记录，不能提前赋值>
+
 CUSTOMER_BRANCH = feature/ios-lingye-tobid-coexist-release
 PROPOSED_VERSION = 1.0.1-lingye.1
 XCODE_VERSION(正式构建) = NOT_AVAILABLE（仅 27.1 validation）
