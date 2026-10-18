@@ -111,3 +111,14 @@ RELEASE_GATE 剩余输入：
 
 - 遗留 FA no-fill 已由新测试 App（b22375234108 / q57514498879 → ToBid 1886359231652093，Sigmob 单源）真实填充闭环：load→show→reward（transId 36 位）→close 全链 PASS；旧 App no-fill 根因盖棺=旧瀑布流源自身问题（GDT/KS/Baidu 包名+CSJ 代码位），与 MSAdAdapter 移除/SDK/共存无关
 - 验收工作台见 **19 号文档**：MANUAL_DEMO_IMPLEMENTED=YES / BUILD=PASS；INSTALL/LAUNCH 待真机解锁
+
+## 10. P0F-V2 终局：Splash 主矩阵 + clear→re-init 缺陷修复（2026-10-18）
+
+- 测试配置切换：Flame 新 App `b22375234108`（Reward q57514498879→ToBid 1886359231652093→sigmob f84b138a500；Splash q76977734904→ToBid 8374774642581842→sigmob ee793f95649，开屏位经 8 位运行时探测唯一命中）。旧 App b58225548566 的 no-fill 定性 TEST_CONFIG_SPECIFIC，FLAME_SDK_REWARD_CAPABILITY=PROVEN
+- 领页开屏位：自官方 Example.zip `CJMobilePublic.h` 恢复 `splashId=8a4965ae2b5f4ce6`（appID 96ff49947661db62 与现用一致），LS standalone PASS（network=qm，requestId 948843a4-…）
+- Splash 主矩阵全绿：CASE_A_S 6/6、CASE_B_S 6/6、C1/C2_S 4/4、C3/C4_S 6/6；REINIT_S1 3/3、S2 3/3、S3 4/4、S4 6/6（S4 首轮 FS 两次 800110 瞬时 no-fill，复跑全绿）
+- **新 SDK 缺陷闭环（REINIT 首次被矩阵覆盖即命中）**：`[FlameSdk clear]`→re-init 永久挂死。根因=WindMill `setupSDKWithAppId:completionHandler:` 进程内一次性，二次 setup 不回调。最小修复=FlameTBProvider 幂等 init（进程内 setup 完成后直接 success；失败保持可重试）。修复后 S3/S4 全绿。提交 75b0135（feature/ios-lingye-tobid-coexist-release）
+- 探针终证（保存原 IMP + C hook，观测不改行为）：Taku 三入口（handleAppLaunch/tryCheckADXConfigIfNeeded/ATAdManager sharedManager）在全部矩阵窗口零调用（仅启动期 AnyThink +load 自init，action=IDLE）→ FLAME_TB_TRIGGERS_TAKU_INIT=NO；WindMill 管理器 init 全部落在 Flame 加载窗口 → LINGYE_TRIGGERED_TOBID_INIT=NO、FLAME_TOBID_MANAGER_OWNER=FLAME_ONLY
+- 异常扫描（探针修复后终局窗口 17 份日志）：crash/EXC/NSException/unrecognized selector/dyld/duplicate class = 0（仅存 signal 9 = harness terminate-existing 正常行为）
+- 共享网络归属表：LINGYE reward→csj-1｜LINGYE splash→qm｜FLAME reward→sigmob(f84b138a500)｜FLAME splash→sigmob(ee793f95649)——同 App 双方各走各源，互不污染
+- 遗留：LINGYE_REWARD_SMOKE 需一次完整看完视频（已两次被提前关闭）；FLAME_REWARD_SMOKE=PASS（既有 08:47 全链证据）
