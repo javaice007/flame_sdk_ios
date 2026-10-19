@@ -136,6 +136,18 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.1-alpha.4";
         currentGeneration = self.requestGeneration;
     }
 
+    // P0E 修复（入参防御）：appId/appKey 缺失时静默移除字典键会发出残缺请求
+    // （服务端只能回 400 参数缺失）。此处尽早失败并给出明确错误。
+    if (appId.length == 0 || appKey.length == 0) {
+        [FlameLogger e:@"init rejected: appId/appKey must be non-empty"];
+        if (callback) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [callback fail:@"14005" desc:@"init rejected: appId/appKey must be non-empty"];
+            });
+        }
+        return;
+    }
+
     NSString *url = @"https://api.adsurge.cn/api/v1/sdk/init";
     // 1. 业务参数
     NSMutableDictionary *params = [NSMutableDictionary dictionary];
@@ -234,6 +246,29 @@ static NSString * const FLAME_SDK_VERSION = @"1.0.1-alpha.4";
             [FlameLogger e:@"server response is not a valid JSON object"];
             if (cb) {
                 [cb fail:@"-1" desc:@"Invalid server response format"];
+            }
+            return;
+        }
+
+        // P0E 修复（错误传播）：优先读取服务端业务错误码/消息。
+        // 此前 parser 直接下钻 data.edata，把业务错误（如参数缺失 400）伪装成
+        // "edata is missing"，掩盖真实原因。现在：code/success 表明业务失败时，
+        // 原样返回服务端 code 与 message。
+        id codeObj = encryptedData[@"code"];
+        id successObj = encryptedData[@"success"];
+        BOOL serverSuccess = NO;
+        if ([codeObj respondsToSelector:@selector(integerValue)]) {
+            serverSuccess = ([codeObj integerValue] == 200);
+        }
+        if ([successObj isKindOfClass:[NSNumber class]]) {
+            serverSuccess = serverSuccess || [(NSNumber *)successObj boolValue];
+        }
+        if (!serverSuccess) {
+            NSString *srvCode = [codeObj respondsToSelector:@selector(stringValue)] ? [codeObj stringValue] : @"-1";
+            NSString *srvMsg = [encryptedData[@"message"] isKindOfClass:[NSString class]] ? encryptedData[@"message"] : @"server rejected request";
+            [FlameLogger e:[NSString stringWithFormat:@"server business error: code=%@ message=%@", srvCode, srvMsg]];
+            if (cb) {
+                [cb fail:srvCode desc:srvMsg];
             }
             return;
         }
