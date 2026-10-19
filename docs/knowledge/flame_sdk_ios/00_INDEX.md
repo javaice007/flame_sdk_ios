@@ -23,6 +23,7 @@
 | 17-21号（iOS领页×TB 客户线文档） | Lingye 客户线：共存适配/edata 收口/人工 Demo/预检/1.0.2-lingye.1 发布记录——位于客户分支 feature/ios-lingye-tobid-coexist-release（1.0.2-lingye.1 已 CLOSED） | 2026-10-17/19 | 客户分支 docs/knowledge/flame_sdk_ios/ 17-21 号 |
 | 22_iOS标准双线_1.0.2_WindMill回灌与发布预检.md | 标准双线 1.0.2：WindMill 幂等回灌 + 版本对齐 MANDATORY + clean-room 双构建 + 预检/技术终审 PASS | 2026-10-18 | release/ios-dual-line 22 号（本文件所在树） |
 | 23_iOS标准双线_1.0.2正式发布记录.md | 标准双线 1.0.2 原子发布 CLOSED：tag 1.0.2 @ 8f42f92b（TK root + TB tb/）、flame-specs 双 spec、Published TK/TB 远端验收全绿 | 2026-10-18/19 | distribution commit 8f42f92b + flame-specs master |
+| 24_iOS标准双线_ConfigManager通用加固回灌.md | P3：ConfigManager 两项通用加固（server error propagation + empty credential guard 14005）回灌标准双线；TK 线 ConfigAudit 7 用例全 PASS；TB 共享 core 论证；不发版 | 2026-10-19 | de8c00f + build/tk-static·tb-static 双产物 |
 
 ## 一句话结论
 
