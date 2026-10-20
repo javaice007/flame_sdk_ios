@@ -4,6 +4,19 @@
 > 性质：**只盘点，不升级**。本阶段禁止下载 SDK / pod update / 替换二进制 / 修改业务源码 / 修改 TB 线路。
 > 升级目标依据：项目负责人提供的 **Taku 官方 iOS 稳定版本表**（本文 §3，已冻结，禁止自行改选版本）。
 
+> ## ⚠ P2-TK 现状覆盖（2026-10-20，本文后续章节为 P0 时点快照）
+>
+> - Core 已实际升级并解析 **AnyThinkiOS 6.5.84**（非 P0 时的 6.5.71）；
+> - **Funlink 不再是 BLOCKED**：已获官方精确版本并升级到 `AnyThinkMediationFunlinkAdapter 2.9.0.3.3.2.0`
+>   （`FUNLINK_STATUS = OFFICIAL_UPGRADE`）；
+> - **AdGain / FSUnion 不是 BLOCKED**：属单独集成、非 Taku 下载中心范围，本阶段保持
+>   `4.2.7.1` / `1.0.8.0` 不变（`KEEP_CURRENT_OUT_OF_TAKU_SCOPE`）；
+> - **Sigmob** 已于 P1-R1 收口为官方 `AnyThinkMediationSigmobAdapter 5.1.3.2.0`（RETIRED 私有 spec）；
+> - 最终 podspec 版本以 **doc 27 §1 官方精确矩阵**为准；P0 §2 表格是"当时官方下载表显示值"
+>   （整包口径，如"百度 10.061"），**不能**直接当作 podspec 依赖版本（精确版为 `10.061.2.0`）。
+>
+> `CURRENT_IOS_TAKU_NETWORKS` 仍为 13 源，构成不变（见 §5 主表）。
+
 ---
 
 ## 1. 分支事实（git 实测）
@@ -195,7 +208,7 @@ TAKU_OFFICIAL_DOWNLOAD_NOT_REQUIRED = [TakuBeta 6.5.90, Ubix 2.12.1, 领页 2.4.
 > 剩余待确认 = Funlink / AdGain / FSUnion 三源。
 
 ```
-CURRENT_TK_NETWORK_NOT_IN_OFFICIAL_MATRIX = [Funlink, AdGain, FSUnion]（P0 时点 = [Sigmob, Funlink, AdGain, FSUnion]；Sigmob 已于 P1-R1 官方收口）
+CURRENT_TK_NETWORK_NOT_IN_OFFICIAL_MATRIX = [AdGain, FSUnion]（P2：二者为单独集成、非 Taku 下载中心范围，状态 = KEEP_CURRENT_OUT_OF_TAKU_SCOPE，不是 BLOCKED；Funlink 已于 P2 获官方版本并升级；Sigmob 已于 P1-R1 官方收口）
 ```
 
 ## 11. 趣盟特殊核查

@@ -26,6 +26,7 @@
 | 24_iOS标准双线_ConfigManager通用加固回灌.md | P3：ConfigManager 加固回灌标准双线——SOURCE_BACKPORT=COMPLETE / TK runtime 7/7 PASS / TB runtime PARTIAL（Gate=PENDING_TB_RUNTIME_MATRIX）| 2026-10-19 | 源码 de8c00f + 文档 13168d9 |
 | 25_FlameAd_iOS_Taku广告源与SDK版本盘点.md | P0 Taku iOS 升级：upgrade/ios-taku-6.5.84 分支建立 + TK 13 广告源盘点（Core 6.5.71→6.5.84）+ 官方下载清单 + 4 源 BLOCKED（官方表未覆盖）+ TB 隔离确认 | 2026-10-20 | flame_sdk_ios.podspec:66-82、Podfile:48、Podfile.lock、mediation/tk/FlameTKProvider.m、doc 04/13/14 |
 | 26_Sigmob私有兼容Adapter退役与官方Adapter收口.md | P1-R1：私有 spec 审计（无源码 patch，仅依赖 workaround）→ 退役，TK 迁 AnyThinkMediationSigmobAdapter 5.1.3.2.0（SigmobAd-iOS 5.1.3 自带 WindSDK）+ 移除 TK 的 ToBid 依赖；fresh consumer 构建 PASS、ToBid 零符号；运行时验收 NOT_YET_EXECUTED | 2026-10-20 | flame_sdk_ios.podspec、flame-specs 私有 spec、validation/ios-taku-6.5.84-sigmob-migration/ |
+| 27_Taku_iOS_6.5.84全量升级与TK技术验收.md | P2-TK：Core 6.5.84 + 11 个官方 Adapter 精确矩阵升级（Funlink 2.9.0.3.3.2.0；AdGain/FSUnion KEEP）；TT/GM 成套 7.8.0.5.2.1 单套 Pangle；TK xcframework 重建 + fresh consumer BUILD PASS + 真机 smoke UA_6.5.84；TB 零改动 | 2026-10-20 | flame_sdk_ios.podspec、Podfile、根目录 flame_sdk_ios.xcframework、P2 harness（仓外 p2-tk-consumer） |
 
 ## 一句话结论
 

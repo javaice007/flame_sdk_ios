@@ -213,6 +213,11 @@ ToBid 及 TB 产物完全不受影响。
 SIGMOB_RUNTIME_ACCEPTANCE = NOT_YET_EXECUTED
 ```
 
+> **2026-10-20 P2-TK 补记**：Sigmob 5.1.3.2.0 已随 Taku Core 6.5.84 全矩阵完成升级与静态技术验证
+> ——fresh consumer 解析 `SigmobAd-iOS 5.1.3`（WindSDK/WindFoundation 各 1 份）、构建链接 PASS、
+> 真机 init smoke PASS（ATAPI 运行时版本 `UA_6.5.84`）。本节 P1-R1 的历史审计结论不变；
+> 真机 Sigmob 广告填充验收仍为后续项。详见 doc 27。
+
 ## 10. 维护者须知（防回接）
 
 > 原 `flame_sdk_ios_tk_sigmob_adapter` 是 TK/TB 共包时代为解决 WindSDK/Sigmob 依赖冲突引入的

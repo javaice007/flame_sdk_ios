@@ -55,7 +55,8 @@ Pod::Spec.new do |s|
   # AnyThinkSDK 为 TK 平台核心：flame 静态归档内的 TK 胶水（FlameTKProvider +
   # At*Adapter + FlameAdapterManager 遗留 init）对 AT* 类的未定义符号，
   # 全部在客户 App 链接期由 AnyThinkSDK.framework（AnyThinkiOS pod 带入）解析。
-  s.dependency 'AnyThinkiOS', '6.5.71'
+  # P2-TK：Taku 官方稳定版 6.5.84（不用 TakuBeta 6.5.90）。
+  s.dependency 'AnyThinkiOS', '6.5.84'
 
   # Taku 官方原生 Sigmob Adapter（P1-R1 起退役私有兼容 spec）。
   # 历史：flame_sdk_ios_tk_sigmob_adapter（4.20.12.2.0，Flame 私有 spec）是 TK/TB
@@ -68,16 +69,22 @@ Pod::Spec.new do |s|
   s.dependency 'AnyThinkMediationSigmobAdapter', '5.1.3.2.0'
 
   # ========= TK 广告源 Adapter + 底层 SDK =========
-  s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.72.2.1'
-  s.dependency 'AnyThinkMediationGromoreAdapter', '7.6.0.4.2.0'
-  s.dependency 'AnyThinkMediationBaiduAdapter', '10.050.2.1'
-  s.dependency 'AnyThinkMediationMSAdapter', '2.7.18.1.2.0'
-  s.dependency 'AnyThinkMediationZYAdapter', '2.6.4.29.2.0'
-  s.dependency 'AnyThinkMediationFunlinkAdapter', '2.9.0.1.2.2.0'
-  s.dependency 'AnyThinkMediationBeiZiAdapter', '5.5.0.3.2.0'
-  s.dependency 'AnyThinkMediationKuaiShouAdapter', '5.4.10.1.2.0'
-  s.dependency 'AnyThinkMediationTTAdapter_Mix', '7.6.0.4.2.0'
-  s.dependency 'AnyThinkMediationGDTAdapter', '4.15.90.2.0'
+  # 版本矩阵来源：Taku 官方 iOS 下载中心（项目负责人按 Flame TK 广告源选择后生成），
+  # P2-TK 冻结，全部精确锁定（禁止 ~> / >= / 自行改版）。
+  # 穿山甲与 GroMore 必须成套：TTAdapter_Mix 与 GromoreAdapter 同为 7.8.0.5.2.1，
+  # 共享同一套 Ads-CN/BUAdSDK 7.8.0.5 + CSJMediation-Only 7.8.0.5（单份 Pangle）。
+  s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.90.2.1'
+  s.dependency 'AnyThinkMediationGromoreAdapter', '7.8.0.5.2.1'
+  s.dependency 'AnyThinkMediationBaiduAdapter', '10.061.2.0'
+  s.dependency 'AnyThinkMediationMSAdapter', '3.0.15.0.2.0'
+  s.dependency 'AnyThinkMediationZYAdapter', '2.6.10.7.2.0'
+  s.dependency 'AnyThinkMediationFunlinkAdapter', '2.9.0.3.3.2.0'
+  s.dependency 'AnyThinkMediationBeiZiAdapter', '5.5.6.0.2.0'
+  s.dependency 'AnyThinkMediationKuaiShouAdapter', '5.9.10.1.2.0'
+  s.dependency 'AnyThinkMediationTTAdapter_Mix', '7.8.0.5.2.1'
+  s.dependency 'AnyThinkMediationGDTAdapter', '4.16.10.2.0'
+  # AdGain / FSUnion：单独集成，不属于 Taku 下载中心升级范围，本阶段冻结当前版本
+  # （KEEP_CURRENT_OUT_OF_TAKU_SCOPE：不删除、不升级、不改接入方式）。
   s.dependency 'AdGainSDK', '4.2.7.1'
   s.dependency 'AdGainSDKTakuAdapter', '4.2.7.1'
   s.dependency 'FSUnionAdSDK', '1.0.8.0'

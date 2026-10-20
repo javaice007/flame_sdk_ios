@@ -45,7 +45,8 @@ target 'flame_sdk_ios' do
   # 否则 use_frameworks! :linkage => :static 会在 archive 阶段把三方静态框架
   # 合并进 flame_sdk_ios.framework，导致下游接入 duplicate class。
   # （TK adapter 源码已审计：只 import AnyThinkSDK/AnyThinkSDK.h，不直接 import 任何广告源 SDK。）
-  pod 'AnyThinkiOS','6.5.71'
+  # P2-TK：随 TK 客户矩阵升至 6.5.84（构建期头文件与客户解析版本一致）。
+  pod 'AnyThinkiOS','6.5.84'
 
   # TB 平台核心：Flame TB 胶水（FlameTBProvider + TbRewardAdapter）编译期需要 WindMillSDK 头文件
   # 注意：ToBid-iOS-RC 内的 WindMillSDK/WindSDK/WindFoundation 都是 static archive（伪装成 framework 的 .a）。
