@@ -1,0 +1,34 @@
+# P1-R1 Sigmob 官方 Adapter 迁移验证 harness（fresh TK consumer）
+#
+# 验证目标：flame_sdk_ios.podspec 迁移到 AnyThinkMediationSigmobAdapter 5.1.3.2.0 后，
+# 客户侧 pod resolution / compile / link 全绿，TK 依赖链不含 ToBid-iOS-RC 与
+# flame_sdk_ios_tk_sigmob_adapter（历史私有兼容 spec，已退役，见 doc 26）。
+#
+# 工具链：正式 DT13 工具链 Xcode 26.0.1（默认 Xcode 27.1 最低仅 15.0，不适用 13.0 契约）
+#   export DEVELOPER_DIR=/Applications/Xcode_26.0.1.app/Contents/Developer
+#   xcodegen generate && pod install
+#   xcodebuild -workspace TKSigmobConsumer.xcworkspace -scheme TKSigmobConsumer \
+#     -sdk iphoneos -configuration Debug -destination 'generic/platform=iOS' \
+#     -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+#
+# 备注：P1-R1 实测时在本目录内构建期间目录内容被环境侧清空（原因未定位，见 doc 26 §12），
+# 已在仓库外等价复跑一次通过。复现时若本目录异常，请整体复制到仓库外执行。
+
+name: TKSigmobConsumer
+options:
+  bundleIdPrefix: com.flame.validation
+  deploymentTarget:
+    iOS: "13.0"
+  createIntermediateGroups: true
+targets:
+  TKSigmobConsumer:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: TKSigmobConsumer
+        UILaunchScreen: {}
+        LSRequiresIPhoneOS: true

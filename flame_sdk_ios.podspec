@@ -57,11 +57,15 @@ Pod::Spec.new do |s|
   # 全部在客户 App 链接期由 AnyThinkSDK.framework（AnyThinkiOS pod 带入）解析。
   s.dependency 'AnyThinkiOS', '6.5.71'
 
-  # ToBid-iOS-RC 为 flame_sdk_ios_tk_sigmob_adapter 提供 WindSDK/WindFoundation
-  # （同名 framework 统一来源，避免与 SigmobAd-iOS 冲突）。1.0.1-alpha.1 起
-  # flame 本体（静态 TK 产物）不再含任何 WindMill 符号引用，此依赖与 flame
-  # 本体解耦，仅为下游 sigmob adapter 服务。
-  s.dependency 'ToBid-iOS-RC', '5.5.6'
+  # Taku 官方原生 Sigmob Adapter（P1-R1 起退役私有兼容 spec）。
+  # 历史：flame_sdk_ios_tk_sigmob_adapter（4.20.12.2.0，Flame 私有 spec）是 TK/TB
+  # 共用同一生产包时代为解决 WindSDK/WindFoundation 同名依赖冲突引入的 workaround
+  # ——它 vendored TopOn 官方 AnyThinkSigmobAdapter 二进制但去掉 SigmobAd-iOS
+  # 传递依赖，借用 ToBid-iOS-RC 5.5.6 的 WindSDK/WindFoundation（该 ToBid 依赖
+  # 已随本迁移一并移除）。TK/TB 拆分为独立生产包后该前提不复存在，TK 恢复
+  # Taku 官方 Adapter + SigmobAd-iOS 5.1.3（自带 wind-sdk-ios 的
+  # WindSDK/WindFoundation），不再依赖 ToBid。详见 docs/knowledge/flame_sdk_ios/26。
+  s.dependency 'AnyThinkMediationSigmobAdapter', '5.1.3.2.0'
 
   # ========= TK 广告源 Adapter + 底层 SDK =========
   s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.72.2.1'
@@ -72,9 +76,6 @@ Pod::Spec.new do |s|
   s.dependency 'AnyThinkMediationFunlinkAdapter', '2.9.0.1.2.2.0'
   s.dependency 'AnyThinkMediationBeiZiAdapter', '5.5.0.3.2.0'
   s.dependency 'AnyThinkMediationKuaiShouAdapter', '5.4.10.1.2.0'
-  # Flame 私有 spec：复用 TopOn AnyThinkSigmobAdapter.xcframework，去掉 SigmobAd-iOS
-  # 传递依赖，WindSDK/WindFoundation 由 ToBid-iOS-RC 统一提供，避免同名 framework 冲突。
-  s.dependency 'flame_sdk_ios_tk_sigmob_adapter', '4.20.12.2.0'
   s.dependency 'AnyThinkMediationTTAdapter_Mix', '7.6.0.4.2.0'
   s.dependency 'AnyThinkMediationGDTAdapter', '4.15.90.2.0'
   s.dependency 'AdGainSDK', '4.2.7.1'
@@ -106,11 +107,13 @@ end
 #    分发，因 WindMill 扁平命名空间符号无法解析导致 TK/TB 客户启动必崩，
 #    1.0.1-alpha.1 起双线均改为静态双线产物，弱链接机制退役。）
 #
-# 2. Mintegral simulator slice 限制
-#    WindMillMTGAdapter.xcframework 仅含 ios-arm64 slice（缺 simulator slice），
-#    ToBid-iOS-RC 5.5.6 podspec 自带 EXCLUDED_ARCHS[sdk=iphonesimulator*]=arm64，
-#    含义：Apple Silicon Mac simulator 需要 Rosetta；Intel simulator 与真机不受影响。
-#    Flame podspec 不额外添加 EXCLUDED_ARCHS。
+# 2. simulator slice 限制（EXCLUDED_ARCHS[sdk=iphonesimulator*]=arm64）
+#    TK：SigmobAd-iOS 5.1.3（wind-sdk-ios）podspec 自带
+#    EXCLUDED_ARCHS[sdk=iphonesimulator*]=arm64 —— Apple Silicon Mac simulator
+#    需要 Rosetta；真机不受影响。Flame podspec 不额外添加 EXCLUDED_ARCHS。
+#    （TB 包侧历史事实：WindMillMTGAdapter.xcframework 仅含 ios-arm64 slice，
+#    ToBid-iOS-RC 5.5.6 podspec 同样自带该 EXCLUDED_ARCHS——属 TB 依赖，
+#    自 P1-R1 起不再是 TK 依赖。）
 #
 # 3. 升级指引
 #    客户侧仅需改 Podfile 版本号：

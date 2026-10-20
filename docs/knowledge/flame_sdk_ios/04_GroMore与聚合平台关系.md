@@ -3,6 +3,10 @@
 > 硬约束事实：**现有 Flame Ads SDK 没有 Direct GroMore。**
 > `CURRENT_DIRECT_GROMORE = NONE`
 
+> **2026-10-20 P1-R1 更新**：下文"TK 线 13+ 源"中的「私有 Sigmob（flame_sdk_ios_tk_sigmob_adapter）」
+> 已退役，TK 改用 Taku 官方原生 `AnyThinkMediationSigmobAdapter 5.1.3.2.0`（自带 SigmobAd-iOS 5.1.3），
+> TK podspec 的 ToBid-iOS-RC 依赖同步移除。历史背景见 doc 26。其余源清单不变。
+
 ## 架构事实
 
 Flame 的广告一级聚合平台只有两家，运行期由服务端下发 `pt` 字段二选一：

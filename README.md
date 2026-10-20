@@ -48,7 +48,7 @@ flame_sdk_ios/
 | `flame_sdk_ios_tb.xcframework` | TB 线二进制包（1.0.1-alpha.1 起为静态 framework）|
 | `flame_sdk_ios.podspec` | TK 客户 podspec |
 | `flame_sdk_ios_tb.podspec` | ToBid 客户 podspec |
-| `flame_sdk_ios_tk_sigmob_adapter` | TK 侧 Sigmob 适配器（TK 客户自动带出，不需手动声明）|
+| `AnyThinkMediationSigmobAdapter` | TK 侧 Sigmob 适配器（Taku 官方原生 pod，5.1.3.2.0 起；TK 客户自动带出，不需手动声明。原私有 `flame_sdk_ios_tk_sigmob_adapter` 已退役，见 docs/knowledge/flame_sdk_ios/26）|
 
 1.0.0 曾以"单二进制（动态）"形态分发：flame 动态 framework 对 ToBid 的 8 个 WindMill
 类符号使用扁平命名空间延迟解析（`-undefined dynamic_lookup`），而 ToBid 只有静态归档，
@@ -121,7 +121,7 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 | 编译验证 | ✅ BUILD SUCCEEDED | ✅ BUILD SUCCEEDED |
 | 真机启动 | ✅ 通过（Phase 5A.13 Step 1.3，全广告位正常加载） | ✅ 通过（Phase 5A.13 Step 1.2B，冷启动 3/3 无 ADX 弹窗） |
 | 激励视频业务验证 | ✅ TK 广告链路正常 | ✅ TB Reward 3 轮闭环（load/show/visible/reward/close/next-load） |
-| Sigmob 广告链路 | ✅ 通过（flame_sdk_ios_tk_sigmob_adapter） | —（ToBid 内置 Sigmob） |
+| Sigmob 广告链路 | ✅ 通过（AnyThinkMediationSigmobAdapter 5.1.3.2.0，P1-R1 起官方原生；真机广告验收待后续阶段） | —（ToBid 内置 Sigmob） |
 | ToBid 后台 AppId 绑定 | — | ✅ 已配置（appId=b22375234108） |
 | AnyThinkSDK 运行时隔离 | ✅ TK App 强加载（含 ADX，不弹窗） | ✅ TB App 不加载（弱链接 + podspec 不带入，不弹窗） |
 
@@ -163,7 +163,7 @@ Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `us
 
 1. `flame_sdk_ios` 与 `flame_sdk_ios_tb` 不能同时接入。
 2. 如果 ToBid 接入时返回 `800031`，通常是 ToBid 后台 AppId 未绑定到聚合服务，请检查后台配置。
-3. TK 客户不需要手动声明 `flame_sdk_ios_tk_sigmob_adapter`，`flame_sdk_ios` 会自动带上所需依赖。
+3. TK 客户不需要手动声明 Sigmob 适配器，`flame_sdk_ios` 会自动带上所需依赖（P1-R1 起为 Taku 官方 `AnyThinkMediationSigmobAdapter` 5.1.3.2.0 + SigmobAd-iOS 5.1.3，不再经 ToBid 借用 WindSDK）。
 
 ## 发布规范
 

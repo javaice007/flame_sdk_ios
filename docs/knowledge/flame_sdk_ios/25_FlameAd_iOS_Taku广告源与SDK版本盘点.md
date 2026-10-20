@@ -174,6 +174,13 @@ TAKU_OFFICIAL_DOWNLOAD_NOT_REQUIRED = [TakuBeta 6.5.90, Ubix 2.12.1, 领页 2.4.
 
 ## 10. 当前 TK 已使用但官方稳定表未覆盖的广告源（BLOCKED）
 
+> **2026-10-20 P1-R1 状态更新（Sigmob 行）**：Sigmob 已不再 BLOCKED——
+> `SIGMOB_UPGRADE_PATH = OFFICIAL_NATIVE_ADAPTER`，TK 已迁移至 Taku 官方
+> `AnyThinkMediationSigmobAdapter 5.1.3.2.0`，私有兼容 spec `flame_sdk_ios_tk_sigmob_adapter`
+> 退役（`SIGMOB_PRIVATE_ADAPTER_STATUS = RETIRED`）。触发事实：① TK/TB 已拆分为独立生产包；
+> ② Taku 官方提供精确版本 5.1.3.2.0。详见 doc 26。运行时广告验收 = NOT_YET_EXECUTED。
+> 下表 Sigmob 行保留为 P0 时点历史记录。
+
 | 广告源 | 当前版本 | 当前证据 | 官方表状态 | 处理 |
 |---|---|---|---|---|
 | Sigmob | adapter 4.20.12.2.0（WindSDK 5.5.6） | flame_sdk_ios.podspec:77；Flame 私有 spec | 未提供 | **BLOCKED**，等待项目负责人确认 |
@@ -183,9 +190,12 @@ TAKU_OFFICIAL_DOWNLOAD_NOT_REQUIRED = [TakuBeta 6.5.90, Ubix 2.12.1, 领页 2.4.
 
 > 本阶段不删除、不自行找版本、不升级这四源。若项目负责人确认"维持现状"，四源以当前版本随 6.5.84 共存；
 > 6.5.84 整包内若含同源新版 adapter，是否连带升级属 P1 决策项（须评估 WindSDK 冲突面，见 §7）。
+>
+> **P1-R1 更新**：Sigmob 已按官方原生 Adapter 路径收口（doc 26），不再是 BLOCKED 项；
+> 剩余待确认 = Funlink / AdGain / FSUnion 三源。
 
 ```
-CURRENT_TK_NETWORK_NOT_IN_OFFICIAL_MATRIX = [Sigmob, Funlink, AdGain, FSUnion]
+CURRENT_TK_NETWORK_NOT_IN_OFFICIAL_MATRIX = [Funlink, AdGain, FSUnion]（P0 时点 = [Sigmob, Funlink, AdGain, FSUnion]；Sigmob 已于 P1-R1 官方收口）
 ```
 
 ## 11. 趣盟特殊核查

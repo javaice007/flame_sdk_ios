@@ -1,0 +1,25 @@
+# P1-R1 Sigmob 官方 Adapter 迁移验证 Podfile
+platform :ios, '13.0'
+
+source 'https://github.com/javaice007/flame-specs.git'
+source 'https://cdn.cocoapods.org/'
+
+target 'TKSigmobConsumer' do
+  # :path 引用 dev 仓根目录 = 同一份 flame_sdk_ios.podspec（原样）+ 根目录 vendored
+  # flame_sdk_ios.xcframework（git 树与已发布 tag 1.0.2 一致：
+  # git diff 1.0.2 HEAD -- flame_sdk_ios.xcframework 为空）。
+  pod 'flame_sdk_ios', :path => '/Users/khj/Documents/code/97_ad/ios/flame_ios_sdk'
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
+      config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
+      config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+      # 老 pod（如 SmartdigimktCNSDK 声明 9.0）统一抬到 flame 契约下限 13.0
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    end
+  end
+end
