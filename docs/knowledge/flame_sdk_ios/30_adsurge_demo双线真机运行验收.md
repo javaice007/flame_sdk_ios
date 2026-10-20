@@ -3,9 +3,10 @@
 > 阶段标识：P3-DUAL ｜ 日期：2026-10-20 ｜ 设备：iPhone 16 Pro / iOS 26.6.2（USB）
 > SDK checkpoint：`1ef40ce`（TK 6.5.84 @ `024a2e6`，TB 5.10.1 @ `1ef40ce`）
 > 验证 Demo：`/Users/khj/Documents/code/97_ad/ios/adsurge-ios-demo`
+> **P3-R1 纠正（2026-10-20）**：Taku ADX 由 REAL_AD_PASS 降为 BID_RESPONSE_PASS（仅证明参与竞价返回 offer，未证明 winning/show/impression）；逐源最终状态以 doc 31 为准。
 > 结论：**`IOS_DUAL_LINE_RUNTIME_ACCEPTANCE = PARTIAL`**——两线五类 Flame API 全部真实 load/show/callback 通过，
 > 已填充的广告源真实验证通过；但 TK 13 源 / TB 12 源中多数无法在当前测试位 waterfall 中强制命中，
-> 按规则标 `PENDING_SOURCE_FILL`，不伪造 PASS。
+> 按发布口径标 `PENDING_PRODUCTION_OBSERVATION`（不阻塞 1.1.0），不伪造 PASS。
 
 ---
 
@@ -85,11 +86,11 @@ TK_FIVE_FORMAT_RUNTIME = PASS
 | Network | adapter init | 真实 fill 证据 | 状态 |
 |---|---|---|---|
 | GroMore | ✓ | Native：callback network_name=Gromore nfid=46 ×9 | REAL_AD_PASS |
-| Taku ADX（酷盈 6.5.90） | ✓（SDMAdLogger 初始化、ADXOfferBanner/ADXNative didLoadMetaData/Offer ×8） | Banner/Native 的 ADX offer 实际返回 oid | REAL_AD_PASS（ADX 竞价层） |
-| Pangle/CSJ 单接 | ✓（随 TTAdapter_Mix 7.8.0.5 装载） | 本轮无 TT 单接 fill 日志（Native 走 GM） | PENDING_SOURCE_FILL |
-| Sigmob（官方 5.1.3.2.0） | ✓（ATSigmob*Adapter 在位，无私有残留） | 本轮 waterfall 未命中 | PENDING_SOURCE_FILL |
-| GDT / Baidu / KS / MS / ZY / Funlink / BeiZi | ✓（adapter 均链入，无 NoClass） | 未命中（Splash/Interstitial/Reward/Banner 的命中源 Demo 未打印，无法归因） | PENDING_SOURCE_FILL |
-| AdGain 4.2.7.1 / FSUnion 1.0.8.0（新 Core 兼容） | ✓（链入，无 selector/protocol 错误，init 无异常） | 未命中 | PENDING_SOURCE_FILL（兼容性 LEVEL 2 PASS） |
+| Taku ADX（酷盈 6.5.90） | ✓（SDMAdLogger 初始化、ADXOfferBanner/ADXNative didLoadMetaData/Offer ×8） | ADX 真实参与 bidding 并返回候选 offer（oid）；**未证明 ADX 成为 winning、实际 show、impression**（Native 最终 winning 为 Gromore） | **BID_RESPONSE_PASS / PRODUCTION_OBSERVATION**（P3-R1 纠正，原误标 REAL_AD_PASS） |
+| Pangle/CSJ 单接 | ✓（随 TTAdapter_Mix 7.8.0.5 装载） | 本轮无 TT 单接 fill 日志（Native 走 GM） | PENDING_PRODUCTION_OBSERVATION |
+| Sigmob（官方 5.1.3.2.0） | ✓（ATSigmob*Adapter 在位，无私有残留） | 本轮 waterfall 未命中 | PENDING_PRODUCTION_OBSERVATION |
+| GDT / Baidu / KS / MS / ZY / Funlink / BeiZi | ✓（adapter 均链入，无 NoClass） | 未命中（Splash/Interstitial/Reward/Banner 的命中源 Demo 未打印，无法归因） | PENDING_PRODUCTION_OBSERVATION |
+| AdGain 4.2.7.1 / FSUnion 1.0.8.0（新 Core 兼容） | ✓（链入，无 selector/protocol 错误，init 无异常） | 未命中 | PENDING_PRODUCTION_OBSERVATION（兼容性 LEVEL 2 PASS） |
 
 > 说明：Splash/Interstitial/Reward/Banner 四类**真实填充并展示**，但 Demo 对这四类不打印 Taku callback info，
 > 故无法将其归因到具体 Network；需后续在 Demo 中增加 `VALIDATION_ONLY` 的 callback info 打印或从 Taku 后台报表核对。
@@ -137,11 +138,11 @@ TB_FIVE_FORMAT_RUNTIME = PASS（五类均真实 load/show/callback；Native 需�
 | Sigmob（Core 内置 WindSDK 5.1.4） | ✓ ConfigAdapter + Splash/Interstitial/Reward adapter | Splash / Interstitial / Reward 三格式真实填充 + 发奖 | REAL_AD_PASS |
 | GDT 4.16.11 | ✓ | Banner 真实填充展示 | REAL_AD_PASS |
 | CSJ 7.8.0.5 | ✓ NativeAdAdapter（round1 ×14 / round2 ×6） | round2 Native 真实填充；round1 位 no-fill | REAL_AD_PASS（Native） |
-| GroMore 7.8.0.5 | ✓（链入，无 NoClass/Bridge 错误） | 未命中 | PENDING_SOURCE_FILL |
-| Baidu / KS / MS / Octopus / Mintegral | ✓ | 未命中（测试位 waterfall 未挂） | PENDING_SOURCE_FILL |
-| JuTui 4.5.5.1 **NEW_NETWORK_INTEGRATION** | ✓ 链入（WindMillJuTui* 类 6，无 selector 错） | 未命中（后台未配） | PENDING_SOURCE_FILL + 需 ToBid 后台配置 |
-| AdScope 5.5.3.4 **NEW_NETWORK_INTEGRATION** | ✓ 链入（WindMillBeiZi* 7） | 未命中 | PENDING_SOURCE_FILL + 需后台配置 |
-| Kuying 6.5.66 **NEW_NETWORK_INTEGRATION** | ✓ 链入（WindMillKuying* 9） | 未命中 | PENDING_SOURCE_FILL + 需后台配置 |
+| GroMore 7.8.0.5 | ✓（链入，无 NoClass/Bridge 错误） | 未命中 | PENDING_PRODUCTION_OBSERVATION |
+| Baidu / KS / MS / Octopus / Mintegral | ✓ | 未命中（测试位 waterfall 未挂） | PENDING_PRODUCTION_OBSERVATION |
+| JuTui 4.5.5.1 **NEW_NETWORK_INTEGRATION** | ✓ 链入（WindMillJuTui* 类 6，无 selector 错） | 未命中（后台未配） | PENDING_PRODUCTION_OBSERVATION + 需 ToBid 后台配置 |
+| AdScope 5.5.3.4 **NEW_NETWORK_INTEGRATION** | ✓ 链入（WindMillBeiZi* 7） | 未命中 | PENDING_PRODUCTION_OBSERVATION + 需后台配置 |
+| Kuying 6.5.66 **NEW_NETWORK_INTEGRATION** | ✓ 链入（WindMillKuying* 9） | 未命中 | PENDING_PRODUCTION_OBSERVATION + 需后台配置 |
 
 TB 专项：Sigmob 单份 WindSDK 5.1.4（日志回包确认）；CSJ 7.8.0.5 真实初始化并填充（无 7.6.0.4）；无 NoClass / Bridge 错误。
 
@@ -158,15 +159,15 @@ DEMO_SKADNETWORK_COUNT = 119
 
 | Line | Core | Build | Init | 五类 API | Network Runtime | 隔离 |
 |---|---|---|---|---|---|---|
-| TK | Taku 6.5.84（UA_6.5.84） | PASS | PASS | 5/5 PASS | GroMore + ADX REAL；其余 PENDING_SOURCE_FILL | zero ToBid/WindMill ✓ |
+| TK | Taku 6.5.84（UA_6.5.84） | PASS | PASS | 5/5 PASS | GroMore REAL；ADX BID_RESPONSE；其余 PENDING_PRODUCTION_OBSERVATION | zero ToBid/WindMill ✓ |
 | TB | ToBid 5.10.1 | PASS | PASS | 5/5 PASS（Native 用 q82857633975） | Sigmob + GDT + CSJ REAL；其余 PENDING（含新三源） | zero AnyThink/Taku ✓ |
 
 ## 9. Blocking / Pending / 后续人工操作
 
-- **PENDING_NETWORKS**（非 SDK 缺陷，均为测试位 waterfall 未挂或无物料）：
+- **PENDING_PRODUCTION_OBSERVATION**（P4-RC 发布口径：非 SDK 缺陷，测试位 waterfall 未挂或无物料；项目负责人已冻结**不再安排发布前专项补测**，不阻塞 1.1.0 RC/正式发布，上线后随真实流量观察，如有问题走 1.1.x）：
   TK = [Pangle单接, Sigmob, GDT, Baidu, KS, MS, ZY, Funlink, BeiZi, AdGain, FSUnion]；
   TB = [GroMore, Baidu, KS, MS, Octopus, Mintegral, JuTui(NEW), AdScope(NEW), Kuying(NEW)]
-- 人工后续：① Taku/ToBid 后台为测试位逐源挂载并复测；② TB 新三源需先在 ToBid 后台配置 AppId/广告位；
+- 后续（线上观察期，非发布门禁）：① 线上 waterfall 命中后在 Taku/ToBid 报表观察各源请求/填充；② TB 新三源随线上配置生效后观察；
   ③ TB Native 后台位 q44128606635 的 CSJ 952881288 无物料，建议换挂或下线；④ 如需逐源归因，
   在 Demo 四类 listener 增加 VALIDATION_ONLY 的 callback info 打印。
 - 未发现 SDK 缺陷；未修改 Flame 公共 API；未修改 SDK 业务源码（SDK 仓 clean，仅 pbxproj 临时重排已还原）。
@@ -192,14 +193,14 @@ DEMO_TK_BUILD = PASS
 DEMO_TK_RUNTIME_CORE = UA_6.5.84
 DEMO_TK_RUNTIME_INIT = PASS
 TK_FIVE_FORMAT_RUNTIME = PASS
-TK_NETWORK_ACCEPTANCE_MATRIX = [GroMore:REAL_AD_PASS, TakuADX:REAL_AD_PASS, Pangle:PENDING_SOURCE_FILL, Sigmob:PENDING_SOURCE_FILL, GDT:PENDING_SOURCE_FILL, Baidu:PENDING_SOURCE_FILL, KS:PENDING_SOURCE_FILL, MS:PENDING_SOURCE_FILL, ZY:PENDING_SOURCE_FILL, Funlink:PENDING_SOURCE_FILL, BeiZi:PENDING_SOURCE_FILL, AdGain:PENDING_SOURCE_FILL(compat LEVEL2 PASS), FSUnion:PENDING_SOURCE_FILL(compat LEVEL2 PASS)]
+TK_NETWORK_ACCEPTANCE_MATRIX = [GroMore:REAL_AD_PASS, TakuADX:BID_RESPONSE_PASS(PRODUCTION_OBSERVATION), Pangle:PENDING_PRODUCTION_OBSERVATION, Sigmob:PENDING_PRODUCTION_OBSERVATION, GDT:PENDING_PRODUCTION_OBSERVATION, Baidu:PENDING_PRODUCTION_OBSERVATION, KS:PENDING_PRODUCTION_OBSERVATION, MS:PENDING_PRODUCTION_OBSERVATION, ZY:PENDING_PRODUCTION_OBSERVATION, Funlink:PENDING_PRODUCTION_OBSERVATION, BeiZi:PENDING_PRODUCTION_OBSERVATION, AdGain:PENDING_PRODUCTION_OBSERVATION(compat LEVEL2 PASS), FSUnion:PENDING_PRODUCTION_OBSERVATION(compat LEVEL2 PASS)]
 TK_TO_TB_SWITCH_CLEAN = YES
 DEMO_TB_DEPENDENCY_RESOLUTION = PASS
 DEMO_TB_BUILD = PASS
 DEMO_TB_RUNTIME_CORE = 5.10.1
 DEMO_TB_RUNTIME_INIT = PASS
 TB_FIVE_FORMAT_RUNTIME = PASS
-TB_NETWORK_ACCEPTANCE_MATRIX = [Sigmob:REAL_AD_PASS, GDT:REAL_AD_PASS, CSJ:REAL_AD_PASS, GroMore:PENDING_SOURCE_FILL, Baidu:PENDING_SOURCE_FILL, KS:PENDING_SOURCE_FILL, MS:PENDING_SOURCE_FILL, Octopus:PENDING_SOURCE_FILL, Mintegral:PENDING_SOURCE_FILL, JuTui:NEW_NETWORK_INTEGRATION/PENDING_SOURCE_FILL, AdScope:NEW_NETWORK_INTEGRATION/PENDING_SOURCE_FILL, Kuying:NEW_NETWORK_INTEGRATION/PENDING_SOURCE_FILL]
+TB_NETWORK_ACCEPTANCE_MATRIX = [Sigmob:REAL_AD_PASS, GDT:REAL_AD_PASS, CSJ:REAL_AD_PASS, GroMore:PENDING_PRODUCTION_OBSERVATION, Baidu:PENDING_PRODUCTION_OBSERVATION, KS:PENDING_PRODUCTION_OBSERVATION, MS:PENDING_PRODUCTION_OBSERVATION, Octopus:PENDING_PRODUCTION_OBSERVATION, Mintegral:PENDING_PRODUCTION_OBSERVATION, JuTui:NEW_NETWORK_INTEGRATION/PENDING_PRODUCTION_OBSERVATION, AdScope:NEW_NETWORK_INTEGRATION/PENDING_PRODUCTION_OBSERVATION, Kuying:NEW_NETWORK_INTEGRATION/PENDING_PRODUCTION_OBSERVATION]
 DEMO_SKADNETWORK_COUNT = 119
 TK_ZERO_TOBID_RUNTIME = PASS
 TB_ZERO_ANYTHINK_RUNTIME = PASS

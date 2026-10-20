@@ -14,7 +14,7 @@
 #import "FlameNetworkUtils.h"
 #import "FlameAesCryptoUtils.h"
 
-static NSString * const FLAME_SDK_VERSION = @"1.0.1-alpha.4";
+static NSString * const FLAME_SDK_VERSION = @"1.1.0";
 
 @interface FlameConfigManager ()
 @property (atomic, strong) FlameAppEntity *appEntity; // 使用 atomic 保证线程安全

@@ -4,7 +4,10 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 
 ## 版本信息
 
-- **当前发布版本**：`1.0.1-alpha.4`（TK/TB 双线静态产物 + 发奖回调修复版）
+- **当前发布版本**：`1.1.0`（双线大版本升级：TK Taku 6.5.84 / TB ToBid-iOS 5.10.1；上一正式基线 `1.0.2`；后续修复用 `1.1.x`）
+- **TK 线（1.1.0）**：AnyThinkiOS 6.5.84 + 11 个 Taku 官方 Adapter（Sigmob 改用官方 `AnyThinkMediationSigmobAdapter 5.1.3.2.0`，**不再依赖 ToBid**）+ AdGain/FSUnion
+- **TB 线（1.1.0）**：`ToBid-iOS 5.10.1`（pod 名由 `ToBid-iOS-RC` 迁移）+ 11 个 Adapter（新增 JuTui / AdScope / Kuying）；SpriteKit 由 CocoaPods 自动链接
+- **SKAdNetwork**：客户 App Info.plist 以 `doc/flame_doc/SKAdNetworkItems_merged_2026-10-20.plist`（119 条）为基准与自有 ID 取并集
 - ⚠️ **1.0.0 已知严重问题**：公开 Pod 1.0.0（动态单二进制）接入即启动闪退（dyld 无法解析 WindMill 扁平命名空间符号），TK/TB 双线均受影响，**请勿使用 1.0.0**，升级方式见下方接入示例
 - ⚠️ **1.0.1-alpha.1 的 TB 包已废弃**（外壳名缺陷无法开箱构建，TK 包可用），TB 客户请直接用 1.0.1-alpha.4
 - ⚠️ **≤1.0.1-alpha.2 发奖回调缺陷**：TK 线 `onAdReward` 的 `transId` 恒空；TB 线 `userCustomData` 恒空。已在 1.0.1-alpha.4 修复
@@ -14,7 +17,7 @@ Flame iOS SDK 是广告聚合 SDK，当前支持 **TK（TopOn）** 和 **ToBid**
 - **两个 Pod 互斥**：不能同时接入
 - **最低支持**：iOS 13.0+
 - **开发语言**：Objective-C
-- **版本快照**：`docs/releases/1.0.1-alpha.4.md`
+- **版本快照**：`docs/knowledge/flame_sdk_ios/31_iOS双线1.1.0_RC发布前验收.md`（1.1.0）；历史 `docs/releases/`
 
 ## 目录结构
 
@@ -64,13 +67,13 @@ flame_sdk_ios/
 | 聚合平台 | TopOn (AnyThink) | ToBid (WindMill) |
 | TK 广告源依赖 | ✅ 含（AnyThinkMediation* / AdGain / FSUnion）| ❌ 不含 |
 | Sigmob 适配器 | ✅ 自动带出 | ❌ 不含 |
-| 第三方广告源 | AnyThinkMediation 全家桶 | ToBid 5.5.6 完整包选定 8 个广告源（CSJ/GDT/Baidu/KS/Mintegral/Octopus/MS/Gromore）|
+| 第三方广告源 | AnyThinkMediation 全家桶（Taku 6.5.84 矩阵） | ToBid-iOS 5.10.1：11 个广告源（CSJ/GDT/Baidu/KS/Mintegral/Octopus/MS/Gromore + 新增 JuTui/AdScope/Kuying）|
 | 广告类型 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 | 激励视频 / 开屏 / 插屏 / 横幅 / 原生 |
 | module name | `flame_sdk_ios` | `flame_sdk_ios`（一致）|
 
 两条线可以独立接入、独立验证、独立演进。`flame_sdk_ios` 与 `flame_sdk_ios_tb` **互斥**，不能同时接入。
 
-**ToBid 8 个广告源（Phase 5A.19 接入，全部 5.5.6）**：
+**ToBid 11 个广告源（1.1.0，全部 ToBid-iOS 5.10.1 subspec；下列为 5.5.6 时期的 8 源历史记录，5.10.1 版本矩阵见 docs/knowledge/flame_sdk_ios/29）**：
 - 穿山甲（CSJ）+ GroMore（共享 BUAdSDK 7.6.0.4）
 - 腾讯优量汇（GDT 4.15.90）
 - 百度联盟（10.050）
@@ -90,10 +93,10 @@ source 'https://cdn.cocoapods.org/'
 
 target 'YourApp' do
   # TK 客户
-  pod 'flame_sdk_ios', '1.0.1-alpha.4'
+  pod 'flame_sdk_ios', '1.1.0'
 
   # ToBid 客户，二选一
-  # pod 'flame_sdk_ios_tb', '1.0.1-alpha.4'
+  # pod 'flame_sdk_ios_tb', '1.1.0'
 end
 ```
 
