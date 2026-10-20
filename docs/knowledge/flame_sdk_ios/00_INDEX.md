@@ -24,6 +24,7 @@
 | 22_iOS标准双线_1.0.2_WindMill回灌与发布预检.md | 标准双线 1.0.2：WindMill 幂等回灌 + 版本对齐 MANDATORY + clean-room 双构建 + 预检/技术终审 PASS | 2026-10-18 | release/ios-dual-line 22 号（本文件所在树） |
 | 23_iOS标准双线_1.0.2正式发布记录.md | 标准双线 1.0.2 原子发布 CLOSED：tag 1.0.2 @ 8f42f92b（TK root + TB tb/）、flame-specs 双 spec、Published TK/TB 远端验收全绿 | 2026-10-18/19 | distribution commit 8f42f92b + flame-specs master |
 | 24_iOS标准双线_ConfigManager通用加固回灌.md | P3：ConfigManager 加固回灌标准双线——SOURCE_BACKPORT=COMPLETE / TK runtime 7/7 PASS / TB runtime PARTIAL（Gate=PENDING_TB_RUNTIME_MATRIX）| 2026-10-19 | 源码 de8c00f + 文档 13168d9 |
+| 25_FlameAd_iOS_Taku广告源与SDK版本盘点.md | P0 Taku iOS 升级：upgrade/ios-taku-6.5.84 分支建立 + TK 13 广告源盘点（Core 6.5.71→6.5.84）+ 官方下载清单 + 4 源 BLOCKED（官方表未覆盖）+ TB 隔离确认 | 2026-10-20 | flame_sdk_ios.podspec:66-82、Podfile:48、Podfile.lock、mediation/tk/FlameTKProvider.m、doc 04/13/14 |
 
 ## 一句话结论
 
