@@ -22,11 +22,23 @@ Flame 的广告一级聚合平台只有两家，运行期由服务端下发 `pt`
 - Flame 不配置/不初始化 GroMore：GroMore 账号在 TopOn / ToBid 后台瀑布流配置，其 SDK 由聚合平台按需初始化
 - Flame 对**聚合平台**有 Adapter（At*/Tb* 共 12 个），对**广告源（含 GroMore）无 Adapter 层**——广告源适配由 TopOn/ToBid 官方 adapter 完成
 
-## 平台选择机制
+## 平台选择机制（当前交付架构：两个独立生产包）
 
-- 单二进制同时内置 TK/TB 胶水；`FlameTKProvider`/`FlameTBProvider` 的 `+load` 在 dyld 加载时向 `FlameMediationRegistry` 注册 "tk"/"tb"
-- init 配置拉取成功后按 `pt` 从 Registry 取 Provider，`FlameMediationRouter` 激活；只有被激活的 Provider 才 `initializeWithAppId`
-- Mach-O 隔离：AnyThinkSDK 弱链接（TB 客户不加载，避免 ADX 完整性弹窗）+ WindMill 静态归档隔离（U 引用 lazy binding）
+- Flame 公共源码保留 Provider/Registry/Router 抽象：`FlameTKProvider` 与 `FlameTBProvider`
+  仍以 `+load` 向 `FlameMediationRegistry` 注册 "tk"/"tb"，`FlameMediationRouter` 按服务端 `pt` 激活；
+  这是**代码结构**层面的共享设计，不代表交付形态是共包。
+- 生产交付已拆为两个独立产品包：TK 根目录 `flame_sdk_ios.xcframework` **只含 TK 胶水**
+  （零 WindMill 符号），TB `tb/flame_sdk_ios.xcframework` **只含 TB 胶水**（零 AnyThink 符号）；
+  两个 podspec（`flame_sdk_ios` / `flame_sdk_ios_tb`）互斥，module 同名不可同时接入。
+- 因此不存在"一个客户生产包同时携带 TK + TB 胶水"的正式交付方式；跨线符号隔离由构建期
+  `EXCLUDED_SOURCE_FILE_NAMES` 与产物符号断言保证（见 doc 26/27/28）。
+
+### 历史（仅存档）
+
+早期曾以"单二进制"同时内置 TK/TB 胶水：1.0.0 为动态 framework（对 AnyThinkSDK 弱链接、
+对 WindMill 用 `-undefined dynamic_lookup`），1.0.1-alpha.x 起改为静态全量编入。共包形态
+导致 TB 客户 dyld 解析 WindMill 符号失败（1.0.0 闪退根因）以及 TK/TB 的 WindSDK 依赖冲突
+（私有 Sigmob spec 的由来，见 doc 26）。该形态自 1.0.1-alpha.2 起被静态双线双包取代。
 
 ## 两条线的广告源清单（podspec 事实，2026-10-20 P2-TK 现状）
 

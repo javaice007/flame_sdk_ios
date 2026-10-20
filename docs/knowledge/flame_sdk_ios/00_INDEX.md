@@ -27,6 +27,7 @@
 | 25_FlameAd_iOS_Taku广告源与SDK版本盘点.md | P0 Taku iOS 升级：upgrade/ios-taku-6.5.84 分支建立 + TK 13 广告源盘点（Core 6.5.71→6.5.84）+ 官方下载清单 + 4 源 BLOCKED（官方表未覆盖）+ TB 隔离确认 | 2026-10-20 | flame_sdk_ios.podspec:66-82、Podfile:48、Podfile.lock、mediation/tk/FlameTKProvider.m、doc 04/13/14 |
 | 26_Sigmob私有兼容Adapter退役与官方Adapter收口.md | P1-R1：私有 spec 审计（无源码 patch，仅依赖 workaround）→ 退役，TK 迁 AnyThinkMediationSigmobAdapter 5.1.3.2.0（SigmobAd-iOS 5.1.3 自带 WindSDK）+ 移除 TK 的 ToBid 依赖；fresh consumer 构建 PASS、ToBid 零符号；运行时验收 NOT_YET_EXECUTED | 2026-10-20 | flame_sdk_ios.podspec、flame-specs 私有 spec、validation/ios-taku-6.5.84-sigmob-migration/ |
 | 27_Taku_iOS_6.5.84全量升级与TK技术验收.md | P2-TK：Core 6.5.84 + 11 个官方 Adapter 精确矩阵升级（Funlink 2.9.0.3.3.2.0；AdGain/FSUnion KEEP）；TT/GM 成套 7.8.0.5.2.1 单套 Pangle；TK xcframework 重建 + fresh consumer BUILD PASS + 真机 smoke UA_6.5.84；TB 零改动 | 2026-10-20 | flame_sdk_ios.podspec、Podfile、根目录 flame_sdk_ios.xcframework、P2 harness（仓外 p2-tk-consumer） |
+| 28_ToBid_TB广告源与SDK版本盘点.md | TB-P0：ToBid-iOS-RC 5.5.6 Core subspec + 8 Adapter subspec 实证；Network 版本 BUAdSDK/CSJMediation 7.6.0.4、GDT 4.15.90、Baidu 10.050、KS 5.4.10.1、MTG 7.7.6、Octopus 2.6.4.29、MS 2.7.18.1、Sigmob Core 内置 WindSDK 4.20.23；TB 构建链 tb-static；零 AnyThink/零 Taku Adapter baseline PASS；官方升级清单 11 项待确认 | 2026-10-20 | flame_sdk_ios_tb.podspec、ToBid 5.5.6 trunk spec、fresh TB lock（仓外 p2-tb-consumer）、tb/ 产物符号 |
 
 ## 一句话结论
 
