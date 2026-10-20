@@ -8,10 +8,10 @@
 #   ./xcFramework_build.sh                 # 默认 = single-binary
 #   ./xcFramework_build.sh single-binary   # 显式写法
 #
-# 构建期依赖环境（同时声明 AnyThinkiOS + ToBid-iOS-RC）：
+# 构建期依赖环境（同时声明 AnyThinkiOS + ToBid-iOS）：
 #   - OpenSSL-Universal：Flame core 加密需要
 #   - AnyThinkiOS：TK 胶水编译期需要 AnyThinkSDK 头文件（#import <AnyThinkSDK/AnyThinkSDK.h>）
-#   - ToBid-iOS-RC：TB 胶水编译期需要 WindMillSDK 头文件（#import <WindMillSDK/WindMillSDK.h>）
+#   - ToBid-iOS：TB 胶水编译期需要 WindMillSDK 头文件（#import <WindMillSDK/WindMillSDK.h>）
 #
 # 注意：
 #   这是 SDK 工程构建期依赖，不是 Demo 接入 Podfile。
@@ -49,10 +49,10 @@ target 'flame_sdk_ios' do
   pod 'AnyThinkiOS','6.5.84'
 
   # TB 平台核心：Flame TB 胶水（FlameTBProvider + TbRewardAdapter）编译期需要 WindMillSDK 头文件
-  # 注意：ToBid-iOS-RC 内的 WindMillSDK/WindSDK/WindFoundation 都是 static archive（伪装成 framework 的 .a）。
+  # 注意：ToBid-iOS 内的 WindMillSDK/WindSDK/WindFoundation 都是 static archive（伪装成 framework 的 .a）。
   # 链接隔离由 xcFramework_build.sh 处理（剔除 -framework Wind* + 临时隐藏归档二进制），
   # 防止 WindMill 9.4MB 静态合并污染 flame_sdk_ios.framework binary。
-  pod 'ToBid-iOS-RC', '5.5.6'
+  pod 'ToBid-iOS', '5.10.1'
 
   target 'flame_sdk_iosTests' do
     # Pods for testing

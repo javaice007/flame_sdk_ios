@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		27EBB7AE71B6A17D550778EB /* Pods_flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 50B7CE35FAD5A04D66436ABF /* Pods_flame_sdk_ios.framework */; };
+		31CCA24F850B74938798295A /* Pods_flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 842F0B6F822A1DC7072B6D59 /* Pods_flame_sdk_ios.framework */; };
 		580DC3292F15295900145FF2 /* flame_sdk_ios.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */; };
-		81339BC84D8CF7D5032DB1F7 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 936E301CF6AFF83910F61A19 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */; };
+		73004F1A6C26E28DA43399C9 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8298B37A89B230024463183D /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -23,14 +23,14 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0EDF1DF915D2861ECFD821C6 /* Pods-flame_sdk_ios.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.release.xcconfig"; sourceTree = "<group>"; };
-		124FB737B16319140C76FA43 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; sourceTree = "<group>"; };
-		50B7CE35FAD5A04D66436ABF /* Pods_flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		519548F38F3B50CE91A9D1C9 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; sourceTree = "<group>"; };
 		580DC31D2F15295800145FF2 /* flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		580DC3282F15295900145FF2 /* flame_sdk_iosTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = flame_sdk_iosTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		936E301CF6AFF83910F61A19 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios_flame_sdk_iosTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		A3740A5516D8E6B911556F78 /* Pods-flame_sdk_ios.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.debug.xcconfig"; sourceTree = "<group>"; };
-		AD8A2E21A63AA802073C659C /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig"; sourceTree = "<group>"; };
+		5AD778F9395F52B2CA43352D /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig"; sourceTree = "<group>"; };
+		62BCDBB8A075025E14B90976 /* Pods-flame_sdk_ios.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.debug.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.debug.xcconfig"; sourceTree = "<group>"; };
+		7E0E6781E8D10371A24DF4AF /* Pods-flame_sdk_ios.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-flame_sdk_ios.release.xcconfig"; path = "Target Support Files/Pods-flame_sdk_ios/Pods-flame_sdk_ios.release.xcconfig"; sourceTree = "<group>"; };
+		8298B37A89B230024463183D /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios_flame_sdk_iosTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		842F0B6F822A1DC7072B6D59 /* Pods_flame_sdk_ios.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_flame_sdk_ios.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -79,7 +79,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				27EBB7AE71B6A17D550778EB /* Pods_flame_sdk_ios.framework in Frameworks */,
+				31CCA24F850B74938798295A /* Pods_flame_sdk_ios.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,7 +88,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				580DC3292F15295900145FF2 /* flame_sdk_ios.framework in Frameworks */,
-				81339BC84D8CF7D5032DB1F7 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */,
+				73004F1A6C26E28DA43399C9 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,12 +98,21 @@
 		41C2D7F4F2E8A16F42F86EC0 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				A3740A5516D8E6B911556F78 /* Pods-flame_sdk_ios.debug.xcconfig */,
-				0EDF1DF915D2861ECFD821C6 /* Pods-flame_sdk_ios.release.xcconfig */,
-				124FB737B16319140C76FA43 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */,
-				AD8A2E21A63AA802073C659C /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */,
+				62BCDBB8A075025E14B90976 /* Pods-flame_sdk_ios.debug.xcconfig */,
+				7E0E6781E8D10371A24DF4AF /* Pods-flame_sdk_ios.release.xcconfig */,
+				5AD778F9395F52B2CA43352D /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */,
+				519548F38F3B50CE91A9D1C9 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		56FC226EBFDB6224F2D7BA32 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				842F0B6F822A1DC7072B6D59 /* Pods_flame_sdk_ios.framework */,
+				8298B37A89B230024463183D /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		580DC3132F15295800145FF2 = {
@@ -113,7 +122,7 @@
 				580DC32C2F15295900145FF2 /* flame_sdk_iosTests */,
 				580DC31E2F15295800145FF2 /* Products */,
 				41C2D7F4F2E8A16F42F86EC0 /* Pods */,
-				BED6571CB355FF3E5DBC3112 /* Frameworks */,
+				56FC226EBFDB6224F2D7BA32 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -124,15 +133,6 @@
 				580DC3282F15295900145FF2 /* flame_sdk_iosTests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		BED6571CB355FF3E5DBC3112 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				50B7CE35FAD5A04D66436ABF /* Pods_flame_sdk_ios.framework */,
-				936E301CF6AFF83910F61A19 /* Pods_flame_sdk_ios_flame_sdk_iosTests.framework */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -152,7 +152,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 580DC3302F15295900145FF2 /* Build configuration list for PBXNativeTarget "flame_sdk_ios" */;
 			buildPhases = (
-				4CAB3F860F7EE4BED29DD20F /* [CP] Check Pods Manifest.lock */,
+				C7524D56049748E3C2F35A27 /* [CP] Check Pods Manifest.lock */,
 				580DC3182F15295800145FF2 /* Headers */,
 				580DC3192F15295800145FF2 /* Sources */,
 				580DC31A2F15295800145FF2 /* Frameworks */,
@@ -174,11 +174,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 580DC3352F15295900145FF2 /* Build configuration list for PBXNativeTarget "flame_sdk_iosTests" */;
 			buildPhases = (
-				546E8D15E3F3DB2F6C44FCD9 /* [CP] Check Pods Manifest.lock */,
+				C87DB7D2EDC434A277E906C8 /* [CP] Check Pods Manifest.lock */,
 				580DC3242F15295900145FF2 /* Sources */,
 				580DC3252F15295900145FF2 /* Frameworks */,
 				580DC3262F15295900145FF2 /* Resources */,
-				A6E5D7695F79EEE42780A36E /* [CP] Embed Pods Frameworks */,
+				7CE9D57FC6C49919146B0829 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -248,7 +248,24 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		4CAB3F860F7EE4BED29DD20F /* [CP] Check Pods Manifest.lock */ = {
+		7CE9D57FC6C49919146B0829 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		C7524D56049748E3C2F35A27 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -270,7 +287,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		546E8D15E3F3DB2F6C44FCD9 /* [CP] Check Pods Manifest.lock */ = {
+		C87DB7D2EDC434A277E906C8 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -290,23 +307,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		A6E5D7695F79EEE42780A36E /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-flame_sdk_ios-flame_sdk_iosTests/Pods-flame_sdk_ios-flame_sdk_iosTests-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -339,7 +339,7 @@
 /* Begin XCBuildConfiguration section */
 		580DC3312F15295900145FF2 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A3740A5516D8E6B911556F78 /* Pods-flame_sdk_ios.debug.xcconfig */;
+			baseConfigurationReference = 62BCDBB8A075025E14B90976 /* Pods-flame_sdk_ios.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGN_STYLE = Automatic;
@@ -373,7 +373,7 @@
 		};
 		580DC3322F15295900145FF2 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 0EDF1DF915D2861ECFD821C6 /* Pods-flame_sdk_ios.release.xcconfig */;
+			baseConfigurationReference = 7E0E6781E8D10371A24DF4AF /* Pods-flame_sdk_ios.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGNING_ALLOWED = NO;
 				CODE_SIGN_STYLE = Automatic;
@@ -531,7 +531,7 @@
 		};
 		580DC3362F15295900145FF2 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 124FB737B16319140C76FA43 /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */;
+			baseConfigurationReference = 5AD778F9395F52B2CA43352D /* Pods-flame_sdk_ios-flame_sdk_iosTests.debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -547,7 +547,7 @@
 		};
 		580DC3372F15295900145FF2 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = AD8A2E21A63AA802073C659C /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */;
+			baseConfigurationReference = 519548F38F3B50CE91A9D1C9 /* Pods-flame_sdk_ios-flame_sdk_iosTests.release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;

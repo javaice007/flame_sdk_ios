@@ -3,7 +3,9 @@
 > 阶段标识：TB-P0-TOBID-INVENTORY ｜ 日期：2026-10-20
 > 分支：`upgrade/ios-taku-6.5.84`（TK checkpoint = `024a2e6`）
 > 性质：**只读审计 + 官方升级需求盘点**。本阶段未升级 ToBid、未改 TB podspec、未重建 TB 产物。
-> 目标版本：`TB_TARGET_VERSION_MATRIX = PENDING_OFFICIAL_CONFIRMATION`（不猜最新版）
+> 目标版本：~~`TB_TARGET_VERSION_MATRIX = PENDING_OFFICIAL_CONFIRMATION`~~
+> **→ 已于 TB-P1/P2 冻结为官方 `ToBid-iOS 5.10.1`**（pod 名 ToBid-iOS-RC → ToBid-iOS），详见 doc 29。
+> 本文其余内容保留为 P0 时点（ToBid-iOS-RC 5.5.6）历史审计快照。
 
 ---
 
