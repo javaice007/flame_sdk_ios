@@ -73,7 +73,9 @@ flame_sdk_ios/
 
 两条线可以独立接入、独立验证、独立演进。`flame_sdk_ios` 与 `flame_sdk_ios_tb` **互斥**，不能同时接入。
 
-**ToBid 11 个广告源（1.1.0，全部 ToBid-iOS 5.10.1 subspec；下列为 5.5.6 时期的 8 源历史记录，5.10.1 版本矩阵见 docs/knowledge/flame_sdk_ios/29）**：
+**当前正式（1.1.0）TB 广告源 = 12 源**（ToBid-iOS 5.10.1）：Sigmob（Core 内置）/ GDT / CSJ / Baidu / KS / MS / Octopus / Mintegral / GroMore + **1.1.0 新增** JuTui / AdScope / Kuying。完整版本矩阵见 `docs/knowledge/flame_sdk_ios/29`。
+
+**历史：1.0.x / Phase 5A.19 时期 ToBid-iOS-RC 5.5.6 的 8 源记录（仅存档，非当前）**：
 - 穿山甲（CSJ）+ GroMore（共享 BUAdSDK 7.6.0.4）
 - 腾讯优量汇（GDT 4.15.90）
 - 百度联盟（10.050）
@@ -116,9 +118,19 @@ import flame_sdk_ios
 
 Flame SDK 本身不强制要求 `use_frameworks!`。如果宿主工程已有 `use_frameworks!` 配置，可按原工程配置保留。
 
-## 当前验证状态
+## 当前验证状态（1.1.0）
 
-| 验证项 | TK | ToBid |
+| 验证项 | TK | TB |
+|---|---|---|
+| 正式远端解析 | ✅ `flame_sdk_ios 1.1.0`（27 pods，AnyThink 6.5.84，零 ToBid） | ✅ `flame_sdk_ios_tb 1.1.0`（14 pods，ToBid-iOS 5.10.1，零 AnyThink） |
+| 拉取产物 SHA256 | ✅ 与批准 RC 一致（doc 32） | ✅ 与批准 RC 一致（doc 32） |
+| 五类广告真机 | ✅ 全部真实 load/show/callback | ✅ 全部真实 load/show/callback |
+| 激励视频发奖 | ✅ transId 真实回传（doc 32 §6） | ✅ transId 真实回传（doc 32 §6） |
+| 隔离 | ✅ TK 零 ToBid/WindMill | ✅ TB 零 AnyThink/Taku |
+| 双线 init 真机版本 | ✅ UA_6.5.84 | ✅ WindMill 5.10.1（Sigmob WindSDK 5.1.4） |
+
+> **归档说明**：以下 Phase 5A.x 记录为 1.0.x 时期开发过程事实（含 ToBid-iOS-RC 5.5.6 / AnyThink 6.5.71 等当时版本与当时 pod 数），仅供追溯，**不代表 1.1.0 现状**；当前正式版本与验收见文首「版本信息」与本表，完整记录见 `docs/knowledge/flame_sdk_ios/27/29/31/32`。
+
 |---|---|---|
 | pod install | ✅ 通过（28 pods，含 AnyThinkiOS + ADX adapter） | ✅ 通过（4 pods，不含 AnyThinkiOS） |
 | 编译验证 | ✅ BUILD SUCCEEDED | ✅ BUILD SUCCEEDED |

@@ -4,6 +4,16 @@
 > 阶段：P0A 双线基线固化（后续阶段 P0B = 领页 × TB/ToBid 共存调研）
 > 本文是 Flame iOS 唯一正式开发基线的冻结记录与分支治理依据。
 
+> **当前正式基线（2026-10-20，1.1.0 已发布）**
+>
+> | 线 | Flame | 聚合 Core | 产物 | podspec |
+> |---|---|---|---|---|
+> | TK | **1.1.0** | **AnyThinkiOS 6.5.84**（+11 Taku 官方 Adapter，Sigmob 官方 5.1.3.2.0，**不依赖 ToBid**） | 根目录 `flame_sdk_ios.xcframework` | `flame_sdk_ios` |
+> | TB | **1.1.0** | **ToBid-iOS 5.10.1**（pod 名由 ToBid-iOS-RC 迁移；+11 Adapter subspec，含新增 JuTui/AdScope/Kuying） | `tb/flame_sdk_ios.xcframework` | `flame_sdk_ios_tb` |
+>
+> 基线分支仍为 `release/ios-dual-line`；正式 tag `1.1.0` → `19903c2`。1.1.0 完整依赖矩阵见 doc 27（TK）/ doc 29（TB）/ doc 31（RC）。
+> **下文 §6 Dependency Boundary 与 §7 Build Gate 记录的是 2026-10-17 冻结时点（1.0.1-alpha.4 / AnyThink 6.5.71 / ToBid-iOS-RC 5.5.6）的历史基线**，保留作治理依据，不代表 1.1.0 现状。
+
 ## 1. 冻结声明
 
 ```
@@ -93,7 +103,7 @@ DUAL_POD_MODEL = PASS（两 pod 互斥、module/import 对客户一致）
 TK_AND_TB_SHARE_BINARY = NO（两份独立静态归档，互斥分发）
 ```
 
-## 6. Dependency Boundary（冻结时点事实）
+## 6. Dependency Boundary（**历史基线**：2026-10-17 冻结时点事实，1.0.x 时期；1.1.0 现状见顶部与 doc 27/29）
 
 **TK_DEPENDENCIES**（`flame_sdk_ios.podspec`，1.0.1-alpha.4）：
 
@@ -126,7 +136,7 @@ ToBid-iOS-RC 5.5.6 + subspecs：CSJAdapter / GDTAdapter / BaiduAdapter / KSAdapt
 
 TB podspec 红线（不得依赖）：AnyThinkiOS / AnyThinkMediation* / flame_sdk_ios_tk_sigmob_adapter / AdGain* / FSUnion* / 独立 SigmobAd-iOS（与 ToBid 内置 WindSDK 冲突）。
 
-## 7. Build Gate 与二进制边界（2026-10-17 冻结验证）
+## 7. Build Gate 与二进制边界（**历史基线**：2026-10-17 冻结验证；1.1.0 RC 构建/隔离见 doc 31）
 
 ### 工具链事实（重要）
 

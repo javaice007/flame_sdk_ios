@@ -3,7 +3,7 @@
 > 阶段标识：P2-TK-TAKU-6.5.84-FULL-UPGRADE ｜ 日期：2026-10-20
 > 分支：`upgrade/ios-taku-6.5.84`（START_HEAD = `6aff124`，即 P1-R1 checkpoint）
 > 结论：`TK_TECHNICAL_ACCEPTANCE = PASS`（技术口径：依赖矩阵 / 构建 / 链接 / 二进制隔离 / 真机 init smoke）
-> 广告源真实填充验收 **不属本阶段**：`TK_REAL_AD_NETWORK_ACCEPTANCE = PENDING_MANUAL_DEVICE_VALIDATION`
+> 广告源真实填充验收 **不属本阶段**：`TK_REAL_AD_NETWORK_ACCEPTANCE = PENDING_MANUAL_DEVICE_VALIDATION（**P2 阶段时点记录**；P4-RC 起发布口径：未命中源 = PENDING_PRODUCTION_OBSERVATION，不阻塞发布，见 doc 31/32）`
 
 ---
 
@@ -348,7 +348,7 @@ URL_SCHEMES_DUPLICATE_COUNT = 0（现有 demo 列表为空；待官方新表后 
 
 ## 17. 剩余人工真机验收（§二十一，本阶段不做假）
 
-`TK_REAL_AD_NETWORK_ACCEPTANCE = PENDING_MANUAL_DEVICE_VALIDATION`
+`TK_REAL_AD_NETWORK_ACCEPTANCE = PENDING_MANUAL_DEVICE_VALIDATION（**P2 阶段时点记录**；P4-RC 起发布口径：未命中源 = PENDING_PRODUCTION_OBSERVATION，不阻塞发布，见 doc 31/32）`
 
 需逐源执行：init / load / fill / show / impression / click / reward（transId）/ Splash 展示 /
 Banner 展示 / Native 展示 / Interstitial 展示 / waterfall 切源。本阶段 BUILD + 真机 init smoke
@@ -408,7 +408,7 @@ URL_SCHEMES_CONFIG_OWNER = CUSTOMER_APP
 
 TK_RUNTIME_CORE_VERSION = UA_6.5.84
 TK_RUNTIME_SMOKE = PASS
-TK_REAL_AD_NETWORK_ACCEPTANCE = PENDING_MANUAL_DEVICE_VALIDATION
+TK_REAL_AD_NETWORK_ACCEPTANCE = PENDING_MANUAL_DEVICE_VALIDATION（**P2 阶段时点记录**；P4-RC 起发布口径：未命中源 = PENDING_PRODUCTION_OBSERVATION，不阻塞发布，见 doc 31/32）
 
 TB_CODE_CHANGED = NO
 TB_DEPENDENCY_CHANGED = NO

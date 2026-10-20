@@ -16,7 +16,7 @@ Flame 的广告一级聚合平台只有两家，运行期由服务端下发 `pt`
 | 线 | pt | 平台 SDK | 版本 | GroMore 到达路径 |
 |---|---|---|---|---|
 | TK | "tk" | TopOn / AnyThink（AnyThinkiOS） | **6.5.84**（P2-TK，Taku 稳定版） | `AnyThinkMediationGromoreAdapter` **7.8.0.5.2.1**（TK podspec dependency） |
-| TB | "tb" | ToBid / WindMill（ToBid-iOS-RC） | 5.5.6 | `ToBid-iOS-RC/GromoreAdapter` **5.5.6**（与 CSJ 共享 BUAdSDK 7.6.0.4） |
+| TB | "tb" | ToBid / WindMill（ToBid-iOS） | **5.10.1**（1.1.0，pod 名由 ToBid-iOS-RC 迁移） | `ToBid-iOS/GromoreAdapter` **5.10.1**（与 CSJ 共享 BUAdSDK 7.8.0.5） |
 
 - GroMore 是两线的**间接广告源**：Flame 源码（grep `GroMore|Pangle|穿山甲|BUAdSDK|CSJ`）仅命中注释，**零直接 API 调用**
 - Flame 不配置/不初始化 GroMore：GroMore 账号在 TopOn / ToBid 后台瀑布流配置，其 SDK 由聚合平台按需初始化
@@ -46,7 +46,9 @@ Flame 的广告一级聚合平台只有两家，运行期由服务端下发 `pt`
   Baidu 10.061.2.0 / MS 3.0.15.0.2.0 / ZY 2.6.10.7.2.0 / Funlink 2.9.0.3.3.2.0 / BeiZi 5.5.6.0.2.0 /
   KuaiShou 5.9.10.1.2.0 / **Sigmob 官方原生 5.1.3.2.0** / TTAdapter_Mix 7.8.0.5.2.1 / GDT 4.16.10.2.0
   + AdGainSDK(+Taku adapter) 4.2.7.1 + FSUnionAdSDK 1.0.8.0（AdGain/FSUnion 为单独集成，非 Taku 下载中心范围，版本冻结）
-- **TB 线 8 源**（全部 5.5.6 subspec）：CSJ(穿山甲) / **Gromore** / GDT(优量汇) / Baidu / KS(快手) / Mintegral(国内) / Octopus(章鱼) / MSAd(美数)；Sigmob 由 ToBid Core 内置
+- **TB 线 12 源（Core ToBid-iOS 5.10.1，1.1.0）**：Sigmob（Core 内置 WindSDK 5.1.4）/ GDT 4.16.11 / CSJ 7.8.0.5 / Baidu 10.060 /
+  KS 5.9.10.1 / MS 2.7.24.0 / Octopus 2.6.9.17 / Mintegral 7.7.6 / **Gromore** 7.8.0.5 + **1.1.0 新增**：JuTui 4.5.5.1 / AdScope 5.5.3.4 / Kuying 6.5.66
+  （11 个 `ToBid-iOS/*Adapter 5.10.1` subspec；历史 1.0.x = ToBid-iOS-RC 5.5.6 时期 8 源，见 doc 28）
 - TK/TB 两个 pod 互斥，不可同时接入；module_name 均为 `flame_sdk_ios`，import 一致
 
 ### 历史（仅存档，勿用于现有接入）
