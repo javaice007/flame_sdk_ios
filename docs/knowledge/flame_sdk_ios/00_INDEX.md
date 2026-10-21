@@ -36,4 +36,4 @@
 
 ## 一句话结论
 
-Flame iOS SDK 是「轻核心 + 双聚合线（TAKU/TopOn=TK、TOBID/WindMill=TB）」的单二进制动态 XCFramework（纯 Objective-C，iOS 13+）：自身只做 init 配置拉取（MD5 签名 + AES-GCM 解密）、Flame 广告位→平台广告位映射、事件转发；广告全链路由 TopOn / ToBid 承担，GroMore 仅作为两线的间接广告源存在（**无 Direct GroMore**）。
+Flame iOS SDK 是「轻核心 + 双聚合线（TAKU/TopOn=TK、TOBID/WindMill=TB）」架构（纯 Objective-C，iOS 13+）；生产交付为**两个互斥的独立静态 XCFramework**：TK 使用 `flame_sdk_ios`，TB 使用 `flame_sdk_ios_tb`，二者 module/import 同名但不可同时接入。Flame 自身负责初始化配置（MD5 签名 + AES-GCM 解密）、广告位映射与事件转发，广告链路由 TopOn / ToBid 承担，GroMore 仅作为两线的间接广告源存在（**无 Direct GroMore**）。当前正式版本 **1.1.0**（tag 1.1.0 @ 19903c2，specs 472e715）。
