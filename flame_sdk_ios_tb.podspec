@@ -30,7 +30,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios_tb'
-  s.version          = '1.1.0'
+  s.version          = '1.1.1'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TB Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TB (ToBid) glue embedded. WindMill symbols resolve at app link time via ToBid-iOS-RC static archives.'
@@ -64,26 +64,26 @@ Pod::Spec.new do |s|
   # 未定义符号全部在这里、于客户 App 链接期解析。
   # P2-TB（TB-P2）：官方 pod 名从 ToBid-iOS-RC 迁移到 ToBid-iOS，版本 5.5.6 → 5.10.1
   # （官方 5.10.1 生成器坐标；旧 ToBid-iOS-RC 5.5.6 已从现行 TB 客户依赖退役）。
-  s.dependency 'ToBid-iOS', '5.10.1'
+  s.dependency 'ToBid-iOS', '5.10.3'
 
-  # ========= TB 广告源 Adapter（全部 5.10.1）=========
+  # ========= TB 广告源 Adapter（全部随 ToBid Core 锁定 5.10.3）=========
   # Adapter 与底层三方 SDK 版本由 ToBid 官方 subspec 统一管理，Flame podspec
   # 不重复声明底层三方 SDK（单一来源）。
   #
   # Sigmob 由 ToBid Core 内置（Core 的 WindSDK/WindFoundation），无独立 Adapter subspec。
   # P2-TB 范围：原有 8 源升级 + 运营新增 JuTui / AdScope / Kuying 三源（12 网络目标）。
 
-  s.dependency 'ToBid-iOS/CSJAdapter', '5.10.1'          # 穿山甲
-  s.dependency 'ToBid-iOS/GDTAdapter', '5.10.1'          # 腾讯优量汇
-  s.dependency 'ToBid-iOS/BaiduAdapter', '5.10.1'        # 百度联盟
-  s.dependency 'ToBid-iOS/KSAdapter', '5.10.1'           # 快手
-  s.dependency 'ToBid-iOS/MintegralAdapter', '5.10.1'    # Mintegral（国内版）
-  s.dependency 'ToBid-iOS/OctopusAdapter', '5.10.1'      # 章鱼
-  s.dependency 'ToBid-iOS/MSAdAdapter', '5.10.1'         # 美数
-  s.dependency 'ToBid-iOS/GromoreAdapter', '5.10.1'      # GroMore（与 CSJ 共享 BUAdSDK）
-  s.dependency 'ToBid-iOS/JuTuiAdapter', '5.10.1'        # 聚推（P2-TB 新增）
-  s.dependency 'ToBid-iOS/AdScopeAdapter', '5.10.1'      # AdScope / 倍孜（P2-TB 新增）
-  s.dependency 'ToBid-iOS/KuyingAdapter', '5.10.1'       # 酷盈（P2-TB 新增）
+  s.dependency 'ToBid-iOS/CSJAdapter', '5.10.3'          # 穿山甲
+  s.dependency 'ToBid-iOS/GDTAdapter', '5.10.3'          # 腾讯优量汇
+  s.dependency 'ToBid-iOS/BaiduAdapter', '5.10.3'        # 百度联盟
+  s.dependency 'ToBid-iOS/KSAdapter', '5.10.3'           # 快手
+  s.dependency 'ToBid-iOS/MintegralAdapter', '5.10.3'    # Mintegral（国内版）
+  s.dependency 'ToBid-iOS/OctopusAdapter', '5.10.3'      # 章鱼
+  s.dependency 'ToBid-iOS/MSAdAdapter', '5.10.3'         # 美数
+  s.dependency 'ToBid-iOS/GromoreAdapter', '5.10.3'      # GroMore（与 CSJ 共享 BUAdSDK）
+  s.dependency 'ToBid-iOS/JuTuiAdapter', '5.10.3'        # 聚推（P2-TB 新增）
+  s.dependency 'ToBid-iOS/AdScopeAdapter', '5.10.3'      # AdScope / 倍孜（P2-TB 新增）
+  s.dependency 'ToBid-iOS/KuyingAdapter', '5.10.3'       # 酷盈（P2-TB 新增）
 
   # ========= xcconfig =========
   # -ObjC 是静态产物正常工作的必要条件：

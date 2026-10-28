@@ -52,7 +52,7 @@ target 'flame_sdk_ios' do
   # 注意：ToBid-iOS 内的 WindMillSDK/WindSDK/WindFoundation 都是 static archive（伪装成 framework 的 .a）。
   # 链接隔离由 xcFramework_build.sh 处理（剔除 -framework Wind* + 临时隐藏归档二进制），
   # 防止 WindMill 9.4MB 静态合并污染 flame_sdk_ios.framework binary。
-  pod 'ToBid-iOS', '5.10.1'
+  pod 'ToBid-iOS', '5.10.3'
 
   target 'flame_sdk_iosTests' do
     # Pods for testing

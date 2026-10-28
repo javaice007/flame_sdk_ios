@@ -24,7 +24,7 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '1.1.0'
+  s.version          = '1.1.1'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TK Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TK (TopOn/AnyThink) glue embedded. AnyThink symbols resolve at app link time via AnyThinkSDK.framework.'
@@ -75,7 +75,7 @@ Pod::Spec.new do |s|
   # 共享同一套 Ads-CN/BUAdSDK 7.8.0.5 + CSJMediation-Only 7.8.0.5（单份 Pangle）。
   s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.90.2.1'
   s.dependency 'AnyThinkMediationGromoreAdapter', '7.8.0.5.2.1'
-  s.dependency 'AnyThinkMediationBaiduAdapter', '10.061.2.0'
+  s.dependency 'AnyThinkMediationBaiduAdapter', '10.070.2.0'
   s.dependency 'AnyThinkMediationMSAdapter', '3.0.15.0.2.0'
   s.dependency 'AnyThinkMediationZYAdapter', '2.6.10.7.2.0'
   s.dependency 'AnyThinkMediationFunlinkAdapter', '2.9.0.3.3.2.0'
