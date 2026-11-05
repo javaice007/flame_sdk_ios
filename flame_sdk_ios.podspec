@@ -24,7 +24,11 @@
 # ============================================================
 Pod::Spec.new do |s|
   s.name             = 'flame_sdk_ios'
-  s.version          = '1.1.1'
+  # 1.1.1.small.1 = small 精简维护线（基于已发布 1.1.1，独立于主线 1.1.x；非 1.1.2）。
+  # 依赖面 = I2 A2-TK 实测闭包：Flame + AnyThink Core + 自有酷盈 + 五组
+  # （CSJ/GroMore 双 adapter 共享 Ads-CN 单份、GDT、快手、章鱼(ZY 形态)、倍孜）。
+  # 二进制与 1.1.1 发布字节完全一致（TK arm64 SHA256 fda790932f0b7f31…59543）。
+  s.version          = '1.1.1.small.1'
   s.module_name      = 'flame_sdk_ios'
   s.summary          = 'Flame iOS Ad SDK - TK Edition (Static Dual-Line)'
   s.description      = 'Flame iOS advertising aggregation SDK, static framework with Flame core + TK (TopOn/AnyThink) glue embedded. AnyThink symbols resolve at app link time via AnyThinkSDK.framework.'
@@ -66,28 +70,22 @@ Pod::Spec.new do |s|
   # 已随本迁移一并移除）。TK/TB 拆分为独立生产包后该前提不复存在，TK 恢复
   # Taku 官方 Adapter + SigmobAd-iOS 5.1.3（自带 wind-sdk-ios 的
   # WindSDK/WindFoundation），不再依赖 ToBid。详见 docs/knowledge/flame_sdk_ios/26。
-  s.dependency 'AnyThinkMediationSigmobAdapter', '5.1.3.2.0'
-
-  # ========= TK 广告源 Adapter + 底层 SDK =========
-  # 版本矩阵来源：Taku 官方 iOS 下载中心（项目负责人按 Flame TK 广告源选择后生成），
-  # P2-TK 冻结，全部精确锁定（禁止 ~> / >= / 自行改版）。
+  # ========= TK 广告源 Adapter + 底层 SDK（1.1.1.small.1 精简面）=========
+  # small 线冻结口径 = I2 A2-TK 已验证闭包；与 1.1.1 相比仅移除非目标源依赖行，
+  # 保留源/版本坐标全部不变（不得升级任何底层 SDK）。
+  # 精简掉的发布版依赖行（1.1.1 原值）：Sigmob 5.1.3.2.0 / Baidu 10.070.2.0 /
+  #   MS 3.0.15.0.2.0 / Funlink 2.9.0.3.3.2.0 / AdGainSDK+TakuAdapter 4.2.7.1 /
+  #   FSUnionAdSDK 1.0.8.0
   # 穿山甲与 GroMore 必须成套：TTAdapter_Mix 与 GromoreAdapter 同为 7.8.0.5.2.1，
   # 共享同一套 Ads-CN/BUAdSDK 7.8.0.5 + CSJMediation-Only 7.8.0.5（单份 Pangle）。
+  # 自有酷盈保留：AdxSmartdigimktCNAdapter 6.5.90.2.1 → SmartdigimktCNSDK 6.5.90。
   s.dependency 'AnyThinkMediationAdxSmartdigimktCNAdapter', '6.5.90.2.1'
   s.dependency 'AnyThinkMediationGromoreAdapter', '7.8.0.5.2.1'
-  s.dependency 'AnyThinkMediationBaiduAdapter', '10.070.2.0'
-  s.dependency 'AnyThinkMediationMSAdapter', '3.0.15.0.2.0'
   s.dependency 'AnyThinkMediationZYAdapter', '2.6.10.7.2.0'
-  s.dependency 'AnyThinkMediationFunlinkAdapter', '2.9.0.3.3.2.0'
   s.dependency 'AnyThinkMediationBeiZiAdapter', '5.5.6.0.2.0'
   s.dependency 'AnyThinkMediationKuaiShouAdapter', '5.9.10.1.2.0'
   s.dependency 'AnyThinkMediationTTAdapter_Mix', '7.8.0.5.2.1'
   s.dependency 'AnyThinkMediationGDTAdapter', '4.16.10.2.0'
-  # AdGain / FSUnion：单独集成，不属于 Taku 下载中心升级范围，本阶段冻结当前版本
-  # （KEEP_CURRENT_OUT_OF_TAKU_SCOPE：不删除、不升级、不改接入方式）。
-  s.dependency 'AdGainSDK', '4.2.7.1'
-  s.dependency 'AdGainSDKTakuAdapter', '4.2.7.1'
-  s.dependency 'FSUnionAdSDK', '1.0.8.0'
 
   # ========= xcconfig =========
   # -ObjC 是静态产物正常工作的必要条件：
