@@ -1,0 +1,93 @@
+PODS:
+  - Ads-CN/BUAdSDK (7.8.0.5)
+  - Ads-CN/CSJMediation-Only (7.8.0.5):
+    - Ads-CN/BUAdSDK
+  - AnyThinkiOS (6.5.84):
+    - AnyThinkiOS/AnyThinkSDK (= 6.5.84)
+  - AnyThinkiOS/AnyThinkSDK (6.5.84)
+  - AnyThinkMediationAdxSmartdigimktCNAdapter (6.5.90.2.1):
+    - AnyThinkiOS (>= 6.5.60)
+    - SmartdigimktCNSDK (= 6.5.90)
+  - AnyThinkMediationBeiZiAdapter (5.5.6.0.2.0):
+    - AnyThinkiOS (>= 6.5.60)
+    - BeiZiSDK-iOS/BeiZiSDK-iOS (= 5.5.6.0)
+  - AnyThinkMediationGDTAdapter (4.16.10.2.0):
+    - AnyThinkiOS (>= 6.5.60)
+    - GDTMobSDK (= 4.16.10)
+  - AnyThinkMediationGromoreAdapter (7.8.0.5.2.1):
+    - Ads-CN/BUAdSDK (= 7.8.0.5)
+    - Ads-CN/CSJMediation-Only (= 7.8.0.5)
+    - AnyThinkiOS (>= 6.5.60)
+  - AnyThinkMediationKuaiShouAdapter (5.9.10.1.2.0):
+    - AnyThinkiOS (>= 6.5.60)
+    - KSAdSDK (= 5.9.10.1)
+  - AnyThinkMediationTTAdapter_Mix (7.8.0.5.2.1):
+    - Ads-CN/BUAdSDK (= 7.8.0.5)
+    - Ads-CN/CSJMediation-Only (= 7.8.0.5)
+    - AnyThinkiOS (>= 6.5.60)
+  - AnyThinkMediationZYAdapter (2.6.10.7.2.0):
+    - AnyThinkiOS (>= 6.5.60)
+    - OctopusSDK (= 2.6.10.7)
+  - BeiZiSDK-iOS/BeiZiSDK-iOS (5.5.6.0)
+  - flame_sdk_ios (1.1.1.small.1):
+    - AnyThinkiOS (= 6.5.84)
+    - AnyThinkMediationAdxSmartdigimktCNAdapter (= 6.5.90.2.1)
+    - AnyThinkMediationBeiZiAdapter (= 5.5.6.0.2.0)
+    - AnyThinkMediationGDTAdapter (= 4.16.10.2.0)
+    - AnyThinkMediationGromoreAdapter (= 7.8.0.5.2.1)
+    - AnyThinkMediationKuaiShouAdapter (= 5.9.10.1.2.0)
+    - AnyThinkMediationTTAdapter_Mix (= 7.8.0.5.2.1)
+    - AnyThinkMediationZYAdapter (= 2.6.10.7.2.0)
+    - OpenSSL-Universal (~> 3.6)
+  - GDTMobSDK (4.16.10)
+  - KSAdSDK (5.9.10.1)
+  - OctopusSDK (2.6.10.7):
+    - OctopusSDK/OctopusBaseSDK (= 2.6.10.7)
+  - OctopusSDK/OctopusBaseSDK (2.6.10.7)
+  - OpenSSL-Universal (3.6.2000)
+  - SmartdigimktCNSDK (6.5.90)
+
+DEPENDENCIES:
+  - flame_sdk_ios (= 1.1.1.small.1)
+
+SPEC REPOS:
+  https://github.com/javaice007/flame-specs.git:
+    - flame_sdk_ios
+  trunk:
+    - Ads-CN
+    - AnyThinkiOS
+    - AnyThinkMediationAdxSmartdigimktCNAdapter
+    - AnyThinkMediationBeiZiAdapter
+    - AnyThinkMediationGDTAdapter
+    - AnyThinkMediationGromoreAdapter
+    - AnyThinkMediationKuaiShouAdapter
+    - AnyThinkMediationTTAdapter_Mix
+    - AnyThinkMediationZYAdapter
+    - BeiZiSDK-iOS
+    - GDTMobSDK
+    - KSAdSDK
+    - OctopusSDK
+    - OpenSSL-Universal
+    - SmartdigimktCNSDK
+
+SPEC CHECKSUMS:
+  Ads-CN: cef4f6b5056c1de68ac2ad2f8d06c71a0870b964
+  AnyThinkiOS: e8fc178732a3e65da9a54e476a36c7a6a31446ca
+  AnyThinkMediationAdxSmartdigimktCNAdapter: 087eaaf46283b0a190104a320a9dfda414c75495
+  AnyThinkMediationBeiZiAdapter: 75f9a767852dcf839e2020ae9bc343d246d74f54
+  AnyThinkMediationGDTAdapter: fbe411bb5b5a7c168a34e4fa61bd5193b332d1a7
+  AnyThinkMediationGromoreAdapter: 828f4bcb989815f091b0168ab907ac7abcfb8c7e
+  AnyThinkMediationKuaiShouAdapter: 0eb6b33e782127a771f7fe03a4b03bd2a0b64627
+  AnyThinkMediationTTAdapter_Mix: 7c47a3846c4be52ab43bc296d809107d84669b70
+  AnyThinkMediationZYAdapter: db67a0f5ba5dd4e94fc6142e8e513d9a28c1da0a
+  BeiZiSDK-iOS: ee032c711cc2e911c3fe8f556d33b794bdefb752
+  flame_sdk_ios: 3f091aed73df7acc16d09160f4719f8d0d041884
+  GDTMobSDK: 21a1a8ceb1fc719e8c699557378a1cfaf135ec0f
+  KSAdSDK: 9f7889f13a5a44162512a379503dff989e0302e6
+  OctopusSDK: e116829f1627c45c3cadbf6317098b9d1df9754d
+  OpenSSL-Universal: ecee7b138fa75a74ecf00d7ffd248fb584739b9e
+  SmartdigimktCNSDK: 9defdfd702aa860dadeac51f91e8cbfcbee8b8d8
+
+PODFILE CHECKSUM: 39a665eee2713c69eb7a4bed41c56f9e8a51632a
+
+COCOAPODS: 1.16.2

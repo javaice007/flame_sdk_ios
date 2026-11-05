@@ -1,0 +1,111 @@
+PODS:
+  - Ads-CN/BUAdLive (7.8.0.7)
+  - Ads-CN/BUAdLive-Framework (7.8.0.7):
+    - Ads-CN/BUAdLive
+    - BUTTSDKFramework/LivePull-Lite (= 1.48.2.3-premium)
+  - Ads-CN/BUAdSDK (7.8.0.7)
+  - Ads-CN/CSJMediation (7.8.0.7):
+    - Ads-CN/BUAdLive-Framework
+    - Ads-CN/CSJMediation-Only
+  - Ads-CN/CSJMediation-Only (7.8.0.7):
+    - Ads-CN/BUAdSDK
+  - BeiZiSDK-iOS/BeiZiSDK-iOS (5.5.6.0)
+  - BUTTSDKFramework/Core (1.48.2.3-premium)
+  - BUTTSDKFramework/LiveBase (1.48.2.3-premium):
+    - BUTTSDKFramework/Core
+    - BUTTSDKFramework/Reachability
+  - BUTTSDKFramework/LivePlayer/Base (1.48.2.3-premium):
+    - BUTTSDKFramework/Core
+    - BUTTSDKFramework/LiveBase
+    - BUTTSDKFramework/LivePull-VolcLog
+    - BUTTSDKFramework/Reachability
+  - BUTTSDKFramework/LivePlayer/Lite (1.48.2.3-premium):
+    - BUTTSDKFramework/LivePlayer/Base
+    - BUTTSDKFramework/PlayerCore/LiveLite
+  - BUTTSDKFramework/LivePull-Lite (1.48.2.3-premium):
+    - BUTTSDKFramework/LivePlayer/Lite
+    - BUTTSDKFramework/Strategy/Lite
+  - BUTTSDKFramework/LivePull-VolcLog (1.48.2.3-premium):
+    - BUTTSDKFramework/VolcLog
+  - BUTTSDKFramework/PlayerCore/Base (1.48.2.3-premium):
+    - BUTTSDKFramework/Core
+  - BUTTSDKFramework/PlayerCore/LiveLite (1.48.2.3-premium):
+    - BUTTSDKFramework/PlayerCore/Base
+    - BUTTSDKFramework/TTFFmpeg/LiveLite
+  - BUTTSDKFramework/Reachability (1.48.2.3-premium)
+  - BUTTSDKFramework/Strategy/Core (1.48.2.3-premium):
+    - BUTTSDKFramework/LiveBase
+    - BUTTSDKFramework/Reachability
+  - BUTTSDKFramework/Strategy/Lite (1.48.2.3-premium):
+    - BUTTSDKFramework/LivePlayer/Lite
+    - BUTTSDKFramework/Strategy/Core
+  - BUTTSDKFramework/TTFFmpeg/LiveLite (1.48.2.3-premium)
+  - BUTTSDKFramework/VolcLog (1.48.2.3-premium)
+  - flame_sdk_ios_tb (1.1.1.small.1):
+    - OpenSSL-Universal (~> 3.6)
+    - ToBid-iOS (= 5.10.3)
+    - ToBid-iOS/AdScopeAdapter (= 5.10.3)
+    - ToBid-iOS/CSJAdapter (= 5.10.3)
+    - ToBid-iOS/GDTAdapter (= 5.10.3)
+    - ToBid-iOS/GromoreAdapter (= 5.10.3)
+    - ToBid-iOS/KSAdapter (= 5.10.3)
+    - ToBid-iOS/OctopusAdapter (= 5.10.3)
+  - GDTMobSDK (4.16.11)
+  - KSAdSDK (5.9.10.1)
+  - OctopusSDK (2.6.10.7):
+    - OctopusSDK/OctopusBaseSDK (= 2.6.10.7)
+  - OctopusSDK/OctopusBaseSDK (2.6.10.7)
+  - OpenSSL-Universal (3.6.2000)
+  - ToBid-iOS (5.10.3):
+    - ToBid-iOS/ToBidSDK (= 5.10.3)
+  - ToBid-iOS/AdScopeAdapter (5.10.3):
+    - BeiZiSDK-iOS/BeiZiSDK-iOS (= 5.5.6.0)
+    - ToBid-iOS/ToBidSDK
+  - ToBid-iOS/CSJAdapter (5.10.3):
+    - Ads-CN/BUAdSDK (= 7.8.0.7)
+    - ToBid-iOS/ToBidSDK
+  - ToBid-iOS/GDTAdapter (5.10.3):
+    - GDTMobSDK (= 4.16.11)
+    - ToBid-iOS/ToBidSDK
+  - ToBid-iOS/GromoreAdapter (5.10.3):
+    - Ads-CN/BUAdSDK (= 7.8.0.7)
+    - Ads-CN/CSJMediation (= 7.8.0.7)
+    - ToBid-iOS/ToBidSDK
+  - ToBid-iOS/KSAdapter (5.10.3):
+    - KSAdSDK (= 5.9.10.1)
+    - ToBid-iOS/ToBidSDK
+  - ToBid-iOS/OctopusAdapter (5.10.3):
+    - OctopusSDK (= 2.6.10.7)
+    - ToBid-iOS/ToBidSDK
+  - ToBid-iOS/ToBidSDK (5.10.3)
+
+DEPENDENCIES:
+  - flame_sdk_ios_tb (= 1.1.1.small.1)
+
+SPEC REPOS:
+  https://github.com/javaice007/flame-specs.git:
+    - flame_sdk_ios_tb
+  trunk:
+    - Ads-CN
+    - BeiZiSDK-iOS
+    - BUTTSDKFramework
+    - GDTMobSDK
+    - KSAdSDK
+    - OctopusSDK
+    - OpenSSL-Universal
+    - ToBid-iOS
+
+SPEC CHECKSUMS:
+  Ads-CN: d31bbd0346a843999cdcb87f99be838a705b20b8
+  BeiZiSDK-iOS: ee032c711cc2e911c3fe8f556d33b794bdefb752
+  BUTTSDKFramework: 34f8f8d541da07e79e9c479eb71336d1e4d90fdd
+  flame_sdk_ios_tb: 3fb57c25663d224e85f491a63adaabaeb969900a
+  GDTMobSDK: ee17c920be9db5a7fcdfd7612a859beb0f744d0d
+  KSAdSDK: 9f7889f13a5a44162512a379503dff989e0302e6
+  OctopusSDK: e116829f1627c45c3cadbf6317098b9d1df9754d
+  OpenSSL-Universal: ecee7b138fa75a74ecf00d7ffd248fb584739b9e
+  ToBid-iOS: e383e05c303e2393bccd147dc74073f22507c0a7
+
+PODFILE CHECKSUM: 89d1c07e32cfed81e61442c67ba948b65344b02d
+
+COCOAPODS: 1.16.2
